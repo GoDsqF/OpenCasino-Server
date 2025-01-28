@@ -2,11 +2,9 @@ package com.opencasino.server.service.blackjack.impl
 
 import com.opencasino.server.config.FAILURE
 import com.opencasino.server.config.MESSAGE
-import com.opencasino.server.network.pack.blackjack.shared.BlackjackUserSession
-import com.opencasino.server.network.pack.blackjack.update.GameUpdatePack
+import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
 import com.opencasino.server.network.pack.shared.GameMessagePack
 import com.opencasino.server.network.shared.Message
-import com.opencasino.server.network.shared.UserSession
 import com.opencasino.server.service.blackjack.BlackjackRoomService
 import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
 import com.opencasino.server.service.shared.MessageType
@@ -14,7 +12,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.reactivestreams.Subscription
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
@@ -34,19 +31,19 @@ class BlackjackWebSocketSessionServiceImpl : BlackjackWebSocketSessionService {
 
     private var sessionPublishers: MutableMap<String, Many<Any>> = HashMap()
     private var sessionSubscriptions: MutableMap<String, Subscription> = HashMap()
-    private var sessions: MutableMap<String, BlackjackUserSession> = HashMap()
+    private var sessions: MutableMap<String, BlackjackPlayerSession> = HashMap()
     private lateinit var roomService: BlackjackRoomService
 
     override fun sendBroadcast(message: Any) = sessionPublishers.values.forEach { it.tryEmitNext(message) }
-    override fun close(userSession: BlackjackUserSession): Mono<Void> {
-        if (sessionSubscriptions.containsKey(userSession.id))
-            sessionSubscriptions[userSession.id]!!.cancel()
+    override fun close(playerSession: BlackjackPlayerSession): Mono<Void> {
+        if (sessionSubscriptions.containsKey(playerSession.id))
+            sessionSubscriptions[playerSession.id]!!.cancel()
         return Mono.empty()
     }
 
-    override fun close(userSessionId: String): Mono<Void> {
-        if (sessions.containsKey(userSessionId))
-            return close(sessions[userSessionId]!!)
+    override fun close(playerSessionId: String): Mono<Void> {
+        if (sessions.containsKey(playerSessionId))
+            return close(sessions[playerSessionId]!!)
         return Mono.empty()
     }
 
@@ -67,63 +64,63 @@ class BlackjackWebSocketSessionServiceImpl : BlackjackWebSocketSessionService {
         roomService.getRoomSessionIds(roomId)
     }
 
-    override fun sendBroadcast(messageFunction: Function<BlackjackUserSession, Any>) =
+    override fun sendBroadcast(messageFunction: Function<BlackjackPlayerSession, Any>) =
         sessions.values.stream().forEach { this.send( it, messageFunction ) }
 
-    override fun sendBroadcast(userSessions: Collection<BlackjackUserSession>, message: Any) =
+    override fun sendBroadcast(userSessions: Collection<BlackjackPlayerSession>, message: Any) =
         userSessions.forEach { send(it, message) }
 
     override fun send(
-        userSession: BlackjackUserSession,
-        function: Function<BlackjackUserSession, Any>
+        userSession: BlackjackPlayerSession,
+        function: Function<BlackjackPlayerSession, Any>
     ) =
         send(userSession, function.apply(userSession))
 
     override fun sendBroadcast(
-        userSessions: Collection<BlackjackUserSession>,
-        function: Function<BlackjackUserSession, Any>
+        userSessions: Collection<BlackjackPlayerSession>,
+        function: Function<BlackjackPlayerSession, Any>
     ) = userSessions.forEach { send(it, function.apply(it)) }
 
-    override fun send(userSession: BlackjackUserSession, message: Any) {
+    override fun send(userSession: BlackjackPlayerSession, message: Any) {
         val webSocketSessionId = userSession.id
         if (sessionPublishers.containsKey(webSocketSessionId)) sessionPublishers[webSocketSessionId]!!
             .tryEmitNext(message)
     }
 
-    override fun sendFailure(userSession: BlackjackUserSession, message: Any) =
+    override fun sendFailure(userSession: BlackjackPlayerSession, message: Any) =
         send(userSession, Message(FAILURE, message))
 
     override fun sendBroadcast(type: MessageType, message: String) =
         sendBroadcast(Message(MESSAGE, GameMessagePack(type.type, message)))
 
-    override fun onActive(userSession: BlackjackUserSession): Flux<Any> {
-        log.debug("Client ${userSession.id} connected")
+    override fun onActive(playerSession: BlackjackPlayerSession): Flux<Any> {
+        log.debug("Client ${playerSession.id} connected")
         val sink = many().unicast().onBackpressureBuffer<Any>()
-        sessionPublishers[userSession.id] = sink
-        sessions[userSession.id] = userSession
+        sessionPublishers[playerSession.id] = sink
+        sessions[playerSession.id] = playerSession
         return sink.asFlux()
     }
 
-    override fun onSubscribe(userSession: BlackjackUserSession, subscription: Subscription) {
-        sessionSubscriptions[userSession.id] = subscription
+    override fun onSubscribe(playerSession: BlackjackPlayerSession, subscription: Subscription) {
+        sessionSubscriptions[playerSession.id] = subscription
     }
 
     override fun onPrincipalInit(
-        userSession: BlackjackUserSession,
+        playerSession: BlackjackPlayerSession,
         principal: Principal
     ) {
-        userSession.principal = principal
+        playerSession.principal = principal
     }
 
-    override fun onInactive(userSession: BlackjackUserSession) {
-        log.debug("Client ${userSession.id} disconnected")
-        if (!sessionPublishers.containsKey(userSession.id)) return
-        sessionPublishers.remove(userSession.id)
-        sessions.remove(userSession.id)
+    override fun onInactive(playerSession: BlackjackPlayerSession) {
+        log.debug("Client ${playerSession.id} disconnected")
+        if (!sessionPublishers.containsKey(playerSession.id)) return
+        sessionPublishers.remove(playerSession.id)
+        sessions.remove(playerSession.id)
 
-        if (userSession.roomKey != null)
-            roomService.getRoomByKey(userSession.roomKey!!)
-                .ifPresent { it.onDisconnect(userSession) }
+        if (playerSession.roomKey != null)
+            roomService.getRoomByKey(playerSession.roomKey!!)
+                .ifPresent { it.onDisconnect(playerSession) }
     }
 
     @Autowired

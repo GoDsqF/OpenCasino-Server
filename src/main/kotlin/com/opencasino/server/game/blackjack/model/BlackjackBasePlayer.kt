@@ -6,7 +6,7 @@ import com.opencasino.server.game.model.PlayerEntity
 import com.opencasino.server.network.pack.InitPack
 import com.opencasino.server.network.pack.PrivateUpdatePack
 import com.opencasino.server.network.pack.UpdatePack
-import com.opencasino.server.network.pack.blackjack.shared.BlackjackUserSession
+import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
 import com.opencasino.server.network.pack.update.IPrivateUpdatePackProvider
 import com.opencasino.server.service.blackjack.shared.BlackjackDecision
 import java.util.*
@@ -14,9 +14,9 @@ import java.util.stream.Collectors
 import kotlin.properties.Delegates
 
 abstract class BlackjackBasePlayer<GR, IP : InitPack, UP : UpdatePack, PUP : PrivateUpdatePack>(
-    id: UUID, gameRoom: GR,
-    var userSession: BlackjackUserSession
-) : PlayerEntity<UUID, GR, IP, UP>(id, gameRoom), Updatable, IPrivateUpdatePackProvider<PUP> {
+    id: Long, gameRoom: GR,
+    var userSession: BlackjackPlayerSession
+) : PlayerEntity<Long, GR, IP, UP>(id, gameRoom), Updatable, IPrivateUpdatePackProvider<PUP> {
 
     var balance by Delegates.notNull<Double>()
 

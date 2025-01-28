@@ -1,15 +1,16 @@
 package com.opencasino.server.service.shared
 
-import com.opencasino.server.game.model.User
+import com.opencasino.server.game.model.Users
 import io.r2dbc.spi.Row
 import org.springframework.stereotype.Component
+import java.util.*
 import java.util.function.BiFunction
 
 @Component
-class UserMapper : BiFunction<Row, Any, User> {
-    override fun apply(row: Row, any: Any): User {
-        return User(
-            row.get("id", String::class.java) ?: "",
+class UserMapper : BiFunction<Row, Any, Users> {
+    override fun apply(row: Row, any: Any): Users {
+        return Users(
+            row.get("id", UUID::class.java) ?: UUID.fromString("00000000-0000-0000-0000-000000000000"),
             row.get("username", String::class.java) ?: "",
             row.get("balance", Double::class.java) ?: 0.00,
             row.get("firstName", String::class.java) ?: "",

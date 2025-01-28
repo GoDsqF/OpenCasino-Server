@@ -5,7 +5,7 @@ import org.springframework.web.reactive.socket.HandshakeInfo
 import java.security.Principal
 import java.util.*
 
-open class UserSession<P>(
+open class PlayerSession<P>(
     override val id: String,
     open val handshakeInfo: HandshakeInfo
 ) : AbstractEntity<String>(id) {

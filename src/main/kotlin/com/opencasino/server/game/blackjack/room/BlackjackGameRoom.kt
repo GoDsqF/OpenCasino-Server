@@ -6,15 +6,12 @@ import com.opencasino.server.game.blackjack.map.BlackjackMap
 import com.opencasino.server.game.blackjack.model.BlackjackPlayer
 import com.opencasino.server.game.model.Card
 import com.opencasino.server.game.model.CardDeck
-import com.opencasino.server.game.model.Player
 import com.opencasino.server.network.pack.blackjack.init.BlackjackInitPack
 import com.opencasino.server.network.pack.blackjack.shared.BlackjackRoomPack
-import com.opencasino.server.network.pack.blackjack.shared.BlackjackUserSession
+import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
 import com.opencasino.server.network.pack.blackjack.shared.GameSettingsPack
 import com.opencasino.server.network.pack.blackjack.update.GameUpdatePack
 import com.opencasino.server.network.shared.Message
-import com.opencasino.server.network.shared.UserSession
-import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.blackjack.BlackjackRoomService
 import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
 import com.opencasino.server.service.blackjack.shared.BlackjackDecision
@@ -42,7 +39,7 @@ class BlackjackGameRoom(
 
     val dealerDeck = mutableListOf<Card>()
 
-    override fun onRoomCreated(userSessions: List<BlackjackUserSession>) {
+    override fun onRoomCreated(userSessions: List<BlackjackPlayerSession>) {
         if (userSessions.isNotEmpty()) {
             userSessions.forEach {
                 val player = it.player as BlackjackPlayer
@@ -122,7 +119,7 @@ class BlackjackGameRoom(
         }
     }
 
-    fun onPlayerInitRequest(userSession: BlackjackUserSession) {
+    fun onPlayerInitRequest(userSession: BlackjackPlayerSession) {
         send(
             userSession, Message(
                 INIT,
@@ -135,7 +132,7 @@ class BlackjackGameRoom(
         )
     }
 
-    fun onPlayerDecision(userSession: BlackjackUserSession, event: PlayerDecisionEvent) {
+    fun onPlayerDecision(userSession: BlackjackPlayerSession, event: PlayerDecisionEvent) {
         if (!started.get()) return
         val player = userSession.player as BlackjackPlayer
         if (!player.isAlive) return

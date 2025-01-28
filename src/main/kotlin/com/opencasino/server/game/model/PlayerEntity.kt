@@ -2,7 +2,6 @@ package com.opencasino.server.game.model
 
 import com.opencasino.server.config.MIN_BLACKJACK_BET
 import com.opencasino.server.game.Initializable
-import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.pack.InitPack
 import com.opencasino.server.network.pack.UpdatePack
 import com.opencasino.server.network.pack.blackjack.init.IInitPackProvider

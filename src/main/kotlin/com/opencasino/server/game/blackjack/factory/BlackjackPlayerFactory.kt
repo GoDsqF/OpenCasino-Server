@@ -4,18 +4,16 @@ import com.opencasino.server.event.GameRoomJoinEvent
 import com.opencasino.server.game.blackjack.model.BlackjackPlayer
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.game.factory.PlayerFactory
-import com.opencasino.server.game.model.Player
-import com.opencasino.server.network.pack.blackjack.shared.BlackjackUserSession
-import com.opencasino.server.network.shared.UserSession
+import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
 import org.springframework.stereotype.Component
 import java.util.*
 
 @Component
-class BlackjackPlayerFactory : PlayerFactory<GameRoomJoinEvent, BlackjackPlayer, BlackjackGameRoom, BlackjackUserSession> {
+class BlackjackPlayerFactory : PlayerFactory<GameRoomJoinEvent, BlackjackPlayer, BlackjackGameRoom, BlackjackPlayerSession> {
     override fun create(
-        nextId: UUID,
+        nextId: Long,
         initialData: GameRoomJoinEvent,
         gameRoom: BlackjackGameRoom,
-        playerSession: BlackjackUserSession
+        playerSession: BlackjackPlayerSession
     ): BlackjackPlayer = BlackjackPlayer(nextId, gameRoom, playerSession)
 }

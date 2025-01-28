@@ -1,9 +1,8 @@
 package com.opencasino.server.service
 
-import com.opencasino.server.game.model.User
+import com.opencasino.server.game.model.Users
 import com.opencasino.server.game.model.UserData
 import com.opencasino.server.service.shared.UserRepository
-import org.springframework.boot.autoconfigure.security.SecurityProperties
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
 import java.util.*
@@ -13,13 +12,15 @@ class UserService(
     private val db: UserRepository
 ) {
 
-    fun findPlayerById(id: String): Mono<User> = db.findById(UUID.fromString(id))
+    fun findUserById(id: String): Mono<Users> = db.findById(UUID.fromString(id))
 
-    fun addNewPlayer(player: UserData): Mono<User> {
-        val newUser = SecurityProperties.User(
-
+    fun addNewUser(player: UserData): Mono<Users> {
+        val newUser = Users(
+            username = player.username,
+            firstName = player.firstName,
+            lastName = player.lastName,
+            email = player.email
         )
+        return db.save(newUser)
     }
-
-    fun updatePlayer(id: String, player: User): Mono<User>
 }

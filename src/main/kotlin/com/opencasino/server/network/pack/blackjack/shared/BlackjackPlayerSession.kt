@@ -1,15 +1,15 @@
 package com.opencasino.server.network.pack.blackjack.shared
 
 import com.opencasino.server.game.blackjack.model.BlackjackPlayer
-import com.opencasino.server.network.shared.UserSession
+import com.opencasino.server.network.shared.PlayerSession
 import org.springframework.web.reactive.socket.HandshakeInfo
 import java.security.Principal
 import java.util.*
 
-class BlackjackUserSession(
+class BlackjackPlayerSession(
     override val id: String,
     override val handshakeInfo: HandshakeInfo,
-) : UserSession<BlackjackPlayer>(id, handshakeInfo) {
+) : PlayerSession<BlackjackPlayer>(id, handshakeInfo) {
     override var player: BlackjackPlayer? = null
     override var roomKey: UUID? = null
     override var principal: Principal? = null

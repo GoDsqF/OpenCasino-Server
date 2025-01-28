@@ -6,21 +6,15 @@ import com.opencasino.server.config.INIT
 import com.opencasino.server.config.PLAYER_DECISION
 import com.opencasino.server.event.GameRoomJoinEvent
 import com.opencasino.server.event.PlayerDecisionEvent
-import com.opencasino.server.game.blackjack.model.BlackjackPlayer
-import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
-import com.opencasino.server.game.model.Player
-import com.opencasino.server.network.pack.blackjack.shared.BlackjackUserSession
+import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
 import com.opencasino.server.network.shared.Message
-import com.opencasino.server.network.shared.UserSession
-import com.opencasino.server.service.RoomService
-import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.blackjack.BlackjackRoomService
 import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
 class BlackjackUserSessionWebSocketHandler(
-    private val userSession: BlackjackUserSession,
+    private val userSession: BlackjackPlayerSession,
     private val webSocketSessionService: BlackjackWebSocketSessionService,
     private val roomService: BlackjackRoomService,
 ) {

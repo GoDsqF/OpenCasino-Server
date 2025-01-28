@@ -5,6 +5,6 @@ import com.opencasino.server.service.blackjack.shared.BlackjackDecision
 import java.util.*
 
 data class BlackjackPrivatePlayerUpdatePack(
-    val id: UUID,
+    val id: Long,
     val decision: BlackjackDecision
 ): PrivateUpdatePack

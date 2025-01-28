@@ -7,7 +7,7 @@ import com.opencasino.server.game.blackjack.map.BlackjackMap
 import com.opencasino.server.game.blackjack.model.BlackjackPlayer
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.game.factory.PlayerFactory
-import com.opencasino.server.network.pack.blackjack.shared.BlackjackUserSession
+import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.blackjack.BlackjackRoomService
 import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
@@ -23,7 +23,7 @@ import java.util.*
 
 @Service
 class BlackjackRoomServiceImpl(
-    private val playerFactory: PlayerFactory<GameRoomJoinEvent, BlackjackPlayer, BlackjackGameRoom, BlackjackUserSession>,
+    private val playerFactory: PlayerFactory<GameRoomJoinEvent, BlackjackPlayer, BlackjackGameRoom, BlackjackPlayerSession>,
     private val applicationProperties: ApplicationProperties,
     private val schedulerService: Scheduler
 ) : BlackjackRoomService {
@@ -45,7 +45,7 @@ class BlackjackRoomServiceImpl(
     override fun getRoomByKey(key: UUID?): Optional<BlackjackGameRoom> =
         if (key != null) Optional.ofNullable(gameRoomMap[key]) else Optional.empty()
 
-    override fun addPlayerToWait(userSession: BlackjackUserSession, initialData: GameRoomJoinEvent) {
+    override fun addPlayerToWait(userSession: BlackjackPlayerSession, initialData: GameRoomJoinEvent) {
         sessionQueue.add(WaitingBlackjackPlayerSession(userSession, initialData))
         webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))
 
@@ -53,10 +53,10 @@ class BlackjackRoomServiceImpl(
 
         val gameTable = BlackjackMap()
         val room = createRoom(gameTable)
-        val userSessions: MutableList<BlackjackUserSession> = ArrayList()
+        val userSessions: MutableList<BlackjackPlayerSession> = ArrayList()
         while (userSessions.size != applicationProperties.room.maxPlayers) {
             val waitingPlayerSession = sessionQueue.remove()
-            val ps: BlackjackUserSession = waitingPlayerSession.userSession
+            val ps: BlackjackPlayerSession = waitingPlayerSession.userSession
             val id: GameRoomJoinEvent = waitingPlayerSession.initialData
             val player: BlackjackPlayer = playerFactory.create(gameTable.nextPlayerId(),  id, room, ps)
             ps.roomKey = room.key()
@@ -66,7 +66,7 @@ class BlackjackRoomServiceImpl(
         launchRoom(room, userSessions)
     }
 
-    override fun removePlayerFromWaitQueue(session: BlackjackUserSession) {
+    override fun removePlayerFromWaitQueue(session: BlackjackPlayerSession) {
         sessionQueue.removeIf{ waitingPlayerSession -> waitingPlayerSession.userSession == session }
     }
 
@@ -79,7 +79,7 @@ class BlackjackRoomServiceImpl(
         return room
     }
 
-    private fun launchRoom(room: BlackjackGameRoom, userSessions: List<BlackjackUserSession>) {
+    private fun launchRoom(room: BlackjackGameRoom, userSessions: List<BlackjackPlayerSession>) {
         room.onRoomCreated(userSessions)
         room.onRoomStarted()
     }

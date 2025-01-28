@@ -5,6 +5,6 @@ import com.opencasino.server.network.pack.UpdatePack
 import java.util.UUID
 
 data class PlayerUpdatePack(
-    val id: UUID,
+    val id: Long,
     val deck: List<Card>
 ): UpdatePack

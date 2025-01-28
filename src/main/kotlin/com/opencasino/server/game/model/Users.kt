@@ -12,11 +12,11 @@ import java.util.*
 
 @Entity
 @Table(name = "users")
-data class User(
+data class Users(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column("id")
-    override val id: String = UUID.randomUUID().toString(),
+    val id: UUID = UUID.randomUUID(),
 
     @Column("username")
     val username: String,
@@ -43,7 +43,7 @@ data class User(
     @Column("last_modified")
     val lastModified: Long =
         ZonedDateTime.now(ZoneId.of("Europe/Moscow")).toEpochSecond(),
-) : Player {
+) {
     @Override
     override fun toString(): String {
         return "Player {" +

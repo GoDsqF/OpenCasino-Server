@@ -3,5 +3,5 @@ package com.opencasino.server.game.model
 import java.util.*
 
 interface Entity<I> {
-    val id: String
+    val id: I
 }

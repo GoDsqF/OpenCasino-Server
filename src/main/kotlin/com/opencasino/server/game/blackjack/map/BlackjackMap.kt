@@ -7,9 +7,9 @@ import kotlin.collections.HashMap
 
 class BlackjackMap {
 
-    private val players: MutableMap<UUID, BlackjackPlayer> = HashMap()
+    private val players: MutableMap<Long, BlackjackPlayer> = HashMap()
 
-    fun getPlayerById(id: UUID): BlackjackPlayer? = players[id]
+    fun getPlayerById(id: Long): BlackjackPlayer? = players[id]
     fun getPlayers(): Collection<BlackjackPlayer> = players.values
     fun addPlayer(player: BlackjackPlayer) {
         if (players.size < MAX_BLACKJACK_PLAYERS)
@@ -18,7 +18,7 @@ class BlackjackMap {
 
     fun removePlayer(player: BlackjackPlayer) = players.remove(player.id)
 
-    fun nextPlayerId(): UUID = UUID.randomUUID()
+    fun nextPlayerId(): Long = (System.currentTimeMillis() shl 20) or (System.nanoTime() and 9223372036854251520L.inv())
 
     fun alivePlayers(): Long = players.values.stream().filter { it.isAlive }.count()
 }

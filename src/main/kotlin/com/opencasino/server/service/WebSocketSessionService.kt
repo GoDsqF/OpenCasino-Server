@@ -1,7 +1,7 @@
 package com.opencasino.server.service
 
 import com.opencasino.server.game.model.Player
-import com.opencasino.server.network.shared.UserSession
+import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.websocket.WebSocketMessagePublisher
 import org.reactivestreams.Subscription
 import org.springframework.stereotype.Service
@@ -12,11 +12,11 @@ import java.util.*
 
 @Service
 interface WebSocketSessionService : WebSocketMessagePublisher {
-    fun onActive(userSession: UserSession<Player>): Flux<Any>
-    fun onSubscribe(userSession: UserSession<Player>, subscription: Subscription)
-    fun onPrincipalInit(userSession: UserSession<Player>, principal: Principal)
-    fun onInactive(userSession: UserSession<Player>)
-    fun close(userSession: UserSession<Player>): Mono<Void>
+    fun onActive(playerSession: PlayerSession<Player>): Flux<Any>
+    fun onSubscribe(playerSession: PlayerSession<Player>, subscription: Subscription)
+    fun onPrincipalInit(playerSession: PlayerSession<Player>, principal: Principal)
+    fun onInactive(playerSession: PlayerSession<Player>)
+    fun close(playerSession: PlayerSession<Player>): Mono<Void>
     fun close(userSessionId: String): Mono<Void>
     fun closeAll():Mono<Void>
     fun roomIds():Mono<Collection<String>>

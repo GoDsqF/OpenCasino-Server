@@ -1,13 +1,9 @@
 package com.opencasino.server.network.websocket
 
 import com.google.gson.Gson
-import com.opencasino.server.game.model.Player
-import com.opencasino.server.network.pack.blackjack.shared.BlackjackUserSession
+import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
 import com.opencasino.server.network.pack.blackjack.websocket.BlackjackUserSessionWebSocketHandler
 import com.opencasino.server.network.shared.Message
-import com.opencasino.server.network.shared.UserSession
-import com.opencasino.server.service.RoomService
-import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.blackjack.BlackjackRoomService
 import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
 import org.slf4j.Logger
@@ -36,7 +32,7 @@ class MainWebSocketHandler(
 
     override fun handle(webSocketSession: WebSocketSession): Mono<Void> {
         val input = webSocketSession.receive().share()
-        val userSession = BlackjackUserSession(webSocketSession.id, webSocketSession.handshakeInfo)
+        val userSession = BlackjackPlayerSession(webSocketSession.id, webSocketSession.handshakeInfo)
         val sessionHandler = BlackjackUserSessionWebSocketHandler(
             userSession,
             webSocketSessionService, roomService

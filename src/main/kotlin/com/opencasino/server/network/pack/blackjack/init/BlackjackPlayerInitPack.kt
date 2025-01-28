@@ -4,6 +4,6 @@ import com.opencasino.server.network.pack.InitPack
 import java.util.*
 
 data class BlackjackPlayerInitPack(
-    val id: UUID,
+    val id: Long,
     val balance: Double,
 ): InitPack
