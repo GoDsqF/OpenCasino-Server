@@ -1,9 +1,6 @@
 package com.opencasino.server.network.pack.blackjack.shared
 
 import com.opencasino.server.game.blackjack.model.BlackjackPlayer
-import com.opencasino.server.game.model.AbstractEntity
-import com.opencasino.server.game.model.Player
-import com.opencasino.server.game.model.PlayersTable
 import com.opencasino.server.network.shared.UserSession
 import org.springframework.web.reactive.socket.HandshakeInfo
 import java.security.Principal

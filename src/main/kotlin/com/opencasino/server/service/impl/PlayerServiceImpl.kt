@@ -1,24 +1,30 @@
 package com.opencasino.server.service.impl
 
-import com.opencasino.server.game.model.PlayersTable
-import com.opencasino.server.service.PlayerService
-import com.opencasino.server.service.shared.PlayerRepository
-import org.reactivestreams.Publisher
-import org.springframework.data.r2dbc.repository.Query
+import com.opencasino.server.game.model.User
+import com.opencasino.server.game.model.UserData
+import com.opencasino.server.service.UserService
+import com.opencasino.server.service.shared.UserMapper
+import org.springframework.data.repository.query.Param
+import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
+import java.util.*
 
 @Service
 class PlayerServiceImpl(
-    private val playerRepository: PlayerRepository,
-) : PlayerService {
+    private val databaseClient: DatabaseClient,
+    private val mapper: UserMapper
+) : UserService {
 
-    @Query("select * from players")
-    override fun findPlayerById(id: String): Mono<PlayersTable> {
-        return playerRepository.findById(id)
+    override fun findPlayerById(id: String): Mono<User> {
+        return playerRepository.findById(UUID.fromString(id))
     }
 
-    override fun addNewPlayer(player: PlayersTable): Mono<PlayersTable> {
-        return playerRepository.save(player)
+    override fun addNewPlayer(@Param("player") player: UserData): Mono<User> {
+
+    }
+
+    override fun updatePlayer(id: String, player: User): Mono<User> {
+
     }
 }

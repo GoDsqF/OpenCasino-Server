@@ -1,12 +1,6 @@
 package com.opencasino.server.network.shared
 
 import com.opencasino.server.game.model.AbstractEntity
-import com.opencasino.server.game.model.Player
-import com.opencasino.server.game.model.PlayerEntity
-import com.opencasino.server.game.model.PlayersTable
-import com.opencasino.server.game.room.GameRoom
-import com.opencasino.server.network.pack.InitPack
-import com.opencasino.server.network.pack.UpdatePack
 import org.springframework.web.reactive.socket.HandshakeInfo
 import java.security.Principal
 import java.util.*
