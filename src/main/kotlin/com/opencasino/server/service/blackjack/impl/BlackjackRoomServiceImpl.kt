@@ -12,6 +12,7 @@ import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.blackjack.BlackjackRoomService
 import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
 import com.opencasino.server.service.blackjack.shared.WaitingBlackjackPlayerSession
+import com.opencasino.server.service.shared.WaitingPlayerSession
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.springframework.beans.factory.annotation.Autowired

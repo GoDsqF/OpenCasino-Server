@@ -139,4 +139,18 @@ class BlackjackGameRoom(
         val decision = BlackjackDecision.valueOf(event.inputId)
         player.updateState(decision, event.state)
     }
+
+    override fun onDestroy(userSessions: List<BlackjackPlayerSession>) {
+        userSessions.forEach { userSession: BlackjackPlayerSession ->
+            map.removePlayer(
+                userSession.player as BlackjackPlayer
+            )
+        }
+        super.onDestroy(userSessions)
+    }
+
+    override fun onClose(userSession: BlackjackPlayerSession) {
+        send(userSession, Message(GAME_ROOM_CLOSE))
+        super.onClose(userSession)
+    }
 }
