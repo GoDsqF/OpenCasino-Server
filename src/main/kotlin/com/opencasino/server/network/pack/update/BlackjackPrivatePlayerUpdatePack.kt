@@ -1,4 +1,4 @@
-package com.opencasino.server.network.pack.blackjack.update
+package com.opencasino.server.network.pack.update
 
 import com.opencasino.server.network.pack.PrivateUpdatePack
 import com.opencasino.server.service.blackjack.shared.BlackjackDecision

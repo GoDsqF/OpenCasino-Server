@@ -2,7 +2,6 @@ package com.opencasino.server.network.websocket
 
 import com.google.gson.Gson
 import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
-import com.opencasino.server.network.pack.blackjack.websocket.BlackjackUserSessionWebSocketHandler
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.blackjack.BlackjackRoomService
 import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService

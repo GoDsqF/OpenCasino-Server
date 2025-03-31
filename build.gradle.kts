@@ -4,10 +4,11 @@ plugins {
     id("org.springframework.boot") version "3.4.1"
     id("io.spring.dependency-management") version "1.1.7"
     kotlin("plugin.jpa") version "1.9.25"
+    id("com.gradleup.shadow") version "9.0.0-beta6"
 }
 
 group = "com.openCasino"
-version = "0.0.1"
+version = "1.0.1"
 
 java {
     toolchain {
@@ -38,6 +39,10 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     runtimeOnly("io.r2dbc:r2dbc-h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    implementation("com.google.api-client:google-api-client:2.7.2")
+    implementation("org.springframework.security:spring-security-oauth2-client:6.4.4")
+    implementation("org.springframework.boot:spring-boot-starter-security:3.4.4")
+    testImplementation("org.springframework.security:spring-security-test")
 }
 
 kotlin {

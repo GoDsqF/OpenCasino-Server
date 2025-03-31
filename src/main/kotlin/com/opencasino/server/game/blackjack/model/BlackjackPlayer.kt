@@ -3,8 +3,8 @@ package com.opencasino.server.game.blackjack.model
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.network.pack.blackjack.init.BlackjackPlayerInitPack
 import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
-import com.opencasino.server.network.pack.blackjack.update.PlayerUpdatePack
-import com.opencasino.server.network.pack.blackjack.update.BlackjackPrivatePlayerUpdatePack
+import com.opencasino.server.network.pack.update.PlayerUpdatePack
+import com.opencasino.server.network.pack.update.BlackjackPrivatePlayerUpdatePack
 import com.opencasino.server.service.blackjack.shared.BlackjackDecision
 
 class BlackjackPlayer(

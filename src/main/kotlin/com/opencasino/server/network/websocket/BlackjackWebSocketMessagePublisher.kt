@@ -1,4 +1,4 @@
-package com.opencasino.server.network.pack.blackjack.websocket
+package com.opencasino.server.network.websocket
 
 import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
 import com.opencasino.server.service.shared.MessageType

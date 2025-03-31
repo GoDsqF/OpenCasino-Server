@@ -1,4 +1,4 @@
-package com.opencasino.server.network.pack.blackjack.websocket
+package com.opencasino.server.network.websocket
 
 import com.google.gson.Gson
 import com.opencasino.server.config.GAME_ROOM_JOIN

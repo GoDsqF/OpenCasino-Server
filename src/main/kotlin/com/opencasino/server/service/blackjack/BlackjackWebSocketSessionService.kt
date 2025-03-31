@@ -1,7 +1,7 @@
 package com.opencasino.server.service.blackjack
 
 import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
-import com.opencasino.server.network.pack.blackjack.websocket.BlackjackWebSocketMessagePublisher
+import com.opencasino.server.network.websocket.BlackjackWebSocketMessagePublisher
 import org.reactivestreams.Subscription
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono

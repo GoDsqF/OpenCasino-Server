@@ -10,7 +10,7 @@ import com.opencasino.server.network.pack.blackjack.init.BlackjackInitPack
 import com.opencasino.server.network.pack.blackjack.shared.BlackjackRoomPack
 import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
 import com.opencasino.server.network.pack.blackjack.shared.GameSettingsPack
-import com.opencasino.server.network.pack.blackjack.update.GameUpdatePack
+import com.opencasino.server.network.pack.update.GameUpdatePack
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.blackjack.BlackjackRoomService
 import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
