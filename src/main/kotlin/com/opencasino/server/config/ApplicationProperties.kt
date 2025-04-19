@@ -1,5 +1,6 @@
 package com.opencasino.server.config
 
+import com.google.api.client.util.Value
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 
@@ -22,30 +23,14 @@ class Auth{
 
     private var tokenSecret: String = ""
     private var tokenExpirationMsec: String = ""
-
-    fun getTokenSecret(): String {
-        return tokenSecret
-    }
-
-    fun setTokenSecret(tokenSecret: String) {
-        this.tokenSecret = tokenSecret
-    }
-
-    fun getTokenExpirationMsec(): String {
-        return tokenExpirationMsec
-    }
-
-    fun setTokenExpirationMsec(tokenExpirationMsec: Long) {
-        this.tokenExpirationMsec = tokenExpirationMsec.toString()
-    }
 }
 
 @ConfigurationProperties(prefix = "oauth2")
 @EnableConfigurationProperties(OAuth2Properties::class)
 data class OAuth2Properties(
-    var clientId: String = "",
-    var clientSecret: String = "",
-    var redirectUri: String = ""
+    var clientId: String = System.getenv("CLIENTID"),
+    var clientSecret: String = System.getenv("CLIENTSECRET"),
+    var redirectUri: List<String> = listOf("http://localhost:3000/oauth2/redirect", "https://opencasino.duckdns.org/oauth2/redirect")
 )
 
 
@@ -53,6 +38,6 @@ data class OAuth2Properties(
 data class ApplicationProperties(
     val room: RoomProperties = RoomProperties(),
     val game: GameProperties = GameProperties(),
-    val auth: Auth = Auth(),
+    //val auth: Auth = Auth(),
     val oauth2: OAuth2Properties = OAuth2Properties(),
 )

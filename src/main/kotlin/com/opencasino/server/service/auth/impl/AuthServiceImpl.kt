@@ -23,11 +23,11 @@ class AuthServiceImpl(
         .setAudience(Collections.singletonList(oAuth2Properties.clientId))
         .build()
 
-   override fun authenticate(authCode: String): AuthEvent {
+   override fun authenticate(authString: String): AuthEvent {
         val tokenResponse = GoogleAuthorizationCodeTokenRequest(
             httpTransport, jsonFactory,
-            oAuth2Properties.clientId, oAuth2Properties.redirectUri,
-            authCode, oAuth2Properties.redirectUri
+            oAuth2Properties.clientId, oAuth2Properties.clientSecret,
+            authString, oAuth2Properties.redirectUri[0]
         ).execute()
 
         val idToken = verifier.verify(tokenResponse.idToken) ?: throw Exception("Invalid token")

@@ -40,14 +40,14 @@ class ApplicationConfiguration(
         return handlerMapping
     }
 
-    @Bean
+    /*@Bean
     fun authConfiguration(): Auth{
         return authConfiguration()
-    }
+    }*/
 
     @Bean
     fun oauth2Configuration(): OAuth2Properties{
-        return oauth2Configuration()
+        return OAuth2Properties()
     }
 
     @Bean
