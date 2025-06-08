@@ -13,8 +13,8 @@ interface RoomService<GR> {
     fun getRoomIds(): Collection<String>
     fun getRooms(): Collection<GR>
     fun getRoomByKey(key: UUID?): Optional<GR>
-    fun addPlayerToWait(playerSession: PlayerSession<Player>, initialData: GameRoomJoinEvent)
-    fun removePlayerFromWaitQueue(session: PlayerSession<Player>)
+    fun addPlayerToWait(playerSession: PlayerSession, initialData: GameRoomJoinEvent)
+    fun removePlayerFromWaitQueue(session: PlayerSession)
     fun onRoundEnd(room: GR)
     fun close(key: UUID?): Mono<Void>
 }

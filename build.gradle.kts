@@ -32,17 +32,18 @@ dependencies {
     implementation("org.postgresql:r2dbc-postgresql")
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    //implementation("org.springframework.boot:spring-boot-starter-actuator")
     testImplementation("io.projectreactor:reactor-test")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
-    runtimeOnly("com.h2database:h2")
+    //runtimeOnly("com.h2database:h2")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     runtimeOnly("io.r2dbc:r2dbc-h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation("com.google.api-client:google-api-client:2.7.2")
-    implementation("org.springframework.security:spring-security-oauth2-client:6.4.4")
-    implementation("org.springframework.boot:spring-boot-starter-security:3.4.4")
-    testImplementation("org.springframework.security:spring-security-test")
+    //implementation("org.springframework.security:spring-security-oauth2-client:6.4.4")
+    //implementation("org.springframework.boot:spring-boot-starter-security:3.4.4")
+    //testImplementation("org.springframework.security:spring-security-test")
 }
 
 kotlin {

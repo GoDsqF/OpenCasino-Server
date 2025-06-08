@@ -1,9 +1,9 @@
 package com.opencasino.server.service.blackjack.shared
 
 import com.opencasino.server.event.GameRoomJoinEvent
-import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
+import com.opencasino.server.network.shared.PlayerSession
 
 data class WaitingBlackjackPlayerSession(
-    val userSession: BlackjackPlayerSession,
+    val playerSession: PlayerSession,
     val initialData: GameRoomJoinEvent
 )

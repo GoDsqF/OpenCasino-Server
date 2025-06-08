@@ -14,7 +14,7 @@ import kotlin.properties.Delegates
 
 abstract class BasePlayer<GR : GameRoom, IP : InitPack, UP : UpdatePack, PUP : PrivateUpdatePack>(
     id: Long, gameRoom: GR,
-    var playerSession: PlayerSession<Player>
+    var playerSession: PlayerSession
 ) : PlayerEntity<Long, GR, IP, UP>(id, gameRoom), Updatable, IPrivateUpdatePackProvider<PUP> {
 
     var balance by Delegates.notNull<Double>()

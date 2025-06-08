@@ -8,7 +8,7 @@ import com.opencasino.server.game.model.Card
 import com.opencasino.server.game.model.CardDeck
 import com.opencasino.server.network.pack.blackjack.init.BlackjackInitPack
 import com.opencasino.server.network.pack.blackjack.shared.BlackjackRoomPack
-import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
+import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.pack.blackjack.shared.GameSettingsPack
 import com.opencasino.server.network.pack.update.GameUpdatePack
 import com.opencasino.server.network.shared.Message
@@ -29,7 +29,7 @@ class BlackjackGameRoom(
     webSocketSessionService: BlackjackWebSocketSessionService,
     schedulerService: Scheduler,
     val gameProperties: GameProperties,
-    val roomProperties: RoomProperties
+    val roomProperties: BlackjackRoomProperties
 ) : AbstractBlackjackGameRoom(gameRoomId, schedulerService, roomService, webSocketSessionService) {
     private val started = AtomicBoolean(false)
 
@@ -39,7 +39,7 @@ class BlackjackGameRoom(
 
     val dealerDeck = mutableListOf<Card>()
 
-    override fun onRoomCreated(userSessions: List<BlackjackPlayerSession>) {
+    override fun onRoomCreated(userSessions: List<PlayerSession>) {
         if (userSessions.isNotEmpty()) {
             userSessions.forEach {
                 val player = it.player as BlackjackPlayer
@@ -119,7 +119,7 @@ class BlackjackGameRoom(
         }
     }
 
-    fun onPlayerInitRequest(userSession: BlackjackPlayerSession) {
+    fun onPlayerInitRequest(userSession: PlayerSession) {
         send(
             userSession, Message(
                 INIT,
@@ -132,7 +132,7 @@ class BlackjackGameRoom(
         )
     }
 
-    fun onPlayerDecision(userSession: BlackjackPlayerSession, event: PlayerDecisionEvent) {
+    fun onPlayerDecision(userSession: PlayerSession, event: PlayerDecisionEvent) {
         if (!started.get()) return
         val player = userSession.player as BlackjackPlayer
         if (!player.isAlive) return
@@ -140,8 +140,8 @@ class BlackjackGameRoom(
         player.updateState(decision, event.state)
     }
 
-    override fun onDestroy(userSessions: List<BlackjackPlayerSession>) {
-        userSessions.forEach { userSession: BlackjackPlayerSession ->
+    override fun onDestroy(userSessions: List<PlayerSession>) {
+        userSessions.forEach { userSession: PlayerSession ->
             map.removePlayer(
                 userSession.player as BlackjackPlayer
             )
@@ -149,7 +149,7 @@ class BlackjackGameRoom(
         super.onDestroy(userSessions)
     }
 
-    override fun onClose(userSession: BlackjackPlayerSession) {
+    override fun onClose(userSession: PlayerSession) {
         send(userSession, Message(GAME_ROOM_CLOSE))
         super.onClose(userSession)
     }

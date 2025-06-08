@@ -1,8 +1,11 @@
 package com.opencasino.server.network.websocket
 
 import com.google.gson.Gson
-import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
+import com.opencasino.server.game.blackjack.model.BlackjackPlayer
+import com.opencasino.server.game.model.Player
 import com.opencasino.server.network.shared.Message
+import com.opencasino.server.network.shared.PlayerSession
+import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.blackjack.BlackjackRoomService
 import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
 import org.slf4j.Logger
@@ -19,7 +22,7 @@ import java.io.InputStreamReader
 
 @Service
 class MainWebSocketHandler(
-    private val webSocketSessionService: BlackjackWebSocketSessionService
+    private val webSocketSessionService: WebSocketSessionService
 ) : WebSocketHandler {
 
     private val objectMapper = Gson()
@@ -31,8 +34,8 @@ class MainWebSocketHandler(
 
     override fun handle(webSocketSession: WebSocketSession): Mono<Void> {
         val input = webSocketSession.receive().share()
-        val userSession = BlackjackPlayerSession(webSocketSession.id, webSocketSession.handshakeInfo)
-        val sessionHandler = BlackjackUserSessionWebSocketHandler(
+        val userSession = PlayerSession(webSocketSession.id, webSocketSession.handshakeInfo)
+        val sessionHandler = UserSessionWebSocketHandler(
             userSession,
             webSocketSessionService, roomService
         )
@@ -51,6 +54,7 @@ class MainWebSocketHandler(
         val security = webSocketSession.handshakeInfo.principal.doOnNext {
             webSocketSessionService.onPrincipalInit(userSession, it)
         }
+
         return Flux.merge(receive, send, security)
             .doOnSubscribe { webSocketSessionService.onSubscribe(userSession, it) }
             .doOnTerminate { webSocketSessionService.onInactive(userSession) }

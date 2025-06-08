@@ -12,11 +12,11 @@ import java.util.*
 
 @Service
 interface WebSocketSessionService : WebSocketMessagePublisher {
-    fun onActive(playerSession: PlayerSession<Player>): Flux<Any>
-    fun onSubscribe(playerSession: PlayerSession<Player>, subscription: Subscription)
-    fun onPrincipalInit(playerSession: PlayerSession<Player>, principal: Principal)
-    fun onInactive(playerSession: PlayerSession<Player>)
-    fun close(playerSession: PlayerSession<Player>): Mono<Void>
+    fun onActive(playerSession: PlayerSession): Flux<Any>
+    fun onSubscribe(playerSession: PlayerSession, subscription: Subscription)
+    fun onPrincipalInit(playerSession: PlayerSession, principal: Principal)
+    fun onInactive(playerSession: PlayerSession)
+    fun close(playerSession: PlayerSession): Mono<Void>
     fun close(userSessionId: String): Mono<Void>
     fun closeAll():Mono<Void>
     fun roomIds():Mono<Collection<String>>

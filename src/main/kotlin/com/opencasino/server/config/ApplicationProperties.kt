@@ -1,6 +1,5 @@
 package com.opencasino.server.config
 
-import com.google.api.client.util.Value
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 
@@ -9,7 +8,7 @@ data class GameProperties(
     val gameThreads: Int = 4
 )
 
-data class RoomProperties(
+data class BlackjackRoomProperties(
     val loopRate: Long = DEFAULT_LOOP_RATE,
     val initDelay: Long = ROOM_INIT_DELAY,
     val startDelay: Long = ROOM_START_DELAY,
@@ -36,7 +35,7 @@ data class OAuth2Properties(
 
 @ConfigurationProperties(prefix = "application")
 data class ApplicationProperties(
-    val room: RoomProperties = RoomProperties(),
+    val room: BlackjackRoomProperties = BlackjackRoomProperties(),
     val game: GameProperties = GameProperties(),
     //val auth: Auth = Auth(),
     val oauth2: OAuth2Properties = OAuth2Properties(),

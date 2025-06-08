@@ -7,11 +7,11 @@ import com.opencasino.server.game.blackjack.map.BlackjackMap
 import com.opencasino.server.game.blackjack.model.BlackjackPlayer
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.game.factory.PlayerFactory
-import com.opencasino.server.network.pack.blackjack.shared.BlackjackPlayerSession
+import com.opencasino.server.game.model.Player
+import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.blackjack.BlackjackRoomService
 import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
-import com.opencasino.server.service.blackjack.shared.WaitingBlackjackPlayerSession
 import com.opencasino.server.service.shared.WaitingPlayerSession
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -24,7 +24,7 @@ import java.util.*
 
 @Service
 class BlackjackRoomServiceImpl(
-    private val playerFactory: PlayerFactory<GameRoomJoinEvent, BlackjackPlayer, BlackjackGameRoom, BlackjackPlayerSession>,
+    private val playerFactory: PlayerFactory<GameRoomJoinEvent, BlackjackPlayer, BlackjackGameRoom, PlayerSession>,
     private val applicationProperties: ApplicationProperties,
     private val schedulerService: Scheduler
 ) : BlackjackRoomService {
@@ -36,7 +36,7 @@ class BlackjackRoomServiceImpl(
     }
 
     private val gameRoomMap: MutableMap<UUID, BlackjackGameRoom> = mutableMapOf()
-    private val sessionQueue: Queue<WaitingBlackjackPlayerSession> = ArrayDeque()
+    private val sessionQueue: Queue<WaitingPlayerSession> = ArrayDeque()
     override fun getRoomSessionIds(key: UUID?): Collection<String> = getRoomByKey(key).map { room ->
         room.sessions().map { it.id }
     }.orElse(emptyList())
@@ -46,20 +46,20 @@ class BlackjackRoomServiceImpl(
     override fun getRoomByKey(key: UUID?): Optional<BlackjackGameRoom> =
         if (key != null) Optional.ofNullable(gameRoomMap[key]) else Optional.empty()
 
-    override fun addPlayerToWait(userSession: BlackjackPlayerSession, initialData: GameRoomJoinEvent) {
-        sessionQueue.add(WaitingBlackjackPlayerSession(userSession, initialData))
+    override fun addPlayerToWait(userSession: PlayerSession, initialData: GameRoomJoinEvent) {
+        sessionQueue.add(WaitingPlayerSession(userSession, initialData))
         webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))
 
         if (sessionQueue.size < applicationProperties.room.maxPlayers) return
 
         val gameTable = BlackjackMap()
         val room = createRoom(gameTable)
-        val userSessions: MutableList<BlackjackPlayerSession> = ArrayList()
+        val userSessions: MutableList<PlayerSession> = ArrayList()
         while (userSessions.size != applicationProperties.room.maxPlayers) {
             val waitingPlayerSession = sessionQueue.remove()
-            val ps: BlackjackPlayerSession = waitingPlayerSession.userSession
+            val ps: PlayerSession = waitingPlayerSession.playerSession
             val id: GameRoomJoinEvent = waitingPlayerSession.initialData
-            val player: BlackjackPlayer = playerFactory.create(gameTable.nextPlayerId(),  id, room, ps)
+            val player: BlackjackPlayer = playerFactory.create(gameTable.nextPlayerId(), id, room, ps)
             ps.roomKey = room.key()
             ps.player = player
             userSessions.add(ps)
@@ -67,8 +67,8 @@ class BlackjackRoomServiceImpl(
         launchRoom(room, userSessions)
     }
 
-    override fun removePlayerFromWaitQueue(session: BlackjackPlayerSession) {
-        sessionQueue.removeIf{ waitingPlayerSession -> waitingPlayerSession.userSession == session }
+    override fun removePlayerFromWaitQueue(session: PlayerSession) {
+        sessionQueue.removeIf{ waitingPlayerSession -> waitingPlayerSession.playerSession == session }
     }
 
     private fun createRoom(gameMap: BlackjackMap): BlackjackGameRoom {
@@ -80,7 +80,7 @@ class BlackjackRoomServiceImpl(
         return room
     }
 
-    private fun launchRoom(room: BlackjackGameRoom, userSessions: List<BlackjackPlayerSession>) {
+    private fun launchRoom(room: BlackjackGameRoom, userSessions: List<PlayerSession>) {
         room.onRoomCreated(userSessions)
         room.onRoomStarted()
     }
