@@ -1,4 +1,4 @@
-package com.opencasino.server.service.blackjack.impl
+package com.opencasino.server.service.impl
 
 import com.opencasino.server.config.ApplicationProperties
 import com.opencasino.server.config.GAME_ROOM_JOIN_WAIT
@@ -7,11 +7,10 @@ import com.opencasino.server.game.blackjack.map.BlackjackMap
 import com.opencasino.server.game.blackjack.model.BlackjackPlayer
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.game.factory.PlayerFactory
-import com.opencasino.server.game.model.Player
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message
-import com.opencasino.server.service.blackjack.BlackjackRoomService
-import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
+import com.opencasino.server.service.RoomService
+import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.WaitingPlayerSession
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -27,9 +26,9 @@ class BlackjackRoomServiceImpl(
     private val playerFactory: PlayerFactory<GameRoomJoinEvent, BlackjackPlayer, BlackjackGameRoom, PlayerSession>,
     private val applicationProperties: ApplicationProperties,
     private val schedulerService: Scheduler
-) : BlackjackRoomService {
+) : RoomService {
 
-    private lateinit var webSocketSessionService: BlackjackWebSocketSessionService
+    private lateinit var webSocketSessionService: WebSocketSessionService
 
     companion object {
         val log: Logger = LogManager.getLogger(this::class.java)
@@ -98,7 +97,7 @@ class BlackjackRoomServiceImpl(
     }
 
     @Autowired
-    fun setGameManager(@Lazy webSocketSessionService: BlackjackWebSocketSessionService) {
+    fun setGameManager(@Lazy webSocketSessionService: WebSocketSessionService) {
         this.webSocketSessionService = webSocketSessionService
     }
 

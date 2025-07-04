@@ -1,6 +1,5 @@
 package com.opencasino.server.service
 
-import com.opencasino.server.game.model.Player
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.websocket.WebSocketMessagePublisher
 import org.reactivestreams.Subscription

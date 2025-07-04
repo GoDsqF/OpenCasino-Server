@@ -1,13 +1,10 @@
 package com.opencasino.server.network.websocket
 
 import com.google.gson.Gson
-import com.opencasino.server.game.blackjack.model.BlackjackPlayer
-import com.opencasino.server.game.model.Player
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.WebSocketSessionService
-import com.opencasino.server.service.blackjack.BlackjackRoomService
-import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
+import com.opencasino.server.service.RoomService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -26,7 +23,7 @@ class MainWebSocketHandler(
 ) : WebSocketHandler {
 
     private val objectMapper = Gson()
-    private lateinit var roomService: BlackjackRoomService
+    private lateinit var roomService: RoomService
 
     companion object {
         val log: Logger = LoggerFactory.getLogger(this::class.java)
@@ -70,7 +67,7 @@ class MainWebSocketHandler(
     }
 
     @Autowired
-    fun setGameRoomManagementService(@Lazy roomService: BlackjackRoomService) {
+    fun setGameRoomManagementService(@Lazy roomService: RoomService) {
         this.roomService = roomService
     }
 }

@@ -12,9 +12,9 @@ import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.pack.blackjack.shared.GameSettingsPack
 import com.opencasino.server.network.pack.update.GameUpdatePack
 import com.opencasino.server.network.shared.Message
-import com.opencasino.server.service.blackjack.BlackjackRoomService
-import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
-import com.opencasino.server.service.blackjack.shared.BlackjackDecision
+import com.opencasino.server.service.RoomService
+import com.opencasino.server.service.WebSocketSessionService
+import com.opencasino.server.service.shared.BlackjackDecision
 import reactor.core.scheduler.Scheduler
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -25,8 +25,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 class BlackjackGameRoom(
     val map: BlackjackMap,
     gameRoomId: UUID,
-    roomService: BlackjackRoomService,
-    webSocketSessionService: BlackjackWebSocketSessionService,
+    roomService: RoomService,
+    webSocketSessionService: WebSocketSessionService,
     schedulerService: Scheduler,
     val gameProperties: GameProperties,
     val roomProperties: BlackjackRoomProperties

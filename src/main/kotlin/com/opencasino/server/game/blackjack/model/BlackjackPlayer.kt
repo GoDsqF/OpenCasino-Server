@@ -5,7 +5,7 @@ import com.opencasino.server.network.pack.blackjack.init.BlackjackPlayerInitPack
 import com.opencasino.server.network.pack.update.PlayerUpdatePack
 import com.opencasino.server.network.pack.update.BlackjackPrivatePlayerUpdatePack
 import com.opencasino.server.network.shared.PlayerSession
-import com.opencasino.server.service.blackjack.shared.BlackjackDecision
+import com.opencasino.server.service.shared.BlackjackDecision
 
 class BlackjackPlayer(
     id: Long, gameRoom: BlackjackGameRoom, userSession: PlayerSession,

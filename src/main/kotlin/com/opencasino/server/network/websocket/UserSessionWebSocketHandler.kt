@@ -6,19 +6,17 @@ import com.opencasino.server.config.INIT
 import com.opencasino.server.config.PLAYER_DECISION
 import com.opencasino.server.event.GameRoomJoinEvent
 import com.opencasino.server.event.PlayerDecisionEvent
-import com.opencasino.server.game.blackjack.model.BlackjackPlayer
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.WebSocketSessionService
-import com.opencasino.server.service.blackjack.BlackjackRoomService
-import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
+import com.opencasino.server.service.RoomService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
 class UserSessionWebSocketHandler(
     private val userSession: PlayerSession,
     private val webSocketSessionService: WebSocketSessionService,
-    private val roomService: BlackjackRoomService,
+    private val roomService: RoomService,
 ) {
     private val objectMapper = Gson()
 

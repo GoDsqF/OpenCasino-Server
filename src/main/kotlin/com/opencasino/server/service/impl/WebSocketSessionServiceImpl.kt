@@ -1,12 +1,12 @@
-package com.opencasino.server.service.blackjack.impl
+package com.opencasino.server.service.impl
 
 import com.opencasino.server.config.FAILURE
 import com.opencasino.server.config.MESSAGE
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.pack.shared.GameMessagePack
 import com.opencasino.server.network.shared.Message
-import com.opencasino.server.service.blackjack.BlackjackRoomService
-import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
+import com.opencasino.server.service.RoomService
+import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.MessageType
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -24,7 +24,7 @@ import java.util.function.Function
 import kotlin.collections.HashMap
 
 @Service
-class BlackjackWebSocketSessionServiceImpl : BlackjackWebSocketSessionService {
+class WebSocketSessionServiceImpl : WebSocketSessionService {
     companion object {
         val log: Logger = LogManager.getLogger(this::class.java)
     }
@@ -32,7 +32,7 @@ class BlackjackWebSocketSessionServiceImpl : BlackjackWebSocketSessionService {
     private var sessionPublishers: MutableMap<String, Many<Any>> = HashMap()
     private var sessionSubscriptions: MutableMap<String, Subscription> = HashMap()
     private var sessions: MutableMap<String, PlayerSession> = HashMap()
-    private lateinit var roomService: BlackjackRoomService
+    private lateinit var roomService: RoomService
 
     override fun sendBroadcast(message: Any) = sessionPublishers.values.forEach { it.tryEmitNext(message) }
     override fun close(playerSession: PlayerSession): Mono<Void> {
@@ -41,9 +41,9 @@ class BlackjackWebSocketSessionServiceImpl : BlackjackWebSocketSessionService {
         return Mono.empty()
     }
 
-    override fun close(playerSessionId: String): Mono<Void> {
-        if (sessions.containsKey(playerSessionId))
-            return close(sessions[playerSessionId]!!)
+    override fun close(userSessionId: String): Mono<Void> {
+        if (sessions.containsKey(userSessionId))
+            return close(sessions[userSessionId]!!)
         return Mono.empty()
     }
 
@@ -124,7 +124,7 @@ class BlackjackWebSocketSessionServiceImpl : BlackjackWebSocketSessionService {
     }
 
     @Autowired
-    fun setGameRoomManagementService( @Lazy roomService: BlackjackRoomService) {
+    fun setGameRoomManagementService( @Lazy roomService: RoomService) {
         this.roomService = roomService
     }
 }

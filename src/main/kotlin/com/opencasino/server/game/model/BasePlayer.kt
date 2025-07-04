@@ -7,7 +7,7 @@ import com.opencasino.server.network.pack.PrivateUpdatePack
 import com.opencasino.server.network.pack.UpdatePack
 import com.opencasino.server.network.pack.update.IPrivateUpdatePackProvider
 import com.opencasino.server.network.shared.PlayerSession
-import com.opencasino.server.service.blackjack.shared.BlackjackDecision
+import com.opencasino.server.service.shared.BlackjackDecision
 import java.util.*
 import java.util.stream.Collectors
 import kotlin.properties.Delegates

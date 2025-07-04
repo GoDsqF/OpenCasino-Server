@@ -4,8 +4,8 @@ import com.opencasino.server.config.MESSAGE
 import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message
-import com.opencasino.server.service.blackjack.BlackjackRoomService
-import com.opencasino.server.service.blackjack.BlackjackWebSocketSessionService
+import com.opencasino.server.service.RoomService
+import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.MessageType
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -20,8 +20,8 @@ import kotlin.collections.HashMap
 abstract class AbstractBlackjackGameRoom protected constructor(
     private var gameRoomId: UUID,
     private val schedulerService: Scheduler,
-    protected val roomService: BlackjackRoomService,
-    protected val webSocketSessionService: BlackjackWebSocketSessionService
+    protected val roomService: RoomService,
+    protected val webSocketSessionService: WebSocketSessionService
 ) : GameRoom {
     private val roomFutureList: MutableList<Disposable> = ArrayList()
     companion object {
