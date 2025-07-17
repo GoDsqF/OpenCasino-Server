@@ -1,28 +1,32 @@
 package com.opencasino.server.game.model
 
-class CardDeck(stacks: Int) {
+class CardDeck(){
 
-    private val deck: MutableList<Card> = generateDeck(stacks)
+    private var cards: MutableList<Card> = mutableListOf()
 
-    private fun generateDeck(packs: Int): MutableList<Card> {
-        val result = mutableListOf<Card>()
-        repeat(packs) {
+    constructor(stacks: Int) : this() {
+        repeat(stacks) {
             for (rank in Card.Rank.entries) {
                 for (suit in Card.Suit.entries) {
-                    result.add(Card(rank, suit))
+                    cards.add(Card(rank, suit))
                 }
             }
         }
-        return result
+        cards.shuffleDeck()
     }
 
-    private fun MutableList<Card>.shuffleDeck() = this.shuffle()
+    fun dealCard(to: CardDeck, visibility: Boolean = true) = to.addCard(cards.removeFirst())
 
-    fun MutableList<Card>.dealCard(visibility: Boolean = true) {
-        this.add(deck[0])
-        deck.removeFirst()
+    fun dealCards(count: Int, to: CardDeck) {
+        for (i in 1..count) {
+            to.addCard(cards[i])
+            cards.removeAt(i)
+        }
     }
-    /**
-     * Generic card class for type safety
-     */
+
+    private fun CardDeck.addCard(card: Card) {
+        cards.add(card)
+    }
+
+    private fun MutableList<Card>.shuffleDeck() = cards.shuffle()
 }

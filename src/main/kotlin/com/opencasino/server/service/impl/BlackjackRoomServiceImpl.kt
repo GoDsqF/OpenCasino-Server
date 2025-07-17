@@ -11,6 +11,7 @@ import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
+import com.opencasino.server.service.shared.PlayerRepository
 import com.opencasino.server.service.shared.WaitingPlayerSession
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -28,6 +29,8 @@ class BlackjackRoomServiceImpl(
     private val schedulerService: Scheduler
 ) : RoomService {
 
+    @Autowired
+    private lateinit var userRepository: PlayerRepository
     private lateinit var webSocketSessionService: WebSocketSessionService
 
     companion object {
@@ -59,6 +62,12 @@ class BlackjackRoomServiceImpl(
             val ps: PlayerSession = waitingPlayerSession.playerSession
             val id: GameRoomJoinEvent = waitingPlayerSession.initialData
             val player: BlackjackPlayer = playerFactory.create(gameTable.nextPlayerId(), id, room, ps)
+            userRepository.findPlayer(initialData.playerUUID).subscribe { user ->
+                if (user != null) {
+                    player.balance = user.balance
+                }
+                else player.balance = 0.00
+            }
             ps.roomKey = room.key()
             ps.player = player
             userSessions.add(ps)

@@ -13,7 +13,8 @@ data class BlackjackRoomProperties(
     val initDelay: Long = ROOM_INIT_DELAY,
     val startDelay: Long = ROOM_START_DELAY,
     val endDelay: Long = ROOM_END_DELAY,
-    val maxPlayers: Int = MAX_PLAYERS
+    val maxPlayers: Int = MAX_PLAYERS,
+    val maxBlackjackPlayers: Int = MAX_PLAYERS
 )
 
 @ConfigurationProperties(prefix = "auth")

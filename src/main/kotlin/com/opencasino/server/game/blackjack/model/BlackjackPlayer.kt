@@ -2,14 +2,14 @@ package com.opencasino.server.game.blackjack.model
 
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.network.pack.blackjack.init.BlackjackPlayerInitPack
-import com.opencasino.server.network.pack.update.PlayerUpdatePack
+import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
 import com.opencasino.server.network.pack.update.BlackjackPrivatePlayerUpdatePack
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.shared.BlackjackDecision
 
 class BlackjackPlayer(
     id: Long, gameRoom: BlackjackGameRoom, userSession: PlayerSession,
-) : BlackjackBasePlayer<BlackjackGameRoom, BlackjackPlayerInitPack, PlayerUpdatePack, BlackjackPrivatePlayerUpdatePack>(
+) : BlackjackBasePlayer<BlackjackGameRoom, BlackjackPlayerInitPack, PlayerHandUpdatePack, BlackjackPrivatePlayerUpdatePack>(
     id, gameRoom, userSession
 ) {
 
@@ -27,7 +27,9 @@ class BlackjackPlayer(
     override fun update() {
         val trueValue = if (isAlive) movingState.filterValues { it }.keys else null
         if (trueValue != null) {
-            decision = trueValue.first()
+            if (trueValue.isNotEmpty()) {
+                decision = trueValue.first()
+            }
         }
     }
 
@@ -35,8 +37,8 @@ class BlackjackPlayer(
         return getInitPack()
     }
 
-    override fun getUpdatePack(): PlayerUpdatePack {
-        return PlayerUpdatePack(id, playerDeck)
+    override fun getUpdatePack(): PlayerHandUpdatePack {
+        return PlayerHandUpdatePack(id, playerDeck)
     }
 
     override fun getInitPack(): BlackjackPlayerInitPack {

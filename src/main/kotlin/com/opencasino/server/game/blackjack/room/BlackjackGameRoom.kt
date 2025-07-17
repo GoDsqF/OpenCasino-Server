@@ -33,11 +33,22 @@ class BlackjackGameRoom(
 ) : AbstractBlackjackGameRoom(gameRoomId, schedulerService, roomService, webSocketSessionService) {
     private val started = AtomicBoolean(false)
 
+    //deck initialize
     private val deck = CardDeck(8)
 
-    val playersDecks = mutableMapOf<UUID, List<Card>>()
+    //initialize map of player hands
+    val playersHands = mutableMapOf<UUID, CardDeck>()
 
-    val dealerDeck = mutableListOf<Card>()
+    //dealer hand
+    val dealerHand = CardDeck()
+
+    private fun initialDeal() {
+        for (hand in playersHands.values) {
+            deck.dealCards(2, hand)
+        }
+        deck.dealCard(dealerHand, true)
+        deck.dealCard(dealerHand, false)
+    }
 
     override fun onRoomCreated(userSessions: List<PlayerSession>) {
         if (userSessions.isNotEmpty()) {
@@ -69,10 +80,12 @@ class BlackjackGameRoom(
             { roomService.onRoundEnd(this) },
             roomProperties.endDelay + roomProperties.startDelay
         )
+
+        log.trace("Room {} has been created", key())
     }
 
     override fun onRoomStarted() {
-        started.set(false)
+        started.set(true)
         sendBroadcast {
             Message(
                 GAME_ROOM_START,
@@ -96,6 +109,7 @@ class BlackjackGameRoom(
                 )
             )
         }
+        initialDeal()
     }
 
     override fun update() {

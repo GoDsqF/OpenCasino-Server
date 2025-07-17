@@ -1,6 +1,7 @@
 package com.opencasino.server.network.websocket
 
 import com.google.gson.Gson
+import com.google.gson.stream.MalformedJsonException
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.WebSocketSessionService

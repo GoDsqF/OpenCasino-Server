@@ -11,12 +11,13 @@ import java.time.ZonedDateTime
 import java.util.*
 
 @Entity
-@Table(name = "users")
-data class Users(
+@Table(name = "players")
+data class Players(
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column("id")
-    val id: UUID = UUID.randomUUID(),
+    val id: String = UUID.randomUUID().toString(),
 
     @Column("username")
     val username: String,
