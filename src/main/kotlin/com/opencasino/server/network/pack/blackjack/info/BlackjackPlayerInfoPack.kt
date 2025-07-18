@@ -1,9 +1,9 @@
-package com.opencasino.server.network.pack.blackjack.init
+package com.opencasino.server.network.pack.blackjack.info
 
 import com.opencasino.server.network.pack.InitPack
 
 
-data class BlackjackPlayerInitPack(
+data class BlackjackPlayerInfoPack(
     val id: Long,
     val balance: Double,
 ): InitPack

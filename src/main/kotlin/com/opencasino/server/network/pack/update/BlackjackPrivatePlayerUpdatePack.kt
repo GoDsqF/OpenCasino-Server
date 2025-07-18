@@ -6,5 +6,5 @@ import com.opencasino.server.service.shared.BlackjackDecision
 
 data class BlackjackPrivatePlayerUpdatePack(
     val id: Long,
-    val decision: BlackjackDecision
+    val lastDecision: BlackjackDecision
 ): PrivateUpdatePack

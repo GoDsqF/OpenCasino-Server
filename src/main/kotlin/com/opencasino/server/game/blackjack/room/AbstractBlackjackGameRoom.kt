@@ -1,6 +1,7 @@
 package com.opencasino.server.game.blackjack.room
 
 import com.opencasino.server.config.MESSAGE
+import com.opencasino.server.event.BetEvent
 import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message

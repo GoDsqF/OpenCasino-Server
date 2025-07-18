@@ -1,6 +1,5 @@
 package com.opencasino.server.game.model
 
-import com.opencasino.server.config.MIN_BLACKJACK_BET
 import com.opencasino.server.game.Initializable
 import com.opencasino.server.network.pack.InitPack
 import com.opencasino.server.network.pack.UpdatePack
@@ -15,5 +14,5 @@ abstract class PlayerEntity<ID, GR, IP : InitPack, UP : UpdatePack>(
     var madeDecision: Boolean = false
     var isAlive: Boolean = true
     open var position: Int = 0
-    var bet: Double = MIN_BLACKJACK_BET
+    var bet: Double = 0.00
 }

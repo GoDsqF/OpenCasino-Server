@@ -91,6 +91,7 @@ class BlackjackRoomServiceImpl(
     private fun launchRoom(room: BlackjackGameRoom, userSessions: List<PlayerSession>) {
         room.onRoomCreated(userSessions)
         room.onRoomStarted()
+        room.onGameStarted()
     }
 
     override fun onRoundEnd(room: BlackjackGameRoom) {

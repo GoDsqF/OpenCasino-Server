@@ -1,9 +1,11 @@
 package com.opencasino.server.network.websocket
 
 import com.google.gson.Gson
+import com.opencasino.server.config.BET
 import com.opencasino.server.config.GAME_ROOM_JOIN
-import com.opencasino.server.config.INIT
+import com.opencasino.server.config.INFO
 import com.opencasino.server.config.PLAYER_DECISION
+import com.opencasino.server.event.BetEvent
 import com.opencasino.server.event.GameRoomJoinEvent
 import com.opencasino.server.event.PlayerDecisionEvent
 import com.opencasino.server.network.shared.Message
@@ -36,9 +38,9 @@ class UserSessionWebSocketHandler(
                 )
             }
 
-            INIT -> {
+            INFO -> {
                 roomService.getRoomByKey(userSession.roomKey)
-                    .ifPresent { it.onPlayerInitRequest(userSession) }
+                    .ifPresent { it.onPlayerInfoRequest(userSession) }
             }
 
             PLAYER_DECISION -> {
@@ -47,6 +49,16 @@ class UserSessionWebSocketHandler(
                         it.onPlayerDecision(
                             userSession,
                             objectMapper.fromJson(messageData.toString(), PlayerDecisionEvent::class.java)
+                        )
+                    }
+            }
+
+            BET -> {
+                roomService.getRoomByKey(userSession.roomKey)
+                    .ifPresent {
+                        it.onBet(
+                            userSession,
+                            objectMapper.fromJson(messageData.toString(), BetEvent::class.java)
                         )
                     }
             }

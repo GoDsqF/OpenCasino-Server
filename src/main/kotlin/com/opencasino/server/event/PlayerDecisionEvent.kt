@@ -1,4 +1,4 @@
 package com.opencasino.server.event
 
-class PlayerDecisionEvent(val inputId: String, val state: Boolean):
+class PlayerDecisionEvent(val inputId: String):
     AbstractEvent()
