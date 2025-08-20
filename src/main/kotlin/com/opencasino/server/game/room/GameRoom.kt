@@ -1,5 +1,7 @@
 package com.opencasino.server.game.room
 
+import com.opencasino.server.event.AbstractEvent
+import com.opencasino.server.event.Event
 import com.opencasino.server.game.Updatable
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.websocket.WebSocketMessagePublisher
@@ -20,4 +22,5 @@ interface GameRoom: Runnable, Updatable, WebSocketMessagePublisher {
     fun onClose(userSession: PlayerSession)
     fun schedule(runnable: Runnable, delayMillis: Long):Boolean
     fun schedulePeriodically(runnable: Runnable, initDelay:Long, loopRate:Long):Boolean
+    fun onPlayerInfoRequest(userSession: PlayerSession)
 }

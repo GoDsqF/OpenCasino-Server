@@ -2,23 +2,23 @@ package com.opencasino.server.game.blackjack.room
 
 import com.opencasino.server.config.*
 import com.opencasino.server.event.BetEvent
-import com.opencasino.server.event.PlayerDecisionEvent
+import com.opencasino.server.event.BlackjackPlayerDecisionEvent
 import com.opencasino.server.game.blackjack.map.BlackjackMap
 import com.opencasino.server.game.blackjack.model.BlackjackPlayer
 import com.opencasino.server.game.blackjack.model.BlackjackCondition
 import com.opencasino.server.game.model.Card
-import com.opencasino.server.game.model.Card.Rank
 import com.opencasino.server.game.model.CardDeck
-import com.opencasino.server.network.pack.blackjack.info.BlackjackInfoPack
+import com.opencasino.server.game.model.Rank
+import com.opencasino.server.network.pack.blackjack.info.InfoPack
 import com.opencasino.server.network.pack.blackjack.shared.BlackjackConditionPack
-import com.opencasino.server.network.pack.blackjack.shared.BlackjackRoomPack
-import com.opencasino.server.network.pack.blackjack.shared.DealerUpdatePack
+import com.opencasino.server.network.pack.blackjack.shared.RoomPack
+import com.opencasino.server.network.pack.shared.DealerUpdatePack
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.pack.blackjack.shared.GameSettingsPack
-import com.opencasino.server.network.pack.update.GameUpdatePack
+import com.opencasino.server.network.pack.blackjack.update.GameUpdatePack
 import com.opencasino.server.network.shared.Message
-import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
+import com.opencasino.server.service.impl.BlackjackRoomServiceImpl
 import com.opencasino.server.service.shared.BlackjackDecision
 import reactor.core.scheduler.Scheduler
 import java.time.ZoneId
@@ -30,12 +30,15 @@ import java.util.concurrent.atomic.AtomicBoolean
 class BlackjackGameRoom(
     val map: BlackjackMap,
     gameRoomId: UUID,
-    roomService: RoomService,
+    roomService: BlackjackRoomServiceImpl,
     webSocketSessionService: WebSocketSessionService,
     schedulerService: Scheduler,
     val gameProperties: GameProperties,
     val roomProperties: BlackjackRoomProperties
 ) : AbstractBlackjackGameRoom(gameRoomId, schedulerService, roomService, webSocketSessionService) {
+    private val testing = AtomicBoolean(false)
+    
+    private lateinit var lastUpdate: Message
     private val started = AtomicBoolean(false)
     private val gameStarted = AtomicBoolean(false)
 
@@ -51,17 +54,16 @@ class BlackjackGameRoom(
         Rank.C8 to 8,
         Rank.C9 to 9,
         Rank.C10 to 10,
-        Rank.Jack to 10,
-        Rank.Queen to 10,
-        Rank.King to 10,
-        Rank.Ace to 11
+        Rank.CJ to 10,
+        Rank.CQ to 10,
+        Rank.CK to 10,
+        Rank.CA to 11
     )
 
     //deck initialize
     var deck = CardDeck(8)
 
     //initialize map of player hands
-    var playersHands = mutableMapOf<Long, CardDeck>()
 
 
     //dealer hand
@@ -74,6 +76,7 @@ class BlackjackGameRoom(
         }
         deck.dealCard(dealerHand, true)
         deck.dealCard(dealerHand, false)
+        gameStarted.set(true)
         initialCheck()
     }
 
@@ -82,8 +85,9 @@ class BlackjackGameRoom(
         val dealerSum = calculateScore(dealerHand)
         val playerSum = calculateScore(map.getPlayers().first().playerDeck)
 
-        if (dealerSum == playerSum) result = BlackjackCondition.Draw
-        else if (dealerSum == 21) result = BlackjackCondition.DealerBlackjack
+        if (dealerSum == 21) {
+            if (playerSum != 21) result = BlackjackCondition.DealerBlackjack
+        }
         else if (playerSum == 21) result = BlackjackCondition.PlayerWinBlackjack
 
         condition = result
@@ -96,8 +100,6 @@ class BlackjackGameRoom(
                 val player = it.player as BlackjackPlayer
                 player.position = userSessions.size
                 map.addPlayer(player)
-
-                playersHands[player.id] = CardDeck()
             }
         }
 
@@ -119,7 +121,7 @@ class BlackjackGameRoom(
         )
 
         schedule(
-            { roomService.onRoundEnd(this) },
+            { roomService.onGameEnd(this) },
             roomProperties.endDelay + roomProperties.startDelay
         )
 
@@ -131,9 +133,10 @@ class BlackjackGameRoom(
         sendBroadcast(
             Message(
                 GAME_ROOM_START,
-                BlackjackRoomPack(
+                RoomPack(
                     ZonedDateTime.now(ZoneId.of("Europe/Moscow"))
-                        .plus(roomProperties.startDelay, ChronoUnit.MILLIS).toInstant().toEpochMilli()
+                        .plus(roomProperties.startDelay, ChronoUnit.MILLIS).toInstant().toEpochMilli(),
+                    gameRoomId.toString()
                 )
             )
         )
@@ -141,13 +144,13 @@ class BlackjackGameRoom(
 
     override fun onGameStarted() {
         log.info("Room {}. Game has been started", key())
-        gameStarted.set(true)
         sendBroadcast(
             Message(
                 GAME_START,
-                BlackjackRoomPack(
+                RoomPack(
                     ZonedDateTime.now(ZoneId.of("Europe/Moscow"))
-                        .plus(roomProperties.endDelay, ChronoUnit.MILLIS).toInstant().toEpochMilli()
+                        .plus(roomProperties.endDelay, ChronoUnit.MILLIS).toInstant().toEpochMilli(),
+                    gameRoomId.toString()
                 )
             )
         )
@@ -200,14 +203,30 @@ class BlackjackGameRoom(
                         }
                     }
                 val dealerUpdatePack = DealerUpdatePack(dealerCards)*/
-
-                send(
-                    currentPlayer.userSession,
-                    collectUpdate(currentPlayer)
-                )
+                val newUpdate = collectUpdate(currentPlayer)
+                if (this::lastUpdate.isInitialized) {
+                    if (lastUpdate.data != newUpdate.data) {
+                        send(
+                            currentPlayer.userSession,
+                            newUpdate
+                        )
+                        lastUpdate = newUpdate
+                    }
+                }
+                else {
+                    lastUpdate = newUpdate
+                    send(
+                        currentPlayer.userSession,
+                        newUpdate
+                    )
+                }
             }
         }
         else {
+            val dealerCards = dealerHand.getCards()
+            dealerCards.forEach {
+                it.visible = true
+            }
             for (currentPlayer in map.getPlayers()) {
                 send(
                     currentPlayer.userSession,
@@ -227,11 +246,11 @@ class BlackjackGameRoom(
         }
     }
 
-    fun onPlayerInfoRequest(userSession: PlayerSession) {
+    override fun onPlayerInfoRequest(userSession: PlayerSession) {
         send(
             userSession, Message(
                 INFO,
-                BlackjackInfoPack(
+                InfoPack(
                     (userSession.player as BlackjackPlayer).getInfoPack(),
                     roomProperties.loopRate,
                     map.alivePlayers()
@@ -242,11 +261,11 @@ class BlackjackGameRoom(
 
     fun onPlayerTurn(): Pair<BlackjackCondition?, Int> {
         var result: Pair<BlackjackCondition?, Int> = Pair(null, 0)
-        var playerSum = calculateScore(map.getPlayers().first().playerDeck)
+        val playerSum = calculateScore(map.getPlayers().first().playerDeck)
 
         if (playerSum > 21) {
             result = Pair(BlackjackCondition.DealerWin, playerSum)
-        }
+        } else if (playerSum == 21) onDealerTurn()
 
         condition = result.first
         return result
@@ -268,6 +287,8 @@ class BlackjackGameRoom(
             result = BlackjackCondition.PlayerWin
         } else if (dealerSum > playerSum) {
             result = BlackjackCondition.DealerWin
+        } else {
+            result = BlackjackCondition.Draw
         }
 
         condition = result
@@ -277,7 +298,7 @@ class BlackjackGameRoom(
     private fun calculateScore(hand: CardDeck): Int {
         val cards = hand.getCards()
         var score = cards.sumOf { combiner[it.rank]!! }
-        var numAces = cards.count { it.rank == Rank.Ace }
+        var numAces = cards.count { it.rank == Rank.CA }
 
         while (score > 21 && numAces > 0) {
             score -= 10
@@ -287,7 +308,7 @@ class BlackjackGameRoom(
         return score
     }
 
-    fun onPlayerDecision(userSession: PlayerSession, event: PlayerDecisionEvent) {
+    override fun onPlayerDecision(userSession: PlayerSession, event: BlackjackPlayerDecisionEvent) {
         if (!started.get()) return
         val player = userSession.player as BlackjackPlayer
         if (!player.isAlive) return
@@ -295,12 +316,35 @@ class BlackjackGameRoom(
         player.updateState(decision)
     }
 
-    fun onBet(userSession: PlayerSession, event: BetEvent) {
+    override fun onBet(userSession: PlayerSession, event: BetEvent) {
+        if (gameStarted.get()) return
         val player = userSession.player as BlackjackPlayer
         player.bet = event.bet
         player.balance -= event.bet
         initialDeal()
     }
+
+    /*private fun onTestingDeal() {
+        val players = map.getPlayers()
+        for (player in players) {
+            player.playerDeck.addCard(
+                Card(
+                    Rank.CA,
+                    Suit.Hearts
+                )
+            )
+            player.playerDeck.addCard(
+                Card(
+                    Rank.CA,
+                    Suit.Clubs
+                )
+            )
+        }
+        deck.dealCard(dealerHand, true)
+        deck.dealCard(dealerHand, false)
+        gameStarted.set(true)
+        initialCheck()
+    }*/
 
     private fun reset() {
         gameStarted.set(false)

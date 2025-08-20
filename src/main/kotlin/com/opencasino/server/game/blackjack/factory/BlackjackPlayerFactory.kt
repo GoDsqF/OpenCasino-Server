@@ -4,6 +4,7 @@ import com.opencasino.server.event.GameRoomJoinEvent
 import com.opencasino.server.game.blackjack.model.BlackjackPlayer
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.game.factory.PlayerFactory
+import com.opencasino.server.game.model.Player
 import com.opencasino.server.network.shared.PlayerSession
 import org.springframework.stereotype.Component
 import java.util.*

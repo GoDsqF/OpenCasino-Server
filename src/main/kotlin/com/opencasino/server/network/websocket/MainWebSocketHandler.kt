@@ -60,8 +60,16 @@ class MainWebSocketHandler(
             .then()
     }
 
-    private fun toMessage(webSocketMessage: WebSocketMessage): Message =
-        objectMapper.fromJson(InputStreamReader(webSocketMessage.payload.asInputStream()), Message::class.java)
+    /*private fun toMessage(webSocketMessage: WebSocketMessage): Message =
+        objectMapper.fromJson(InputStreamReader(webSocketMessage.payload.asInputStream()), Message::class.java)*/
+
+    private fun toMessage(webSocketMessage: WebSocketMessage): Message {
+        val message = objectMapper.fromJson(InputStreamReader(webSocketMessage.payload.asInputStream()), Message::class.java)
+        println(message)
+        return message
+    }
+
+
 
     private fun handleError(webSocketSession: WebSocketSession, exception: Throwable) {
         log.error("Error in ${webSocketSession.id} session", exception)

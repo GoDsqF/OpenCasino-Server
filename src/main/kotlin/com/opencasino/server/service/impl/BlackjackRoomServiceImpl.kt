@@ -3,10 +3,11 @@ package com.opencasino.server.service.impl
 import com.opencasino.server.config.ApplicationProperties
 import com.opencasino.server.config.GAME_ROOM_JOIN_WAIT
 import com.opencasino.server.event.GameRoomJoinEvent
+import com.opencasino.server.game.blackjack.factory.BlackjackPlayerFactory
 import com.opencasino.server.game.blackjack.map.BlackjackMap
 import com.opencasino.server.game.blackjack.model.BlackjackPlayer
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
-import com.opencasino.server.game.factory.PlayerFactory
+import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.RoomService
@@ -24,7 +25,7 @@ import java.util.*
 
 @Service
 class BlackjackRoomServiceImpl(
-    private val playerFactory: PlayerFactory<GameRoomJoinEvent, BlackjackPlayer, BlackjackGameRoom, PlayerSession>,
+    private val playerFactory: BlackjackPlayerFactory,
     private val applicationProperties: ApplicationProperties,
     private val schedulerService: Scheduler
 ) : RoomService {
@@ -45,25 +46,26 @@ class BlackjackRoomServiceImpl(
 
     override fun getRoomIds(): Collection<String> = gameRoomMap.keys.map { it.toString() }
     override fun getRooms(): Collection<BlackjackGameRoom> = gameRoomMap.values.toList()
-    override fun getRoomByKey(key: UUID?): Optional<BlackjackGameRoom> =
+    override fun getRoomByKey(key: UUID?): Optional<GameRoom> =
         if (key != null) Optional.ofNullable(gameRoomMap[key]) else Optional.empty()
 
     override fun addPlayerToWait(userSession: PlayerSession, initialData: GameRoomJoinEvent) {
         sessionQueue.add(WaitingPlayerSession(userSession, initialData))
         webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))
 
-        if (sessionQueue.size < applicationProperties.room.maxPlayers) return
+        if (sessionQueue.size < applicationProperties.blackjackRoom.maxPlayers) return
 
         val gameTable = BlackjackMap()
         val room = createRoom(gameTable)
         val userSessions: MutableList<PlayerSession> = ArrayList()
-        while (userSessions.size != applicationProperties.room.maxPlayers) {
+        while (userSessions.size != applicationProperties.blackjackRoom.maxPlayers) {
             val waitingPlayerSession = sessionQueue.remove()
             val ps: PlayerSession = waitingPlayerSession.playerSession
             val id: GameRoomJoinEvent = waitingPlayerSession.initialData
             val player: BlackjackPlayer = playerFactory.create(gameTable.nextPlayerId(), id, room, ps)
             userRepository.findPlayer(initialData.playerUUID).subscribe { user ->
                 if (user != null) {
+
                     player.balance = user.balance
                 }
                 else player.balance = 0.00
@@ -82,26 +84,26 @@ class BlackjackRoomServiceImpl(
     private fun createRoom(gameMap: BlackjackMap): BlackjackGameRoom {
         val room = BlackjackGameRoom(gameMap, UUID.randomUUID(), this, webSocketSessionService,
             schedulerService, applicationProperties.game,
-            applicationProperties.room
+            applicationProperties.blackjackRoom
         )
         gameRoomMap[room.key()] = room
         return room
     }
 
-    private fun launchRoom(room: BlackjackGameRoom, userSessions: List<PlayerSession>) {
+    fun launchRoom(room: GameRoom, userSessions: List<PlayerSession>) {
         room.onRoomCreated(userSessions)
         room.onRoomStarted()
         room.onGameStarted()
     }
 
-    override fun onRoundEnd(room: BlackjackGameRoom) {
-        room.close()
-        gameRoomMap.remove(room.key())
+    override fun onGameEnd(gameRoom: GameRoom) {
+        gameRoom.close()
+        gameRoomMap.remove(gameRoom.key())
     }
 
     override fun close(key: UUID?): Mono<Void> {
         getRoomByKey(key).ifPresent {
-            onRoundEnd(it)
+            onGameEnd(it)
         }
         return Mono.empty()
     }
@@ -110,5 +112,4 @@ class BlackjackRoomServiceImpl(
     fun setGameManager(@Lazy webSocketSessionService: WebSocketSessionService) {
         this.webSocketSessionService = webSocketSessionService
     }
-
 }

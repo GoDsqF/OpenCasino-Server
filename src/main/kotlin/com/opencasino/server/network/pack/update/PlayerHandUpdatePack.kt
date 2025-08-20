@@ -6,5 +6,7 @@ import com.opencasino.server.network.pack.UpdatePack
 
 data class PlayerHandUpdatePack(
     val id: Long,
-    val deck: List<Card>
+    val position: Int,
+    val stack: Double,
+    val cards: List<Card>
 ): UpdatePack

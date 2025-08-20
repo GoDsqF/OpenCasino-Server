@@ -1,13 +1,14 @@
 package com.opencasino.server.game.model
 
+
 class CardDeck(){
 
     private var cards: MutableList<Card> = mutableListOf()
 
     constructor(stacks: Int) : this() {
         repeat(stacks) {
-            for (rank in Card.Rank.entries) {
-                for (suit in Card.Suit.entries) {
+            for (rank in Rank.entries) {
+                for (suit in Suit.entries) {
                     cards.add(Card(rank, suit))
                 }
             }
@@ -15,7 +16,9 @@ class CardDeck(){
         cards.shuffleDeck()
     }
 
-    fun dealCard(to: CardDeck, visibility: Boolean = true) = to.addCard(cards.removeFirst(), visibility)
+    fun dealCard(to: CardDeck, visibility: Boolean = true) {
+        to.addCard(cards.removeFirst(), visibility)
+    }
 
     fun dealCards(count: Int, to: CardDeck) {
         for (i in 1..count) {
@@ -24,7 +27,7 @@ class CardDeck(){
         }
     }
 
-    private fun CardDeck.addCard(card: Card, visibility: Boolean = true) {
+    fun addCard(card: Card, visibility: Boolean = true) {
         cards.add(Card(card.rank, card.suit, visibility))
     }
 

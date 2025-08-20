@@ -8,17 +8,17 @@ class Card(
     /**
      * Card suit enum
      */
-    enum class Suit {
+    /*enum class Suit {
         Clubs,
         Diamonds,
         Hearts,
         Spades
-    }
+    }*/
 
     /**
      * Card rank enum
      */
-    enum class Rank {
+    /*enum class Rank {
         C2,
         C3,
         C4,
@@ -28,19 +28,17 @@ class Card(
         C8,
         C9,
         C10,
-        Jack,
-        Queen,
-        King,
-        Ace
-    }
+        CJ,
+        CQ,
+        CK,
+        CA
+    }*/
 
-    val toString: (Card) -> String = { it ->
-        "${it.rank} of ${it.suit}"
-    }
+    override fun toString(): String = "${this.rank} of ${this.suit}"
 
-    fun flipCards(hand: MutableList<Card>) {
+    /*fun flipCards(hand: MutableList<Card>) {
         for (i in hand.indices) {
             hand[i] = Card(hand[i].rank, hand[i].suit, true)
         }
-    }
+    }*/
 }

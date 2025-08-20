@@ -10,9 +10,9 @@ abstract class PlayerEntity<ID, GR, IP : InitPack, UP : UpdatePack>(
     id: ID,
     protected var gameRoom: GR
 ) : AbstractEntity<ID>(id), Initializable<IP>,
-    IUpdatePackProvider<UP>, IInitPackProvider<IP> {
+    IUpdatePackProvider<UP>, IInitPackProvider<IP>, Player<ID> {
     var madeDecision: Boolean = false
     var isAlive: Boolean = true
-    open var position: Int = 0
+    var position: Int = 0
     var bet: Double = 0.00
 }

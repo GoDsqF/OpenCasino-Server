@@ -2,6 +2,7 @@ package com.opencasino.server.network.shared
 
 class Message {
     var type = 0
+    val serviceId: String? = null
     var data: Any? = null
 
     constructor(type: Int) : this(type, null)

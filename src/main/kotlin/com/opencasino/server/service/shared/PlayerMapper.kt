@@ -13,12 +13,12 @@ class PlayerMapper : BiFunction<Row, Any, Players> {
             row.get("id", String::class.java) ?: "00000000-0000-0000-0000-000000000000",
             row.get("username", String::class.java) ?: "",
             row.get("balance", Double::class.java) ?: 0.00,
-            row.get("firstName", String::class.java) ?: "",
-            row.get("lastName", String::class.java) ?: "",
+            row.get("first_name", String::class.java) ?: "",
+            row.get("last_name", String::class.java) ?: "",
             row.get("email", String::class.java) ?: "",
-            row.get("userhash", String::class.java) ?: "",
-            row.get("createdAt", Long::class.java) ?: 0,
-            row.get("lastModified", Long::class.java) ?: 0,
+            row.get("user_hash", String::class.java) ?: "",
+            row.get("created_at", Long::class.java) ?: 0L,
+            row.get("last_modified", Long::class.java) ?: 0L,
         )
     }
 }

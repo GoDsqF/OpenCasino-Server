@@ -1,7 +1,10 @@
 package com.opencasino.server.game.blackjack.room
 
 import com.opencasino.server.config.MESSAGE
+import com.opencasino.server.event.AbstractEvent
 import com.opencasino.server.event.BetEvent
+import com.opencasino.server.event.BlackjackPlayerDecisionEvent
+import com.opencasino.server.event.poker.PokerPlayerDecisionEvent
 import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message
@@ -19,7 +22,7 @@ import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
 abstract class AbstractBlackjackGameRoom protected constructor(
-    private var gameRoomId: UUID,
+    var gameRoomId: UUID,
     private val schedulerService: Scheduler,
     protected val roomService: RoomService,
     protected val webSocketSessionService: WebSocketSessionService
@@ -113,4 +116,7 @@ abstract class AbstractBlackjackGameRoom protected constructor(
     override fun key(key: UUID) {
         this.gameRoomId = key
     }
+
+    abstract fun onPlayerDecision(userSession: PlayerSession, event: BlackjackPlayerDecisionEvent)
+    abstract fun onBet(userSession: PlayerSession, event: BetEvent)
 }
