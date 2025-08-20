@@ -39,4 +39,8 @@ out/
 ### Kotlin ###
 .kotlin
 /src/main/resources/database.properties
-/src/main/resources/oauth.yaml
+/src/main/resources/application.env
+/src/main/resources/auth.properties
+/src/main/resources/certs/*
+/src/main/resources/ssl.properties
+
