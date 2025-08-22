@@ -230,17 +230,14 @@ class PokerGameRoom(
         )
     }
 
-    fun onDealerTurn(): PokerCondition? {
+    fun onDealerTurn() {
         var result: PokerCondition? = null
-
         deck.dealCard(dealerHand)
-
-
     }
 
-    private fun calculateHand(hand: CardDeck): Int {
+    private fun calculateHand(hand: CardDeck): String {
         val cards = hand.getCards()
-        var result = PokerHand.fromList(hand.getCards()).
+        return PokerHand.fromList(cards).getHighestRank()
     }
 
     fun onPlayerDecision(userSession: PlayerSession, event: PokerPlayerDecisionEvent) {
@@ -252,16 +249,26 @@ class PokerGameRoom(
         player.updateState(decision, amount)
     }
 
-    fun Int?.isValidBet(lastBetSize: Int, betType: PokerDecision): Boolean {
-        if (betType == )
-        when {
-            this == null -> return false
-            this < 0 -> return false
-            this < (currentMaxBet ?: 0) + lastBetSize -> return false
-            this < ()
+    fun Int?.isValidBet(lastBetSize: Int, betType: PokerDecision): Boolean =
+        when (betType) {
+            PokerDecision.CALL -> {
+                when {
+                    this == null -> false
+                    this < 0 -> false
+                    this != currentMaxBet -> false
+                    else -> true
+                }
+            }
+            PokerDecision.RAISE -> {
+                when {
+                    this == null -> false
+                    this < 0 -> false
+                    this < (currentMaxBet) + roomProperties.smallBlind -> false
+                    else -> true
+                }
+            }
+            else -> false
         }
-
-    }
 
     fun onCheck(userSession: PlayerSession) {
         if (!started.get()) return

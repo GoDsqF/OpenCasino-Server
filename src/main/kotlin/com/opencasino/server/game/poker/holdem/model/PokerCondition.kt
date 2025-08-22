@@ -4,5 +4,4 @@ enum class PokerCondition {
     PlayerWin,
     PlayersWin,
     Lose,
-
 }

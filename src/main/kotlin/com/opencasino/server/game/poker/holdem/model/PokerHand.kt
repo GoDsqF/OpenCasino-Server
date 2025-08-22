@@ -30,7 +30,6 @@ class PokerHand private constructor(val cards: List<Card>) : Comparable<PokerHan
             }
             return fromList(cards)
         }
-
     }
 
     val isStraightFlush; get() = isStraight && isFlush
@@ -75,6 +74,28 @@ class PokerHand private constructor(val cards: List<Card>) : Comparable<PokerHan
         cards[index].rank === other.cards[index].rank -> compareByHighCard(other, index - 1)
         cards[index].rank.ordinal > other.cards[index].rank.ordinal -> WIN
         else -> LOSS
+    }
+
+    private fun getHighCard(): Card {
+        var highestCard: Card = cards[cards.size - 1]
+        for (card in this.cards) {
+            if (card.rank.ordinal > highestCard.rank.ordinal) {
+                highestCard = card
+            }
+        }
+        return highestCard
+    }
+
+    fun getHighestRank(): String = when {
+        this.isStraightFlush -> "StraightFlush"
+        this.isFourOfAKind -> "FourOfAKind"
+        this.isFullHouse -> "FullHouse"
+        this.isFlush -> "Flush"
+        this.isStraight -> "Straight"
+        this.isThreeOfAKind -> "ThreeOfAKind"
+        this.isTwoPair -> "TwoPair"
+        this.isPair -> "Pair"
+        else -> "HighCard"
     }
 
 }

@@ -10,7 +10,7 @@ enum class Rank constructor(private val code: String) : Iterator<Rank?> {
     C7("7"),
     C8("8"),
     C9("9"),
-    C10("10"),
+    C10("1"),
     CJ("J"),
     CQ("Q"),
     CK("K"),

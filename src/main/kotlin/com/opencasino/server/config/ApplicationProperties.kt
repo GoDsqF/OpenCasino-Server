@@ -32,7 +32,7 @@ data class PokerRoomProperties(
     val maxPlayers: Int = MAX_POCKER_PLAYERS,
     val minPlayers: Int = MIN_POCKER_PLAYERS,
     var smallBlind: Int = SMALL_BLIND,
-    var defaultBigBlind: Int = BIG_BLIND,
+    var bigBlind: Int = BIG_BLIND,
     val buyIn: Int = POKER_BUY_IN
 )
 
