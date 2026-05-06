@@ -1,5 +1,6 @@
 package com.opencasino.server.config
 
+import com.opencasino.server.game.poker.holdem.model.PokerBetType
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -12,8 +13,7 @@ data class GameProperties(
 
 enum class AvailableGames {
     Blackjack,
-    PockerHoldEm,
-    PockerOmaha
+    Poker
 }
 
 data class BlackjackRoomProperties(
@@ -31,15 +31,12 @@ data class PokerRoomProperties(
     val endDelay: Long = ROOM_END_DELAY,
     val maxPlayers: Int = MAX_POCKER_PLAYERS,
     val minPlayers: Int = MIN_POCKER_PLAYERS,
-    var smallBlind: Int = SMALL_BLIND,
-    var bigBlind: Int = BIG_BLIND,
     val buyIn: Int = POKER_BUY_IN
 )
 
 @ConfigurationProperties(prefix = "auth")
 @EnableConfigurationProperties(Auth::class)
 class Auth{
-
     private var tokenSecret: String = ""
     private var tokenExpirationMsec: String = ""
 }
