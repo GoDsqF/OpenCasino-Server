@@ -1,10 +1,8 @@
 package com.opencasino.server.network.pack.update
 
 import com.opencasino.server.game.model.Card
-import com.opencasino.server.game.poker.holdem.model.PokerHand
 import com.opencasino.server.network.pack.PrivateUpdatePack
 import com.opencasino.server.network.pack.UpdatePack
-import com.opencasino.server.network.pack.blackjack.update.PrivatePlayerUpdatePack
 
 
 class PlayerHandUpdatePack(

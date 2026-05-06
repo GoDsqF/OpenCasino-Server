@@ -1,6 +1,5 @@
 package com.opencasino.server.game.poker.holdem.model
 
-import com.opencasino.server.config.MIN_BLACKJACK_BET
 import com.opencasino.server.game.model.Card
 import com.opencasino.server.game.model.CardDeck
 import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
