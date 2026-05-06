@@ -1,7 +1,6 @@
 package com.opencasino.server.network.websocket
 
 import com.google.gson.Gson
-import com.google.gson.stream.MalformedJsonException
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.WebSocketSessionService
@@ -9,6 +8,7 @@ import com.opencasino.server.service.RoomService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.socket.WebSocketHandler
@@ -24,7 +24,8 @@ class MainWebSocketHandler(
 ) : WebSocketHandler {
 
     private val objectMapper = Gson()
-    private lateinit var roomService: RoomService
+    private lateinit var blackjackRoomService: RoomService
+    private lateinit var pokerRoomService: RoomService
 
     companion object {
         val log: Logger = LoggerFactory.getLogger(this::class.java)
@@ -35,7 +36,7 @@ class MainWebSocketHandler(
         val userSession = PlayerSession(webSocketSession.id, webSocketSession.handshakeInfo)
         val sessionHandler = UserSessionWebSocketHandler(
             userSession,
-            webSocketSessionService, roomService
+            webSocketSessionService, blackjackRoomService, pokerRoomService
         )
 
         val receive = input
@@ -76,7 +77,15 @@ class MainWebSocketHandler(
     }
 
     @Autowired
-    fun setGameRoomManagementService(@Lazy roomService: RoomService) {
-        this.roomService = roomService
+    @Qualifier("blackjackRoomServiceImpl")
+    fun setGameRoomManagementServices(@Lazy roomService: RoomService) {
+        this.blackjackRoomService = roomService
     }
+
+    @Autowired
+    @Qualifier("pokerRoomServiceImpl")
+    fun setPokerRoomManagementService(@Lazy roomService: RoomService) {
+        this.pokerRoomService = roomService
+    }
+
 }

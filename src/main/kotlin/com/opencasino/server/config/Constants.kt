@@ -12,6 +12,6 @@ const val MIN_BLACKJACK_BET = 20.00
 
 const val MAX_POCKER_PLAYERS = 6
 const val MIN_POCKER_PLAYERS = 2
-const val SMALL_BLIND = 50
-const val BIG_BLIND = 100
-const val POKER_BUY_IN = 10000
+const val MIN_POKER_BET = 50.00
+const val MAX_POKER_BET = 100.00
+const val POKER_BUY_IN = 2000

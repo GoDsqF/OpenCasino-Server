@@ -5,8 +5,10 @@ import com.opencasino.server.config.*
 import com.opencasino.server.event.BetEvent
 import com.opencasino.server.event.GameRoomJoinEvent
 import com.opencasino.server.event.BlackjackPlayerDecisionEvent
+import com.opencasino.server.event.poker.GameRoomCreateEvent
 import com.opencasino.server.event.poker.PokerPlayerDecisionEvent
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
+import com.opencasino.server.game.poker.holdem.model.PokerPlayer
 import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
@@ -14,11 +16,13 @@ import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.RoomService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.springframework.beans.factory.annotation.Qualifier
 
 class UserSessionWebSocketHandler(
     private val userSession: PlayerSession,
     private val webSocketSessionService: WebSocketSessionService,
-    private val roomService: RoomService,
+    private val blackjackRoomService: RoomService,
+    private val pokerRoomService: RoomService
 ) {
     private val objectMapper = Gson()
 
@@ -32,124 +36,81 @@ class UserSessionWebSocketHandler(
 
         when(message.serviceId) {
             AvailableGames.Blackjack.name -> {
+                @Qualifier("blackjackRoomServiceImpl")
                 when (message.type) {
                     GAME_ROOM_JOIN -> {
                         log.debug("Join attempt from {} to Blackjack", userSession.handshakeInfo.remoteAddress)
-                        roomService.addPlayerToWait(
+                        blackjackRoomService.addPlayerToWait(
                             userSession,
                             objectMapper.fromJson(messageData.toString(), GameRoomJoinEvent::class.java)
                         )
                     }
 
                     INFO -> {
-                        roomService.getRoomByKey(userSession.roomKey)
-                            .ifPresent { it.onPlayerInfoRequest(userSession) }
+                        val room = blackjackRoomService.getRoomByKey(userSession.roomKey) as BlackjackGameRoom
+                        room.onPlayerInfoRequest(userSession)
                     }
 
                     PLAYER_DECISION -> {
-                        roomService.getRoomByKey(userSession.roomKey)
-                            .ifPresent {
-                                it as BlackjackGameRoom
-                                it.onPlayerDecision(
-                                    userSession,
-                                    objectMapper.fromJson(messageData.toString(), BlackjackPlayerDecisionEvent::class.java)
-                                )
-                            }
-                    }
-
-                    BET -> {
-                        roomService.getRoomByKey(userSession.roomKey)
-                            .ifPresent {
-                                it as BlackjackGameRoom
-                                it.onBet(
-                                    userSession,
-                                    objectMapper.fromJson(messageData.toString(), BetEvent::class.java)
-                                )
-                            }
-                    }
-
-                }
-            }
-
-            AvailableGames.PockerHoldEm.name -> {
-                when (message.type) {
-                    GAME_ROOM_JOIN -> {
-                        log.debug("Join attempt from {} to HoldEm Pocker", userSession.handshakeInfo.remoteAddress)
-                        roomService.addPlayerToWait(
+                        val room = blackjackRoomService.getRoomByKey(userSession.roomKey) as BlackjackGameRoom
+                        room.onPlayerDecision(
                             userSession,
-                            objectMapper.fromJson(messageData.toString(), GameRoomJoinEvent::class.java)
+                            objectMapper.fromJson(messageData.toString(), BlackjackPlayerDecisionEvent::class.java)
                         )
                     }
 
-                    INFO -> {
-                        roomService.getRoomByKey(userSession.roomKey)
-                            .ifPresent { it.onPlayerInfoRequest(userSession) }
-                    }
-
-                    PLAYER_DECISION -> {
-                        roomService.getRoomByKey(userSession.roomKey)
-                            .ifPresent {
-                                it as PokerGameRoom
-                                it.onPlayerDecision(
-                                    userSession,
-                                    objectMapper.fromJson(messageData.toString(), PokerPlayerDecisionEvent::class.java)
-                                )
-                            }
-                    }
-
                     BET -> {
-                        roomService.getRoomByKey(userSession.roomKey)
-                            .ifPresent {
-                                it as PokerGameRoom
-                                it.onBet(
-                                    userSession,
-                                    objectMapper.fromJson(messageData.toString(), BetEvent::class.java)
-                                )
-                            }
+                        val room = blackjackRoomService.getRoomByKey(userSession.roomKey) as BlackjackGameRoom
+                        room.onBet(
+                            userSession,
+                            objectMapper.fromJson(messageData.toString(), BetEvent::class.java)
+                        )
                     }
                 }
             }
 
-            AvailableGames.PockerOmaha.name -> {
+            AvailableGames.Poker.name -> {
+                @Qualifier("pockerHoldEmRoomServiceImpl")
                 when (message.type) {
+                    GAME_ROOM_CREATE -> {
+                        log.debug("HoldEm Pocker room create attempt from {}",
+                            userSession.handshakeInfo.remoteAddress)
+                        pokerRoomService.addPlayerToWait(
+                            userSession,
+                            objectMapper.fromJson(messageData.toString(), GameRoomCreateEvent::class.java)
+                        )
+                    }
+
                     GAME_ROOM_JOIN -> {
-                        log.debug("Join attempt from {} to Omaha Pocker", userSession.handshakeInfo.remoteAddress)
-                        roomService.addPlayerToWait(
+                        log.debug("Join attempt from {} to HoldEm Pocker",
+                            userSession.handshakeInfo.remoteAddress)
+                        pokerRoomService.addPlayerToWait(
                             userSession,
                             objectMapper.fromJson(messageData.toString(), GameRoomJoinEvent::class.java)
                         )
                     }
-
                     INFO -> {
-                        roomService.getRoomByKey(userSession.roomKey)
-                            .ifPresent { it.onPlayerInfoRequest(userSession) }
+                        val room = pokerRoomService.getRoomByKey(userSession.roomKey) as PokerGameRoom
+                        room.onPlayerInfoRequest(userSession)
                     }
 
                     PLAYER_DECISION -> {
-                        roomService.getRoomByKey(userSession.roomKey)
-                            .ifPresent {
-                                it as PokerGameRoom
-                                it.onPlayerDecision(
-                                    userSession,
-                                    objectMapper.fromJson(messageData.toString(), PokerPlayerDecisionEvent::class.java)
-                                )
-                            }
+                        val room = pokerRoomService.getRoomByKey(userSession.roomKey) as PokerGameRoom
+                        room.onPlayerDecision(
+                            userSession,
+                            objectMapper.fromJson(messageData.toString(), PokerPlayerDecisionEvent::class.java)
+                        )
                     }
 
                     BET -> {
-                        roomService.getRoomByKey(userSession.roomKey)
-                            .ifPresent {
-                                it as PokerGameRoom
-                                it.onBet(
-                                    userSession,
-                                    objectMapper.fromJson(messageData.toString(), BetEvent::class.java)
-                                )
-                            }
+                        val room = pokerRoomService.getRoomByKey(userSession.roomKey) as PokerGameRoom
+                        room.onBuyIn(
+                            userSession,
+                            objectMapper.fromJson(messageData.toString(), BetEvent::class.java)
+                        )
                     }
                 }
             }
         }
-
-
     }
 }

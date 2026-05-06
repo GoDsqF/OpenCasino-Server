@@ -1,6 +1,7 @@
 package com.opencasino.server.game.poker.holdem.model
 
 import com.opencasino.server.game.Updatable
+import com.opencasino.server.game.model.Card
 import com.opencasino.server.game.model.CardDeck
 import com.opencasino.server.game.model.PlayerEntity
 import com.opencasino.server.network.pack.InitPack
@@ -18,11 +19,17 @@ abstract class PokerBasePlayer<GR, IP : InitPack, UP : UpdatePack, PUP : Private
 
     var balance by Delegates.notNull<Double>()
 
+    var boughtIn by Delegates.notNull<Boolean>()
+
     lateinit var lastDecision: PokerDecision
 
-    var lastBet: Int? = null
+    var lastBet: Double? = null
+
+    var currentBet: Double? = null
 
     var folded: Boolean = false
+
+    var allin: Boolean = false
 
     var stack by Delegates.notNull<Double>()
 

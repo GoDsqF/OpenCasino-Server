@@ -6,60 +6,89 @@ import com.opencasino.server.event.poker.PokerPlayerDecisionEvent
 import com.opencasino.server.game.model.Card
 import com.opencasino.server.game.model.CardDeck
 import com.opencasino.server.game.poker.holdem.map.PokerMap
-import com.opencasino.server.game.poker.holdem.model.PokerCondition
+import com.opencasino.server.game.poker.holdem.model.PokerBetType
 import com.opencasino.server.game.poker.holdem.model.PokerHand
 import com.opencasino.server.game.poker.holdem.model.PokerPlayer
 import com.opencasino.server.network.pack.poker.info.InfoPack
-import com.opencasino.server.network.pack.poker.shared.PokerConditionPack
-import com.opencasino.server.network.pack.poker.shared.RoomPack
-import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.pack.poker.shared.GameSettingsPack
+import com.opencasino.server.network.pack.poker.shared.RoomPack
 import com.opencasino.server.network.pack.poker.update.GameUpdatePack
 import com.opencasino.server.network.pack.shared.DealerUpdatePack
 import com.opencasino.server.network.shared.Message
+import com.opencasino.server.network.shared.PlayerSession
+import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
-import com.opencasino.server.service.impl.PokerRoomServiceImpl
 import com.opencasino.server.service.shared.PokerDecision
 import reactor.core.scheduler.Scheduler
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
-import java.util.UUID
+import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 
-class PokerGameRoom(
+open class PokerGameRoom(
     val map: PokerMap,
     gameRoomId: UUID,
-    roomService: PokerRoomServiceImpl,
+    roomService: RoomService,
     webSocketSessionService: WebSocketSessionService,
     schedulerService: Scheduler,
     val gameProperties: GameProperties,
     val roomProperties: PokerRoomProperties
 ) : AbstractPokerGameRoom(gameRoomId, schedulerService, roomService, webSocketSessionService) {
 
-    var pot: Int = 0
+    //can i delete this later?
+    var minLimit: Double? = null
+    var maxLimit: Double? = null
+    //
+    var betType: PokerBetType = PokerBetType.PotLimit
+    var bet: Double = 100.00
 
-    private val testing = AtomicBoolean(false)
+    //explains itself
+    var pot: Double = 0.00
+    var lastMaxBet: Double = 0.00
+    //explains itself too
+    val smallBlind: Double = bet / 2
+    val bigBlind: Double = bet
 
+    //should rotate each turn
     private var currentStartPlayer: Int = 0
-    private var currentMaxBet: Int = 0
-    private var currentMinRaise: Int = 0
-    private var lastBetSize: Int = 0
-    
+    //player pos expected to do something
+    private var currentPosition: Int = 0
+    //maybe should change for 3 bools instead
+    private var dealerCardsCount: Int = 0
+
+    //bet rules init and blinds calculation
+    init {
+        when (betType) {
+            PokerBetType.FixedLimit -> {
+                minLimit = bet / 2
+                maxLimit = bet
+            }
+            PokerBetType.PotLimit -> {
+                minLimit = bet
+                maxLimit = minLimit
+            }
+            PokerBetType.NoLimit -> {
+                minLimit = bet
+            }
+        }
+    }
+
+    //stores last update to prevent spam on clients
     private lateinit var lastUpdate: Message
+    //game status control
     private val started = AtomicBoolean(false)
     private val gameStarted = AtomicBoolean(false)
+    private val dealerTurn = AtomicBoolean(false)
+    private val roundEnd = AtomicBoolean(false)
 
-    private var condition: PokerCondition? = null
-
-    //deck initialize
     var deck = CardDeck(8)
 
-    //dealer hand
     var dealerHand = CardDeck()
 
     private fun initialDeal() {
         val players = map.getPlayers()
+        takeBlinds()
         if (map.getIsHoldem()) {
             for (player in players) {
                 deck.dealCards(2, player.playerDeck)
@@ -68,20 +97,36 @@ class PokerGameRoom(
     }
 
     private fun takeBlinds() {
-        var player = map.getPlayerByPosition(0 + currentStartPlayer )
-        if (player?.stack!! >= roomProperties.smallBlind) {
-
+        map.getPlayerByPosition(currentStartPlayer).also {
+            if (it != null) {
+                takeBlind(it, bigBlind)
+            }
         }
-        map.getPlayerByPosition(0 + currentStartPlayer )?.stack?.minus(roomProperties.smallBlind)
-        map.getPlayerByPosition(1 + currentStartPlayer )?.stack?.minus(roomProperties.smallBlind)
+        map.getPlayerByPosition(currentStartPlayer + 1).also {
+            if (it != null) {
+                takeBlind(it, smallBlind)
+            }
+        }
+    }
+
+    private fun takeBlind(player: PokerPlayer, amount: Double) {
+        if (player.stack >= amount) {
+            player.stack.minus(amount)
+            pot.plus(amount)
+        } else {
+            val stack = player.stack
+            player.stack = 0.00
+            pot.plus(stack)
+        }
     }
 
     private fun initialTurn() {
-        var result: PokerCondition? = null
-
+        takeBlinds()
+        initialDeal()
     }
 
     override fun onRoomCreated(userSessions: List<PlayerSession>) {
+        //assign sessions to players
         if (userSessions.isNotEmpty()) {
             userSessions.forEach {
                 val player = it.player as PokerPlayer
@@ -89,9 +134,9 @@ class PokerGameRoom(
                 map.addPlayer(player)
             }
         }
-
+        //send join messages
         super.onRoomCreated(userSessions)
-
+        //send settings to client(optional to use, loop rate used only on server)
         sendBroadcast(
             Message(
                 GAME_ROOM_JOIN_SUCCESS,
@@ -115,6 +160,7 @@ class PokerGameRoom(
         log.trace("Room {} has been created", key())
     }
 
+    //start room
     override fun onRoomStarted() {
         started.set(true)
         sendBroadcast(
@@ -147,9 +193,15 @@ class PokerGameRoom(
         if (player.isAlive) player.update()
         val updatePack = player.getPrivateUpdatePack()
         val playerUpdatePackList = map.getPlayers()
-            .map { it.getUpdatePack() }
+            .map { mapped ->
+                if (mapped.id != player.id) {
+                    mapped.getSecretUpdatePack()
+                }
+                else mapped.getUpdatePack()
+            }
 
         val dealerCards = mutableListOf<Card?>()
+
         dealerHand.getCards()
             .forEach {
                 if (it.visible) {
@@ -170,9 +222,29 @@ class PokerGameRoom(
         )
     }
 
+    private fun calculateHand(hand: CardDeck): String {
+        val cards = hand.getCards()
+        return PokerHand.fromList(cards).getHighestRank()
+    }
+
+    //in future should be somewhat transactional, don't apply any changes to stake or pot before check
+    fun onPlayerDecision(userSession: PlayerSession, event: PokerPlayerDecisionEvent) {
+        if (!started.get()) return
+        val player = userSession.player as PokerPlayer
+        if (!player.isAlive) return
+        if (player.position != currentPosition) return
+        val decision = PokerDecision.valueOf(event.inputId)
+        val amount = event.amount
+        player.updateState(decision, amount)
+    }
+
+    private fun onDealerTurn() {
+        deck.dealCard(dealerHand)
+    }
+
     override fun update() {
         if (!gameStarted.get()) return
-        if (condition == null) {
+        if (!roundEnd.get()) {
             for (currentPlayer in map.getPlayers()) {
                 val newUpdate = collectUpdate(currentPlayer)
                 if (this::lastUpdate.isInitialized) {
@@ -195,9 +267,6 @@ class PokerGameRoom(
         }
         else {
             val dealerCards = dealerHand.getCards()
-            dealerCards.forEach {
-                it.visible = true
-            }
             for (currentPlayer in map.getPlayers()) {
                 send(
                     currentPlayer.userSession,
@@ -206,15 +275,84 @@ class PokerGameRoom(
                 send(
                     currentPlayer.userSession,
                     Message(
-                        GAME_ROOM_STATUS,
-                        PokerConditionPack(
-                            condition.toString()
-                        )
+                        GAME_ROOM_STATUS
                     )
                 )
             }
-            reset()
+            resetTable()
         }
+    }
+    //main game cycle driver
+    fun nextMove(userSession: PlayerSession) {
+        if (!started.get()) return
+        val player = userSession.player as PokerPlayer
+        if (!player.isAlive) return
+        //go to next user if not last user placed bet
+        val playersCount = map.getPlayers().size
+        val currentLastPlayer = if (currentStartPlayer != 0) currentStartPlayer - 1
+                                else playersCount - 1
+
+        if (currentPosition != currentLastPlayer) {
+            if (currentPosition == playersCount - 1) {
+                currentPosition = 0
+                return
+            }
+            else {
+                currentPosition++
+                return
+            }
+        }
+        //if last user and all bets valid go to next phase
+        else if (allBetsValid()){
+            currentStartPlayer++
+            return onDealerTurn()
+        }
+        else {
+            if (currentPosition == playersCount - 1) {
+                currentPosition = 0
+                return
+            }
+            else {
+                currentPosition++
+                return
+            }
+        }
+        TODO("Implement skip of decision for players who folded or allin")
+        TODO("Implement idk unlimited money for myself")
+    }
+    //check if all players placed their bets and everyone chose call, all-in or fold
+    fun allBetsValid(): Boolean {
+        for (player in map.getPlayers()) {
+            if (player.currentBet != lastMaxBet) {
+                if (!player.folded || !player.allin) return false
+            }
+        }
+        return true
+    }
+
+    fun onBuyIn(userSession: PlayerSession, event: BetEvent) {
+        if (gameStarted.get()) return
+        val player = userSession.player as PokerPlayer
+        player.bet = event.bet
+        player.balance -= event.bet
+        player.boughtIn = true
+        map.getPlayers().forEach {
+            if (!it.boughtIn) return
+        }
+        gameStarted.set(true)
+        initialTurn()
+    }
+
+    private fun resetBets() {
+        map.getPlayers().forEach {
+            pot += it.currentBet!!
+            it.currentBet = 0.00
+        }
+    }
+
+    private fun resetTable() {
+        TODO("Remove players with 0 balance")
+        TODO("Remove cards on the table")
     }
 
     override fun onPlayerInfoRequest(userSession: PlayerSession) {
@@ -228,100 +366,6 @@ class PokerGameRoom(
                 )
             )
         )
-    }
-
-    fun onDealerTurn() {
-        var result: PokerCondition? = null
-        deck.dealCard(dealerHand)
-    }
-
-    private fun calculateHand(hand: CardDeck): String {
-        val cards = hand.getCards()
-        return PokerHand.fromList(cards).getHighestRank()
-    }
-
-    fun onPlayerDecision(userSession: PlayerSession, event: PokerPlayerDecisionEvent) {
-        if (!started.get()) return
-        val player = userSession.player as PokerPlayer
-        if (!player.isAlive) return
-        val decision = PokerDecision.valueOf(event.inputId)
-        val amount = event.amount
-        player.updateState(decision, amount)
-    }
-
-    fun Int?.isValidBet(lastBetSize: Int, betType: PokerDecision): Boolean =
-        when (betType) {
-            PokerDecision.CALL -> {
-                when {
-                    this == null -> false
-                    this < 0 -> false
-                    this != currentMaxBet -> false
-                    else -> true
-                }
-            }
-            PokerDecision.RAISE -> {
-                when {
-                    this == null -> false
-                    this < 0 -> false
-                    this < (currentMaxBet) + roomProperties.smallBlind -> false
-                    else -> true
-                }
-            }
-            else -> false
-        }
-
-    fun onCheck(userSession: PlayerSession) {
-        if (!started.get()) return
-        val player = userSession.player as PokerPlayer
-        if (!player.isAlive) return
-        if (currentStartPlayer != map.getPlayers().size - 1) {
-            currentStartPlayer++
-        }
-        else {
-            currentStartPlayer = 0
-            onDealerTurn()
-        }
-    }
-
-    fun onCall(userSession: PlayerSession, amount: Int) {
-        if (!started.get()) return
-        val player = userSession.player as PokerPlayer
-        if (!player.isAlive) return
-    }
-
-    fun onRaise(userSession: PlayerSession, amount: Int) {
-        if (!started.get()) return
-        val player = userSession.player as PokerPlayer
-        if (!player.isAlive) return
-        val decision = PokerDecision.RAISE
-    }
-
-    fun onFold(userSession: PlayerSession) {
-        if (!started.get()) return
-        val player = userSession.player as PokerPlayer
-        if (!player.isAlive) return
-        val decision = PokerDecision.FOLD
-    }
-
-    fun onBet(userSession: PlayerSession, event: BetEvent) {
-        if (gameStarted.get()) return
-        val player = userSession.player as PokerPlayer
-        player.bet = event.bet
-        player.balance -= event.bet
-        if (testing.get()) return
-        else initialDeal()
-    }
-
-    private fun reset() {
-        gameStarted.set(false)
-        condition = null
-        map.getPlayers().forEach {
-            it.playerDeck.clear()
-            it.bet = 0.00
-        }
-        dealerHand = CardDeck()
-        if (deck.getCards().size < 64) deck = CardDeck(8)
-        onGameStarted()
     }
 
     override fun onDestroy(userSessions: List<PlayerSession>) {

@@ -4,5 +4,5 @@ import com.opencasino.server.event.AbstractEvent
 
 open class PokerPlayerDecisionEvent(
     val inputId: String,
-    val amount: Int? = null
+    val amount: Double? = null
 ) : AbstractEvent()

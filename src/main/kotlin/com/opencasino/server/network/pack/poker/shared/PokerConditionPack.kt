@@ -1,5 +1,6 @@
 package com.opencasino.server.network.pack.poker.shared
 
 data class PokerConditionPack(
-    val condition: String
+    val condition: String,
+    val position: Int
 )

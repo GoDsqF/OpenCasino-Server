@@ -1,6 +1,7 @@
 package com.opencasino.server.game.poker.holdem.model
 
 import com.opencasino.server.config.MIN_BLACKJACK_BET
+import com.opencasino.server.game.model.Card
 import com.opencasino.server.game.model.CardDeck
 import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
 import com.opencasino.server.network.pack.poker.info.PlayerInfoPack
@@ -17,14 +18,16 @@ class PokerPlayer(
 ) {
 
     init {
-        bet = MIN_BLACKJACK_BET
+        bet = gameRoom.bet
+        boughtIn = false
         position = 0
         lastDecision = PokerDecision.NONE
         stack = 0.00
+        currentBet = 0.00
         playerDeck = CardDeck()
     }
 
-    fun updateState(event: PokerDecision, amount: Int?) {
+    fun updateState(event: PokerDecision, amount: Double?) {
         lastDecision = event
         lastBet = amount
         madeDecision = true
@@ -35,39 +38,77 @@ class PokerPlayer(
             when(lastDecision) {
                 PokerDecision.CHECK -> {
                     madeDecision = false
-                    gameRoom.onCheck(this.userSession)
+                    gameRoom.nextMove(this.userSession)
                 }
                 PokerDecision.CALL -> {
                     madeDecision = false
-                    if (lastBet != null) {
-                        if (lastBet!! > gameRoom.roomProperties.smallBlind) {
-                            gameRoom.onCall(this.userSession, lastBet!!)
-                        }
+                    //should be somewhat transactional
+                    if (lastBet.isValidBet(lastDecision)) {
+                        currentBet = currentBet!! + lastBet!!
+                        gameRoom.nextMove(this.userSession)
                     }
-
                 }
                 PokerDecision.RAISE -> {
                     madeDecision = false
-                    gameRoom.onRaise(this.userSession, lastBet!!)
+                    if (lastBet.isValidBet(lastDecision)) {
+                        currentBet = currentBet!! + lastBet!!
+                        gameRoom.nextMove(this.userSession)
+                    }
                 }
                 PokerDecision.FOLD -> {
                     madeDecision = false
                     folded = true
-                    gameRoom.onFold(this.userSession)
+                    gameRoom.nextMove(this.userSession)
+                }
+                PokerDecision.ALL_IN -> {
+                    madeDecision = false
+                    allin = true
+
                 }
                 else -> {
-                    println("Read fucking rules")
+                    throw IllegalArgumentException("Cannot use None for action in poker")
                 }
             }
         }
     }
 
+    fun commitBet() {
+        gameRoom.pot += currentBet!!
+        currentBet = 0.00
+    }
+
+    private fun Double?.isValidBet(betType: PokerDecision): Boolean =
+        when (betType) {
+            PokerDecision.CALL -> {
+                (this != null) && (this > 0) && (lastBet!! + this == gameRoom.lastMaxBet)
+            }
+            PokerDecision.RAISE -> {
+                (this != null) && (this > 0) && (lastBet!! + this + gameRoom.bigBlind >= gameRoom.lastMaxBet)
+            }
+            else -> false
+        }
+
     override fun info(): PlayerInfoPack {
         return getInfoPack()
     }
 
+    private fun handValue(): String {
+        if (this.isAlive) this.update()
+        return PokerHand.fromList(this.playerDeck.getCards()).getHighestRank()
+    }
+
     override fun getUpdatePack(): PlayerHandUpdatePack {
-        return PlayerHandUpdatePack(id, this.position, this.stack, playerDeck.getCards())
+        return PlayerHandUpdatePack(
+            getPrivateUpdatePack(),
+            playerDeck.getCards())
+    }
+
+    fun getSecretUpdatePack(): PlayerHandUpdatePack {
+        val deck = mutableListOf<Card?>()
+        repeat(playerDeck.getCards().size) {
+            deck += null
+        }
+        return PlayerHandUpdatePack(getPrivateUpdatePack(), deck)
     }
 
     override fun getInfoPack(): PlayerInfoPack {

@@ -2,6 +2,7 @@ package com.opencasino.server.service.impl
 
 import com.opencasino.server.config.ApplicationProperties
 import com.opencasino.server.config.GAME_ROOM_JOIN_WAIT
+import com.opencasino.server.event.AbstractEvent
 import com.opencasino.server.event.GameRoomJoinEvent
 import com.opencasino.server.game.blackjack.factory.BlackjackPlayerFactory
 import com.opencasino.server.game.blackjack.map.BlackjackMap
@@ -49,8 +50,8 @@ class BlackjackRoomServiceImpl(
     override fun getRoomByKey(key: UUID?): Optional<GameRoom> =
         if (key != null) Optional.ofNullable(gameRoomMap[key]) else Optional.empty()
 
-    override fun addPlayerToWait(userSession: PlayerSession, initialData: GameRoomJoinEvent) {
-        sessionQueue.add(WaitingPlayerSession(userSession, initialData))
+    override fun addPlayerToWait(userSession: PlayerSession, initialData: AbstractEvent) {
+        sessionQueue.add(WaitingPlayerSession(userSession, initialData as GameRoomJoinEvent))
         webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))
 
         if (sessionQueue.size < applicationProperties.blackjackRoom.maxPlayers) return
@@ -61,8 +62,8 @@ class BlackjackRoomServiceImpl(
         while (userSessions.size != applicationProperties.blackjackRoom.maxPlayers) {
             val waitingPlayerSession = sessionQueue.remove()
             val ps: PlayerSession = waitingPlayerSession.playerSession
-            val id: GameRoomJoinEvent = waitingPlayerSession.initialData
-            val player: BlackjackPlayer = playerFactory.create(gameTable.nextPlayerId(), id, room, ps)
+            val id = waitingPlayerSession.initialData
+            val player: BlackjackPlayer = playerFactory.create(gameTable.nextPlayerId(), id as GameRoomJoinEvent, room, ps)
             userRepository.findPlayer(initialData.playerUUID).subscribe { user ->
                 if (user != null) {
 
@@ -72,6 +73,7 @@ class BlackjackRoomServiceImpl(
             }
             ps.roomKey = room.key()
             ps.player = player
+            ps.serviceId = "Blackjack"
             userSessions.add(ps)
         }
         launchRoom(room, userSessions)

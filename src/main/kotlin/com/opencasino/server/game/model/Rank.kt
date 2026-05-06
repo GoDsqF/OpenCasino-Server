@@ -1,6 +1,6 @@
 package com.opencasino.server.game.model
 
-enum class Rank constructor(private val code: String) : Iterator<Rank?> {
+enum class Rank(private val code: String) : Iterator<Rank?> {
 
     C2("2"),
     C3("3"),

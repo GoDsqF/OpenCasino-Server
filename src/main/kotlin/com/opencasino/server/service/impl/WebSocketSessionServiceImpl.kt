@@ -2,6 +2,9 @@ package com.opencasino.server.service.impl
 
 import com.opencasino.server.config.FAILURE
 import com.opencasino.server.config.MESSAGE
+import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
+import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
+import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.pack.shared.GameMessagePack
 import com.opencasino.server.network.shared.Message
@@ -12,6 +15,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.reactivestreams.Subscription
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
@@ -32,7 +36,8 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
     private var sessionPublishers: MutableMap<String, Many<Any>> = HashMap()
     private var sessionSubscriptions: MutableMap<String, Subscription> = HashMap()
     private var sessions: MutableMap<String, PlayerSession> = HashMap()
-    private lateinit var roomService: RoomService
+    private lateinit var blackjackRoomService: RoomService
+    private lateinit var pokerRoomService: RoomService
 
     override fun sendBroadcast(message: Any) = sessionPublishers.values.forEach { it.tryEmitNext(message) }
     override fun close(playerSession: PlayerSession): Mono<Void> {
@@ -53,7 +58,7 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
     }
 
     override fun roomIds(): Mono<Collection<String>> = Mono.fromCallable {
-        roomService.getRoomIds()
+        blackjackRoomService.getRoomIds()
     }
 
     override fun sessionIds(): Mono<Collection<String>> = Mono.fromCallable {
@@ -61,7 +66,7 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
     }
 
     override fun roomSessionIds(roomId: UUID): Mono<Collection<String>> = Mono.fromCallable {
-        roomService.getRoomSessionIds(roomId)
+        blackjackRoomService.getRoomSessionIds(roomId)
     }
 
     override fun sendBroadcast(messageFunction: Function<PlayerSession, Any>) =
@@ -118,13 +123,32 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
         sessionPublishers.remove(playerSession.id)
         sessions.remove(playerSession.id)
 
-        if (playerSession.roomKey != null)
-            roomService.getRoomByKey(playerSession.roomKey!!)
-                .ifPresent { it.onDisconnect(playerSession) }
+        if (playerSession.roomKey != null) {
+            val service = playerSession.serviceId
+            if (service != null) {
+                when (service) {
+                    "Blackjack" -> {
+                        val room = blackjackRoomService.getRoomByKey(playerSession.roomKey!!) as BlackjackGameRoom
+                        room.onDisconnect(playerSession)
+                    }
+                    "Poker" -> {
+                        val room = blackjackRoomService.getRoomByKey(playerSession.roomKey!!) as PokerGameRoom
+                        room.onDisconnect(playerSession)
+                    }
+                }
+            }
+        }
     }
 
     @Autowired
-    fun setGameRoomManagementService( @Lazy roomService: RoomService) {
-        this.roomService = roomService
+    @Qualifier("blackjackRoomServiceImpl")
+    fun setBlackjackGameRoomManagementService(@Lazy roomService: RoomService) {
+        this.blackjackRoomService = roomService
+    }
+
+    @Autowired
+    @Qualifier("pokerRoomServiceImpl")
+    fun setPokerGameRoomManagementService( @Lazy roomService: RoomService) {
+        this.blackjackRoomService = roomService
     }
 }

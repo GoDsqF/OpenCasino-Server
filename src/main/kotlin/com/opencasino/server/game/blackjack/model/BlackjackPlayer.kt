@@ -57,7 +57,7 @@ open class BlackjackPlayer(
     }
 
     override fun getUpdatePack(): PlayerHandUpdatePack {
-        return PlayerHandUpdatePack(id, position, balance, playerDeck.getCards())
+        return PlayerHandUpdatePack(getPrivateUpdatePack(), playerDeck.getCards())
     }
 
     override fun getInfoPack(): PlayerInfoPack {
@@ -65,7 +65,7 @@ open class BlackjackPlayer(
     }
 
     override fun getPrivateUpdatePack(): PrivatePlayerUpdatePack {
-        return PrivatePlayerUpdatePack(id, lastDecision)
+        return PrivatePlayerUpdatePack(id, balance, lastDecision)
     }
 
 }
