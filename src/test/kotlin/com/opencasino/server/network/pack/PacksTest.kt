@@ -1,0 +1,252 @@
+package com.opencasino.server.network.pack
+
+import com.opencasino.server.game.blackjack.model.BlackjackCondition
+import com.opencasino.server.game.model.Card
+import com.opencasino.server.game.model.Rank
+import com.opencasino.server.game.model.Suit
+import com.opencasino.server.network.pack.blackjack.info.InfoPack
+import com.opencasino.server.network.pack.blackjack.info.PlayerInfoPack
+import com.opencasino.server.network.pack.blackjack.shared.BlackjackConditionPack
+import com.opencasino.server.network.pack.blackjack.shared.GameSettingsPack
+import com.opencasino.server.network.pack.blackjack.shared.RoomPack
+import com.opencasino.server.network.pack.blackjack.update.GameUpdatePack
+import com.opencasino.server.network.pack.blackjack.update.PrivatePlayerUpdatePack
+import com.opencasino.server.network.pack.poker.info.PlayerInfoPack as PokerPlayerInfoPack
+import com.opencasino.server.network.pack.poker.info.InfoPack as PokerInfoPack
+import com.opencasino.server.network.pack.poker.shared.PokerConditionPack
+import com.opencasino.server.network.pack.poker.shared.GameSettingsPack as PokerGameSettingsPack
+import com.opencasino.server.network.pack.poker.shared.RoomPack as PokerRoomPack
+import com.opencasino.server.network.pack.poker.update.PrivatePlayerUpdatePack as PokerPrivatePlayerUpdatePack
+import com.opencasino.server.network.pack.shared.DealerUpdatePack
+import com.opencasino.server.network.pack.shared.ExceptionPack
+import com.opencasino.server.network.pack.shared.GameMessagePack
+import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
+import com.opencasino.server.service.shared.BlackjackDecision
+import com.opencasino.server.service.shared.PokerDecision
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.Test
+
+class PacksTest {
+
+    // =========================================================================
+    // Blackjack Packs
+    // =========================================================================
+
+    @Nested
+    inner class BlackjackPacks {
+
+        @Test
+        fun `PlayerInfoPack stores id and balance`() {
+            val pack = PlayerInfoPack(42L, 1500.0)
+            assertEquals(42L, pack.id)
+            assertEquals(1500.0, pack.balance)
+        }
+
+        @Test
+        fun `InfoPack stores player info and metadata`() {
+            val playerInfo = PlayerInfoPack(1L, 100.0)
+            val pack = InfoPack(playerInfo, 300L, 5L)
+            assertEquals(playerInfo, pack.player)
+            assertEquals(300L, pack.loopRate)
+            assertEquals(5L, pack.playersCount)
+        }
+
+        @Test
+        fun `PrivatePlayerUpdatePack stores all fields`() {
+            val pack = PrivatePlayerUpdatePack(1L, 500.0, BlackjackDecision.HIT)
+            assertEquals(1L, pack.id)
+            assertEquals(500.0, pack.balance)
+            assertEquals(BlackjackDecision.HIT, pack.lastDecision)
+        }
+
+        @Test
+        fun `GameSettingsPack stores loop rate`() {
+            val pack = GameSettingsPack(300L)
+            assertEquals(300L, pack.loopRate)
+        }
+
+        @Test
+        fun `RoomPack stores timestamp and roomId`() {
+            val pack = RoomPack(1234567890L, "room-uuid")
+            assertEquals(1234567890L, pack.timestamp)
+            assertEquals("room-uuid", pack.roomId)
+        }
+
+        @Test
+        fun `BlackjackConditionPack stores condition string`() {
+            val pack = BlackjackConditionPack(BlackjackCondition.PlayerWin.toString())
+            assertEquals("PlayerWin", pack.condition)
+        }
+
+        @Test
+        fun `GameUpdatePack assembles correctly`() {
+            val privateUpdate = PrivatePlayerUpdatePack(1L, 100.0, BlackjackDecision.STAND)
+            val card = Card(Rank.CA, Suit.SPADES, true)
+            val handUpdate = PlayerHandUpdatePack(privateUpdate, listOf(card))
+            val dealerUpdate = DealerUpdatePack(listOf(card, null))
+
+            val pack = GameUpdatePack(privateUpdate, listOf(handUpdate), dealerUpdate)
+
+            assertEquals(privateUpdate, pack.player)
+            assertEquals(1, pack.players.size)
+            assertEquals(2, pack.dealer.cards.size)
+            assertNull(pack.dealer.cards[1])
+        }
+    }
+
+    // =========================================================================
+    // Poker Packs
+    // =========================================================================
+
+    @Nested
+    inner class PokerPacks {
+
+        @Test
+        fun `PokerPlayerInfoPack stores id and balance`() {
+            val pack = PokerPlayerInfoPack(99L, 2000.0)
+            assertEquals(99L, pack.id)
+            assertEquals(2000.0, pack.balance)
+        }
+
+        @Test
+        fun `PokerInfoPack stores player info and metadata`() {
+            val playerInfo = PokerPlayerInfoPack(1L, 500.0)
+            val pack = PokerInfoPack(playerInfo, 200L, 3L)
+            assertEquals(playerInfo, pack.player)
+            assertEquals(200L, pack.loopRate)
+            assertEquals(3L, pack.playersCount)
+        }
+
+        @Test
+        fun `PokerPrivatePlayerUpdatePack stores all fields`() {
+            val pack = PokerPrivatePlayerUpdatePack(5L, 2, PokerDecision.RAISE)
+            assertEquals(5L, pack.id)
+            assertEquals(2, pack.position)
+            assertEquals(PokerDecision.RAISE, pack.lastDecision)
+        }
+
+        @Test
+        fun `PokerGameSettingsPack stores loop rate`() {
+            val pack = PokerGameSettingsPack(150L)
+            assertEquals(150L, pack.loopRate)
+        }
+
+        @Test
+        fun `PokerRoomPack stores timestamp and roomId`() {
+            val pack = PokerRoomPack(9876543210L, "poker-room-uuid")
+            assertEquals(9876543210L, pack.timestamp)
+            assertEquals("poker-room-uuid", pack.roomId)
+        }
+
+        @Test
+        fun `PokerConditionPack stores condition and position`() {
+            val pack = PokerConditionPack("Win", 3)
+            assertEquals("Win", pack.condition)
+            assertEquals(3, pack.position)
+        }
+    }
+
+    // =========================================================================
+    // Shared Packs
+    // =========================================================================
+
+    @Nested
+    inner class SharedPacks {
+
+        @Test
+        fun `DealerUpdatePack stores cards with nulls`() {
+            val visible = Card(Rank.CK, Suit.HEARTS, true)
+            val pack = DealerUpdatePack(listOf(visible, null))
+            assertEquals(2, pack.cards.size)
+            assertNotNull(pack.cards[0])
+            assertNull(pack.cards[1])
+        }
+
+        @Test
+        fun `DealerUpdatePack empty cards`() {
+            val pack = DealerUpdatePack(emptyList())
+            assertTrue(pack.cards.isEmpty())
+        }
+
+        @Test
+        fun `ExceptionPack stores message`() {
+            val pack = ExceptionPack("Something went wrong")
+            assertEquals("Something went wrong", pack.message)
+        }
+
+        @Test
+        fun `GameMessagePack stores type and message`() {
+            val pack = GameMessagePack(1, "System message")
+            assertEquals(1, pack.messageType)
+            assertEquals("System message", pack.message)
+        }
+
+        @Test
+        fun `PlayerHandUpdatePack stores player and cards`() {
+            val privateUpdate = PrivatePlayerUpdatePack(1L, 100.0, BlackjackDecision.HIT)
+            val cards = listOf(
+                Card(Rank.CA, Suit.SPADES, true),
+                Card(Rank.CK, Suit.HEARTS, true)
+            )
+            val pack = PlayerHandUpdatePack(privateUpdate, cards)
+            assertEquals(privateUpdate, pack.player)
+            assertEquals(2, pack.cards.size)
+        }
+
+        @Test
+        fun `PlayerHandUpdatePack with hidden cards (nulls)`() {
+            val privateUpdate = PokerPrivatePlayerUpdatePack(2L, 1, PokerDecision.CHECK)
+            val cards: List<Card?> = listOf(null, null)
+            val pack = PlayerHandUpdatePack(privateUpdate, cards)
+            assertEquals(2, pack.cards.size)
+            assertNull(pack.cards[0])
+            assertNull(pack.cards[1])
+        }
+    }
+
+    // =========================================================================
+    // Интерфейсы Pack
+    // =========================================================================
+
+    @Nested
+    inner class PackInterfaces {
+
+        @Test
+        fun `PlayerInfoPack implements InitPack`() {
+            val pack: InitPack = PlayerInfoPack(1L, 100.0)
+            assertTrue(pack is Pack)
+        }
+
+        @Test
+        fun `PrivatePlayerUpdatePack implements PrivateUpdatePack`() {
+            val pack: PrivateUpdatePack = PrivatePlayerUpdatePack(1L, 100.0, BlackjackDecision.NONE)
+            assertTrue(pack is UpdatePack)
+            assertTrue(pack is Pack)
+        }
+
+        @Test
+        fun `ExceptionPack implements Pack`() {
+            val pack: Pack = ExceptionPack("error")
+            assertTrue(pack is java.io.Serializable)
+        }
+
+        @Test
+        fun `GameMessagePack implements InitPack`() {
+            val pack: InitPack = GameMessagePack(1, "msg")
+            assertTrue(pack is Pack)
+        }
+
+        @Test
+        fun `GameSettingsPack implements InitPack`() {
+            val pack: InitPack = GameSettingsPack(300L)
+            assertTrue(pack is Pack)
+        }
+
+        @Test
+        fun `RoomPack implements InitPack`() {
+            val pack: InitPack = RoomPack(0L, "id")
+            assertTrue(pack is Pack)
+        }
+    }
+}
