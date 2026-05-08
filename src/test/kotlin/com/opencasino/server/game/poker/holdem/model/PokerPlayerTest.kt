@@ -90,7 +90,7 @@ class PokerPlayerTest {
         fun `no update when madeDecision is false`() {
             player.madeDecision = false
             player.update()
-            verify(mockRoom, never()).nextMove(any())
+            verify(mockRoom, never()).nextMove(mockSession)
         }
     }
 

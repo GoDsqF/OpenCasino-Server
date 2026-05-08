@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Test
 class BlackjackConditionTest {
 
     @Test
-    fun `five conditions exist`() {
-        assertEquals(5, BlackjackCondition.entries.size)
+    fun `six conditions exist`() {
+        assertEquals(6, BlackjackCondition.entries.size)
     }
 
     @Test

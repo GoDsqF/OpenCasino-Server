@@ -20,6 +20,7 @@ import org.apache.logging.log4j.Logger
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Scheduler
 import java.util.*
@@ -58,25 +59,27 @@ class BlackjackRoomServiceImpl(
 
         val gameTable = BlackjackMap()
         val room = createRoom(gameTable)
-        val userSessions: MutableList<PlayerSession> = ArrayList()
-        while (userSessions.size != applicationProperties.blackjackRoom.maxPlayers) {
-            val waitingPlayerSession = sessionQueue.remove()
-            val ps: PlayerSession = waitingPlayerSession.playerSession
-            val id = waitingPlayerSession.initialData
-            val player: BlackjackPlayer = playerFactory.create(gameTable.nextPlayerId(), id as GameRoomJoinEvent, room, ps)
-            userRepository.findPlayer(initialData.playerUUID).subscribe { user ->
-                if (user != null) {
-
-                    player.balance = user.balance
-                }
-                else player.balance = 0.00
-            }
+        val pending = (0 until applicationProperties.blackjackRoom.maxPlayers).map {
+            val waiting = sessionQueue.remove()
+            val ps = waiting.playerSession
+            val joinEvent = waiting.initialData as GameRoomJoinEvent
+            val player: BlackjackPlayer = playerFactory.create(gameTable.nextPlayerId(), joinEvent, room, ps)
             ps.roomKey = room.key()
             ps.player = player
             ps.serviceId = "Blackjack"
-            userSessions.add(ps)
+            Triple(ps, player, joinEvent.playerUUID)
         }
-        launchRoom(room, userSessions)
+
+        Flux.fromIterable(pending)
+            .flatMap { (_, player, uuid) ->
+                userRepository.findPlayer(uuid)
+                    .map { it.balance }
+                    .defaultIfEmpty(0.00)
+                    .doOnNext { player.balance = it }
+            }
+            .then()
+            .doOnSuccess { launchRoom(room, pending.map { it.first }) }
+            .subscribe()
     }
 
     override fun removePlayerFromWaitQueue(session: PlayerSession) {

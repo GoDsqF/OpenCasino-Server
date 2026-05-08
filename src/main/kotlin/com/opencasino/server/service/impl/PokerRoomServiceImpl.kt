@@ -73,19 +73,19 @@ class PokerRoomServiceImpl(
 
                 val player: PokerPlayer = playerFactory.create(gameTable.nextPlayerId(), id, room, ps)
 
-                userRepository.findPlayer(initialData.playerUUID).subscribe { user ->
-                    if (user != null) {
-                        player.balance = user.balance
-                    }
-                    else player.balance = 0.00
-                }
-
                 ps.roomKey = room.key()
                 ps.player = player
                 ps.serviceId = "Poker"
 
-                launchRoom(room, listOf(ps))
-                updateSettings(userSession, initialData.settings)
+                userRepository.findPlayer(initialData.playerUUID)
+                    .map { it.balance }
+                    .defaultIfEmpty(0.00)
+                    .doOnNext { player.balance = it }
+                    .doOnSuccess {
+                        launchRoom(room, listOf(ps))
+                        updateSettings(userSession, initialData.settings)
+                    }
+                    .subscribe()
             }
             is GameRoomJoinEvent -> {
                 webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))
@@ -148,19 +148,16 @@ class PokerRoomServiceImpl(
         val gameTable = room.map
         val player: PokerPlayer = playerFactory.create(gameTable.nextPlayerId(), initialData, room, userSession)
 
-        userRepository.findPlayer(initialData.playerUUID).subscribe { user ->
-            println(user)
-            if (user != null) {
-                player.balance = user.balance
-            }
-            //Return balance message
-            else player.balance = 0.00
-        }
-
         userSession.roomKey = room.key()
         userSession.player = player
         userSession.serviceId = "Poker"
-        onJoinedPlayer(room, userSession)
+
+        userRepository.findPlayer(initialData.playerUUID)
+            .map { it.balance }
+            .defaultIfEmpty(0.00)
+            .doOnNext { player.balance = it }
+            .doOnSuccess { onJoinedPlayer(room, userSession) }
+            .subscribe()
     }
 
     fun updateSettings(userSession: PlayerSession, event: GameSettingsUpdateEvent) {

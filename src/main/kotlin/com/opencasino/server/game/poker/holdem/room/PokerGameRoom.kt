@@ -111,12 +111,12 @@ open class PokerGameRoom(
 
     private fun takeBlind(player: PokerPlayer, amount: Double) {
         if (player.stack >= amount) {
-            player.stack.minus(amount)
-            pot.plus(amount)
+            player.stack -= amount
+            pot += amount
         } else {
             val stack = player.stack
             player.stack = 0.00
-            pot.plus(stack)
+            pot += stack
         }
     }
 
@@ -266,7 +266,6 @@ open class PokerGameRoom(
             }
         }
         else {
-            val dealerCards = dealerHand.getCards()
             for (currentPlayer in map.getPlayers()) {
                 send(
                     currentPlayer.userSession,
@@ -287,44 +286,38 @@ open class PokerGameRoom(
         if (!started.get()) return
         val player = userSession.player as PokerPlayer
         if (!player.isAlive) return
-        //go to next user if not last user placed bet
+
         val playersCount = map.getPlayers().size
         val currentLastPlayer = if (currentStartPlayer != 0) currentStartPlayer - 1
                                 else playersCount - 1
 
-        if (currentPosition != currentLastPlayer) {
-            if (currentPosition == playersCount - 1) {
-                currentPosition = 0
-                return
-            }
-            else {
-                currentPosition++
-                return
-            }
-        }
-        //if last user and all bets valid go to next phase
-        else if (allBetsValid()){
-            currentStartPlayer++
+        //last user reached and all bets valid — round complete, dealer turn
+        if (currentPosition == currentLastPlayer && allBetsValid()) {
+            currentStartPlayer = (currentStartPlayer + 1) % playersCount
             return onDealerTurn()
         }
-        else {
-            if (currentPosition == playersCount - 1) {
-                currentPosition = 0
-                return
-            }
-            else {
-                currentPosition++
+        //advance to the next active (not folded, not all-in) player
+        advanceToNextActivePosition(playersCount)
+    }
+
+    private fun advanceToNextActivePosition(playersCount: Int) {
+        if (playersCount == 0) return
+        var next = currentPosition
+        repeat(playersCount) {
+            next = (next + 1) % playersCount
+            val candidate = map.getPlayerByPosition(next)
+            if (candidate != null && !candidate.folded && !candidate.allin) {
+                currentPosition = next
                 return
             }
         }
-        TODO("Implement skip of decision for players who folded or allin")
-        TODO("Implement idk unlimited money for myself")
+        // no active players left — keep currentPosition as-is, round resolution handled elsewhere
     }
     //check if all players placed their bets and everyone chose call, all-in or fold
     fun allBetsValid(): Boolean {
         for (player in map.getPlayers()) {
             if (player.currentBet != lastMaxBet) {
-                if (!player.folded || !player.allin) return false
+                if (!player.folded && !player.allin) return false
             }
         }
         return true
@@ -351,8 +344,31 @@ open class PokerGameRoom(
     }
 
     private fun resetTable() {
-        TODO("Remove players with 0 balance")
-        TODO("Remove cards on the table")
+        // Drop players who have no stack left and aren't all-in (busted out)
+        val broke = map.getPlayers().filter { it.stack <= 0.0 && !it.allin }.toList()
+        broke.forEach { map.removePlayer(it) }
+
+        // Clear table cards
+        dealerHand.clear()
+        map.getPlayers().forEach { it.playerDeck.clear() }
+        deck = CardDeck(8)
+
+        // Reset round-level state
+        lastMaxBet = 0.00
+        currentPosition = 0
+        dealerCardsCount = 0
+        roundEnd.set(false)
+        dealerTurn.set(false)
+
+        // Reset per-player round state
+        map.getPlayers().forEach {
+            it.currentBet = 0.00
+            it.lastBet = null
+            it.folded = false
+            it.allin = false
+            it.madeDecision = false
+            it.lastDecision = PokerDecision.NONE
+        }
     }
 
     override fun onPlayerInfoRequest(userSession: PlayerSession) {

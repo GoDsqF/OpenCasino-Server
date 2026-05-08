@@ -1,21 +1,16 @@
 package com.opencasino.server.game.model
 
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.Entity
+import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Column
 import org.springframework.data.relational.core.mapping.Table
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.*
 
-@Entity
 @Table(name = "players")
 data class Players(
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column("id")
     val id: String = UUID.randomUUID().toString(),
 
@@ -45,7 +40,6 @@ data class Players(
     val lastModified: Long =
         ZonedDateTime.now(ZoneId.of("Europe/Moscow")).toEpochSecond(),
 ) {
-    @Override
     override fun toString(): String {
         return "Player {" +
                 "id=$id" +

@@ -79,10 +79,10 @@ class PokerPlayer(
     private fun Double?.isValidBet(betType: PokerDecision): Boolean =
         when (betType) {
             PokerDecision.CALL -> {
-                (this != null) && (this > 0) && (lastBet!! + this == gameRoom.lastMaxBet)
+                (this != null) && (this > 0) && (currentBet!! + this == gameRoom.lastMaxBet)
             }
             PokerDecision.RAISE -> {
-                (this != null) && (this > 0) && (lastBet!! + this + gameRoom.bigBlind >= gameRoom.lastMaxBet)
+                (this != null) && (this > 0) && (currentBet!! + this + gameRoom.bigBlind >= gameRoom.lastMaxBet)
             }
             else -> false
         }

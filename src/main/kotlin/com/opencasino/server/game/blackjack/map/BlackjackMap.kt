@@ -2,10 +2,14 @@ package com.opencasino.server.game.blackjack.map
 
 import com.opencasino.server.config.MAX_BLACKJACK_PLAYERS
 import com.opencasino.server.game.blackjack.model.BlackjackPlayer
-import kotlin.collections.HashMap
+import java.util.concurrent.atomic.AtomicLong
 
 
 class BlackjackMap {
+
+    companion object {
+        private val idCounter = AtomicLong(System.currentTimeMillis())
+    }
 
     private val players: MutableMap<Long, BlackjackPlayer> = HashMap()
 
@@ -18,7 +22,7 @@ class BlackjackMap {
 
     fun removePlayer(player: BlackjackPlayer) = players.remove(player.id)
 
-    fun nextPlayerId(): Long = (System.currentTimeMillis() shl 20) or (System.nanoTime() and 9223372036854251520L.inv())
+    fun nextPlayerId(): Long = idCounter.incrementAndGet()
 
     fun alivePlayers(): Long = players.values.stream().filter { it.isAlive }.count()
 }
