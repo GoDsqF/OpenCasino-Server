@@ -254,7 +254,11 @@ deploy:
   environment:
     name: production
     url: https://opencasino.example
+  # Lines are single-quoted because plain YAML scalars interpret `: ` as a
+  # mapping separator — leaving `echo "Image to deploy: $IMAGE_SHA"` as a
+  # bare entry would parse to {key: value} and trip GitLab's "script must be
+  # a string" validator. Single quotes keep them as plain strings.
   script:
-    - echo "[placeholder] deploy stage not wired — infra not ready"
-    - echo "Image to deploy: $IMAGE_SHA"
-    - echo "Target: docker compose on \$DEPLOY_HOST (TBD)"
+    - 'echo "[placeholder] deploy stage not wired — infra not ready"'
+    - 'echo "Image to deploy: $IMAGE_SHA"'
+    - 'echo "Target: docker compose on host TBD (see DEPLOY_HOST in commented block above)"'
