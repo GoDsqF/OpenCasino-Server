@@ -52,7 +52,13 @@ class ApplicationConfiguration(
 }
 
 @Configuration
-@PropertySource("classpath:auth.properties")
+// auth.properties is gitignored — only present in local-dev workspaces.
+// ignoreResourceNotFound lets Spring silently skip the file when missing
+// (CI, fresh clones, prod with env-only config). The bean below already
+// returns null-stringified placeholders when the keys are absent, so the
+// app starts; populate APP_OAUTH2_CLIENTID / APP_OAUTH2_CLIENTSECRET via
+// env to make OAuth actually work.
+@PropertySource(value = ["classpath:auth.properties"], ignoreResourceNotFound = true)
 @Component
 class OAuth2Config() {
     @Autowired
