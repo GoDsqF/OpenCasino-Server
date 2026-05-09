@@ -19,11 +19,11 @@
 #   - Single runner type, no tags needed for capability separation.
 #
 # Why tests are NOT executed "inside the container on the built JAR":
-#   The shadow fat JAR contains only main classpath + runtime deps. Test
+#   The shadow fat JAR contains only main classpath + runtime deps. Teste
 #   classes, test-scope deps (junit-platform-launcher, reactor-test, etc.) and
 #   the JUnit launcher itself are missing. So unit tests need the source tree
 #   + Gradle, run in a JDK image. What CAN run "against the built artifact" is
-#   black-box smoke / integration testing — that is the `verify` stage.
+#   black-box smoke / integration testing — that is the `verify`
 # =============================================================================
 
 stages:
@@ -106,11 +106,19 @@ build-jar:
   script:
     - ./gradlew --no-daemon shadowJar -x test
     - ls -la build/libs/
+    # Extract project version from build.gradle.kts so build-image can use it
+    # as an image tag without re-running Gradle. The line in the source is
+    # `version = "1.0.1"` — a simple grep+cut is enough.
+    - APP_VERSION=$(grep '^version = ' build.gradle.kts | head -1 | cut -d '"' -f 2)
+    - echo "APP_VERSION=$APP_VERSION" | tee app.env
   artifacts:
     name: "openCasino_server-${CI_COMMIT_SHORT_SHA}"
     paths:
       - build/libs/*-all.jar
       - build/libs/openCasino_server-*.jar
+    # dotenv exposes APP_VERSION as a regular CI variable in dependent jobs
+    reports:
+      dotenv: app.env
     expire_in: 1 month
 
 # -----------------------------------------------------------------------------
@@ -131,7 +139,7 @@ build-image:
     - job: test
       artifacts: false
     - job: build-jar
-      artifacts: false
+      artifacts: true   # need the dotenv report to import APP_VERSION
   before_script:
     # Kaniko reads registry creds from /kaniko/.docker/config.json.
     # Busybox base64 has no -w flag; tr -d '\n' strips the newline instead.
@@ -143,10 +151,17 @@ build-image:
       EOF
   script:
     # Build destination list — Kaniko pushes to every --destination it sees.
+    #   :<short_sha> — always; immutable per-commit identifier
+    #   :latest     — only on default branch; movable
+    #   :<version>  — only on default branch; movable, follows build.gradle.kts
+    #   :<git_tag>  — only when commit has a git tag; immutable per release
     - DESTS="--destination $IMAGE_SHA"
     - |
       if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
         DESTS="$DESTS --destination $IMAGE_LATEST"
+        if [ -n "$APP_VERSION" ]; then
+          DESTS="$DESTS --destination $CI_REGISTRY_IMAGE:$APP_VERSION"
+        fi
       fi
     - |
       if [ -n "$CI_COMMIT_TAG" ]; then
