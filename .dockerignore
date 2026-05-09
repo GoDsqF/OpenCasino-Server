@@ -1,0 +1,35 @@
+# Keep build context small and prevent secrets from leaking into image layers.
+
+# VCS / tooling
+.git
+.gitattributes
+.gitignore
+.idea
+.vscode
+*.iml
+*.ipr
+*.iws
+
+# Gradle / build outputs (the image rebuilds inside the builder stage)
+.gradle
+build
+out
+bin
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+
+# Local docs / scratch
+HELP.md
+repopackpy-output.txt
+
+# Secrets and TLS material — must come from runtime mounts, never from context
+src/main/resources/auth.properties
+src/main/resources/ssl.properties
+src/main/resources/database.properties
+src/main/resources/application.env
+src/main/resources/certs/
+
+# Claude Code workspace
+.claude

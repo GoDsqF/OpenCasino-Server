@@ -13,6 +13,7 @@
 - [Требования](#-требования)
 - [Установка и настройка](#-установка-и-настройка)
 - [Запуск](#-запуск)
+- [Docker / контейнеризация](#-docker--контейнеризация)
 - [WebSocket API](#-websocket-api)
 - [Структура проекта](#-структура-проекта)
 - [Конфигурация](#-конфигурация)
@@ -234,6 +235,192 @@ java -jar build/libs/openCasino_server-1.0.1-all.jar`
 
 
 Сервер запустится на порту 8080 по умолчанию.
+
+---
+
+## 🐳 Docker / контейнеризация
+
+В корне репозитория лежат `Dockerfile` (multi-stage build) и `.dockerignore`. Образ рассчитан на запуск **без изменений** в plain Docker, Docker Compose, GitLab CI/CD и Kubernetes. Секреты (пароль БД, OAuth client secret, token secret) и TLS-сертификаты **никогда не попадают в образ** — они инъектятся в рантайме.
+
+### Сборка
+
+```bash
+docker build -t opencasino-server:1.0.1 .
+```
+
+Pre-build артефакты не нужны — стадия `builder` сама запускает `./gradlew shadowJar` и собирает fat-JAR.
+
+### Build-time аргументы (`--build-arg`)
+
+| ARG | По умолчанию | Назначение |
+|---|---|---|
+| `JDK_IMAGE` | `eclipse-temurin:21-jdk-jammy` | Образ компилятора. Поменяйте на корпоративное зеркало в air-gapped CI. |
+| `JRE_IMAGE` | `eclipse-temurin:21-jre-jammy` | Базовый рантайм. Jammy (glibc) выбран вместо Alpine ради совместимости с Netty / r2dbc-postgresql. |
+| `APP_USER` | `opencasino` | Имя non-root пользователя в контейнере. |
+| `APP_UID` / `APP_GID` | `10001` / `10001` | Пиннуем числовые идентификаторы — чтобы `securityContext.runAsUser` в k8s и host bind-mounts вели себя предсказуемо. |
+| `APP_HOME` | `/opt/app` | Куда установлен `app.jar`. |
+| `GRADLE_OPTS` | пусто | Прокидывается в Gradle (proxy, memory) для CI-сборок. |
+
+### Runtime переменные окружения
+
+| ENV | По умолчанию | Назначение |
+|---|---|---|
+| `SERVER_PORT` | `8080` | Spring `server.port`. Используется в `EXPOSE` и HEALTHCHECK. |
+| `SPRING_PROFILES_ACTIVE` | пусто | Активные профили Spring (например `prod,ssl`). |
+| `JAVA_OPTS` | пусто | Дополнительные JVM-флаги, добавляемые к команде запуска. |
+| `JAVA_TOOL_OPTIONS` | `-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom` | Подхватывается JVM автоматически — сайзинг по cgroup-лимитам и быстрый источник энтропии для TLS. |
+| `TZ` | `UTC` | Тайм-зона контейнера (важна для логов game loop). |
+| `DATABASE_HOST` / `_PORT` / `_USER` / `_PASSWORD` / `_DB` | — | Уже читаются из `database.properties`. |
+| `APP_AUTH_TOKENSECRET`, `APP_OAUTH2_CLIENTID`, `APP_OAUTH2_CLIENTSECRET` | — | OAuth2 / JWT секреты. Spring relaxed binding автоматически мапит их на `app.auth.tokenSecret` и т.п. |
+| `SERVER_SSL_ENABLED`, `SERVER_SSL_CERTIFICATE`, `SERVER_SSL_CERTIFICATE_PRIVATE_KEY`, `SERVER_SSL_TRUST_CERTIFICATE` | — | Включение TLS и пути к PEM-файлам внутри контейнера (обычно `/certs/...`). |
+
+### Точки монтирования (Volumes)
+
+- **`/certs`** — TLS-материал (`cert.pem`, `privkey.pem`, `chain.pem`). Пути к ним передавайте через `SERVER_SSL_*` переменные или через `ssl.properties`.
+- **`/config`** — drop-in каталог для дополнительных Spring property-файлов. Активируется аргументом `--spring.config.additional-location=file:/config/`, который можно передать как `CMD`.
+
+### Открытые порты
+
+| Порт | Назначение |
+|---|---|
+| `8080` | HTTP / WebSocket (по умолчанию) |
+| `8443` | HTTPS / WSS, когда включён SSL |
+
+`EXPOSE` — это документация. Что публиковать наружу — решает оркестратор.
+
+### Безопасность / права
+
+- Процесс запускается под `opencasino` (uid `10001`), shell `/sbin/nologin`. `app.jar`, `/certs`, `/config` принадлежат этому uid.
+- PID 1 — `tini -g`: корректно форвардит SIGTERM в JVM, Spring штатно завершается при `docker stop` / `kubectl delete pod`.
+- В рантайм-образе нет JDK / Gradle / shell-утилит сборки — только `tini`, `ca-certificates`, `curl` (для HEALTHCHECK).
+- Файловую систему можно ставить read-only (`readOnlyRootFilesystem: true` в k8s) — приложение пишет только в смонтированные тома.
+
+### Запуск в plain Docker
+
+```bash
+docker run --rm --name opencasino \
+  -p 8080:8080 \
+  -e DATABASE_HOST=db.internal -e DATABASE_PORT=5432 \
+  -e DATABASE_USER=pgadmin -e DATABASE_PASSWORD='***' -e DATABASE_DB=casino \
+  -e APP_AUTH_TOKENSECRET='***' \
+  -e APP_OAUTH2_CLIENTID='***.apps.googleusercontent.com' \
+  -e APP_OAUTH2_CLIENTSECRET='***' \
+  -v "$PWD/certs:/certs:ro" \
+  opencasino-server:1.0.1
+```
+
+Включить TLS:
+
+```bash
+docker run --rm -p 8443:8443 \
+  -e SERVER_PORT=8443 \
+  -e SERVER_SSL_ENABLED=true \
+  -e SERVER_SSL_CERTIFICATE=/certs/cert.pem \
+  -e SERVER_SSL_CERTIFICATE_PRIVATE_KEY=/certs/privkey.pem \
+  -e SERVER_SSL_TRUST_CERTIFICATE=/certs/chain.pem \
+  -v /etc/letsencrypt/live/fndry.ddns.net:/certs:ro \
+  ... \
+  opencasino-server:1.0.1
+```
+
+### Docker Compose
+
+```yaml
+services:
+  opencasino:
+    image: opencasino-server:1.0.1
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.opencasino     # DATABASE_*, APP_AUTH_TOKENSECRET, APP_OAUTH2_*
+    volumes:
+      - ./certs:/certs:ro
+    restart: unless-stopped
+    depends_on:
+      - postgres
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pgadmin
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: casino
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
+```
+
+### GitLab CI/CD
+
+```yaml
+build_image:
+  stage: build
+  image: docker:27
+  services: [docker:27-dind]
+  variables:
+    IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker buildx build --pull --tag "$IMAGE" --tag "$CI_REGISTRY_IMAGE:latest" .
+    - docker push "$IMAGE"
+    - docker push "$CI_REGISTRY_IMAGE:latest"
+```
+
+Секреты (`DATABASE_PASSWORD`, `APP_AUTH_TOKENSECRET`, `APP_OAUTH2_CLIENTSECRET`) храните как **masked + protected** CI/CD variables. Сертификаты — как `File`-type variables, они монтируются в job рабочей директорией.
+
+### Kubernetes
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opencasino-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: opencasino-server }
+  template:
+    metadata:
+      labels: { app: opencasino-server }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: app
+          image: registry.example.com/opencasino-server:1.0.1
+          ports:
+            - { name: http,  containerPort: 8080 }
+            - { name: https, containerPort: 8443 }
+          envFrom:
+            - secretRef: { name: opencasino-db }       # DATABASE_*
+            - secretRef: { name: opencasino-auth }     # APP_AUTH_*, APP_OAUTH2_*
+          env:
+            - { name: SPRING_PROFILES_ACTIVE, value: "prod" }
+          volumeMounts:
+            - { name: certs, mountPath: /certs, readOnly: true }
+          livenessProbe:
+            tcpSocket: { port: http }
+            initialDelaySeconds: 30
+          readinessProbe:
+            tcpSocket: { port: http }
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+      volumes:
+        - name: certs
+          secret:
+            secretName: opencasino-tls           # cert.pem / privkey.pem / chain.pem
+            defaultMode: 0400
+```
+
+`HEALTHCHECK` из Dockerfile в Kubernetes игнорируется — оркестратор использует свои `livenessProbe` / `readinessProbe`. Это ожидаемо.
 
 ---
 

@@ -1,0 +1,260 @@
+# =============================================================================
+# openCasino_server — GitLab CI/CD pipeline
+# -----------------------------------------------------------------------------
+# Stages:
+#   test     — Gradle unit tests; JUnit reports surfaced in the GitLab UI
+#   build    — `./gradlew shadowJar` → fat JAR exposed as a downloadable artifact
+#   package  — Docker image built with Kaniko (rootless, no DinD, no privileged)
+#              and pushed to the GitLab Container Registry
+#   verify   — JAR-level smoke test: launch the fat JAR with dummy secrets in a
+#              JDK container, probe TCP/8080 with curl
+#   deploy   — manual placeholder; real deploy will run via docker compose
+#              once infra is ready
+#
+# Security posture:
+#   - No `services: docker:dind` and no `privileged = true` runners.
+#   - Image build runs entirely in userspace via Kaniko.
+#   - Smoke test runs the JAR directly (no docker-in-docker), so any container
+#     runtime is unnecessary on the runner.
+#   - Single runner type, no tags needed for capability separation.
+#
+# Why tests are NOT executed "inside the container on the built JAR":
+#   The shadow fat JAR contains only main classpath + runtime deps. Test
+#   classes, test-scope deps (junit-platform-launcher, reactor-test, etc.) and
+#   the JUnit launcher itself are missing. So unit tests need the source tree
+#   + Gradle, run in a JDK image. What CAN run "against the built artifact" is
+#   black-box smoke / integration testing — that is the `verify` stage.
+# =============================================================================
+
+stages:
+  - test
+  - build
+  - package
+  - verify
+  - deploy
+
+# Avoid duplicate pipelines for the same commit when an MR is open against
+# the source branch (merge-request pipeline + branch pipeline collision).
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+
+variables:
+  # Gradle: no daemon (one-shot runner), worker count tuned for shared runners.
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2"
+  # Keep Gradle home inside the project so the `cache:` directive can persist it.
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+
+  # Image coordinates. SHORT_SHA tags are immutable per-commit; :latest is
+  # a moving pointer published only from the default branch.
+  IMAGE_SHA:    "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+  IMAGE_LATEST: "$CI_REGISTRY_IMAGE:latest"
+
+# -----------------------------------------------------------------------------
+# Reusable bits
+# -----------------------------------------------------------------------------
+
+# Gradle dependency cache. Keyed on the wrapper version + build script so a
+# version bump invalidates it cleanly.
+.gradle_cache: &gradle_cache
+  key:
+    files:
+      - gradle/wrapper/gradle-wrapper.properties
+      - build.gradle.kts
+  paths:
+    - .gradle/caches
+    - .gradle/wrapper
+
+# Base for any job that runs Gradle. JDK 21 is mandatory (toolchain in
+# build.gradle.kts: JavaLanguageVersion.of(21)).
+.gradle:
+  image: eclipse-temurin:21-jdk-jammy
+  cache: *gradle_cache
+  before_script:
+    - chmod +x ./gradlew
+    - ./gradlew --no-daemon --version
+
+# -----------------------------------------------------------------------------
+# Stage: test
+# -----------------------------------------------------------------------------
+test:
+  extends: .gradle
+  stage: test
+  script:
+    - ./gradlew --no-daemon test
+  artifacts:
+    when: always           # publish reports even on red builds
+    reports:
+      junit: build/test-results/test/**/TEST-*.xml
+    paths:
+      - build/reports/tests/test
+    expire_in: 1 week
+
+# -----------------------------------------------------------------------------
+# Stage: build — fat JAR
+# -----------------------------------------------------------------------------
+# Tests are skipped here (-x test) — they ran in the previous stage.
+# `needs: [test]` enforces order while letting other branches run in parallel.
+build-jar:
+  extends: .gradle
+  stage: build
+  needs: ["test"]
+  script:
+    - ./gradlew --no-daemon shadowJar -x test
+    - ls -la build/libs/
+  artifacts:
+    name: "openCasino_server-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - build/libs/*-all.jar
+      - build/libs/openCasino_server-*.jar
+    expire_in: 1 month
+
+# -----------------------------------------------------------------------------
+# Stage: package — Docker image (Kaniko, rootless)
+# -----------------------------------------------------------------------------
+# Kaniko builds OCI images entirely in userspace — no Docker daemon, no
+# /var/run/docker.sock mount, no `--privileged`. The runner stays unprivileged.
+#
+# We let the project Dockerfile do its own internal `./gradlew shadowJar` —
+# that keeps the image reproducible from sources alone, without depending on
+# CI-specific JAR copying.
+build-image:
+  stage: package
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  needs:
+    - job: test
+      artifacts: false
+    - job: build-jar
+      artifacts: false
+  before_script:
+    # Kaniko reads registry creds from /kaniko/.docker/config.json.
+    # Busybox base64 has no -w flag; tr -d '\n' strips the newline instead.
+    - mkdir -p /kaniko/.docker
+    - |
+      AUTH=$(printf '%s' "$CI_REGISTRY_USER:$CI_REGISTRY_PASSWORD" | base64 | tr -d '\n')
+      cat > /kaniko/.docker/config.json <<EOF
+      {"auths":{"$CI_REGISTRY":{"auth":"$AUTH"}}}
+      EOF
+  script:
+    # Build destination list — Kaniko pushes to every --destination it sees.
+    - DESTS="--destination $IMAGE_SHA"
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        DESTS="$DESTS --destination $IMAGE_LATEST"
+      fi
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        DESTS="$DESTS --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+      fi
+    - >
+      /kaniko/executor
+      --context "$CI_PROJECT_DIR"
+      --dockerfile "$CI_PROJECT_DIR/Dockerfile"
+      --label "org.opencontainers.image.revision=$CI_COMMIT_SHA"
+      --label "org.opencontainers.image.created=$CI_JOB_STARTED_AT"
+      --label "org.opencontainers.image.url=$CI_PROJECT_URL"
+      --label "org.opencontainers.image.source=$CI_PROJECT_URL"
+      --snapshot-mode=redo
+      $DESTS
+
+# -----------------------------------------------------------------------------
+# Stage: verify — JAR-level smoke test
+# -----------------------------------------------------------------------------
+# We do NOT run the built image here (that would need a docker daemon and
+# privileged mode). Instead we launch the fat JAR directly inside a JDK
+# container — same JVM, same code, same env-var contract — and probe TCP/8080
+# with curl. Dummy secrets satisfy bean construction; nothing real (DB / OAuth)
+# is contacted.
+#
+# What this DOES NOT cover (since we skipped `docker run`):
+#   - Dockerfile USER / tini PID-1 / ENTRYPOINT
+#   - File permissions inside the image
+#   - JAVA_TOOL_OPTIONS as set in the image
+# Those are static text in the Dockerfile; if Kaniko built the image, they're
+# correctly baked in. Real image-level smoke can happen post-deploy.
+#
+# allow_failure: true — surface problems without blocking deploy of the image.
+smoke-test:
+  stage: verify
+  extends: .gradle
+  needs:
+    - job: build-jar
+      artifacts: true
+  allow_failure: true
+  variables:
+    DATABASE_HOST: db.invalid
+    DATABASE_PORT: "5432"
+    DATABASE_USER: ci
+    DATABASE_PASSWORD: ci
+    DATABASE_DB: casino
+    APP_AUTH_TOKENSECRET: dummy-32-char-secret-for-ci-test
+    APP_AUTH_TOKENEXPIRATIONMSEC: "864000000"
+    APP_OAUTH2_CLIENTID: dummy.apps.googleusercontent.com
+    APP_OAUTH2_CLIENTSECRET: dummy
+  script:
+    - apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+    - JAR=$(ls build/libs/*-all.jar 2>/dev/null | head -1)
+    - test -n "$JAR" || { echo "no shadow JAR found"; ls -la build/libs/; exit 1; }
+    - echo "Launching $JAR"
+    - java -jar "$JAR" > smoke.log 2>&1 &
+    - APP_PID=$!
+    - |
+      ok=0
+      for i in $(seq 1 30); do
+        sleep 2
+        code=$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/ 2>/dev/null || echo 000)
+        echo "attempt $i: HTTP=$code"
+        case "$code" in 2*|3*|4*) echo "alive"; ok=1; break ;; esac
+      done
+      kill $APP_PID 2>/dev/null || true
+      wait $APP_PID 2>/dev/null || true
+      if [ "$ok" != "1" ]; then
+        echo "--- last 200 lines of smoke.log ---"
+        tail -200 smoke.log
+        exit 1
+      fi
+  artifacts:
+    when: on_failure
+    paths: [smoke.log]
+    expire_in: 1 week
+
+# -----------------------------------------------------------------------------
+# Stage: deploy — placeholder
+# -----------------------------------------------------------------------------
+# Real infra (target host + docker compose project) is not provisioned yet.
+# When it is, replace the `script:` block with something like:
+#
+#   - apk add --no-cache openssh-client
+#   - eval $(ssh-agent -s) && echo "$DEPLOY_SSH_KEY" | ssh-add -
+#   - ssh -o StrictHostKeyChecking=accept-new $DEPLOY_USER@$DEPLOY_HOST
+#       "cd /srv/opencasino && \
+#        docker login $CI_REGISTRY -u $CI_DEPLOY_USER -p $CI_DEPLOY_PASSWORD && \
+#        IMAGE=$IMAGE_SHA docker compose pull && \
+#        IMAGE=$IMAGE_SHA docker compose up -d --remove-orphans"
+#
+# Required CI/CD variables (when wiring infra):
+#   DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (File-type, masked)
+#   CI_DEPLOY_USER, CI_DEPLOY_PASSWORD (Deploy Token with `read_registry`)
+deploy:
+  stage: deploy
+  image: alpine:3
+  needs: ["build-image"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+    - if: '$CI_COMMIT_TAG'
+      when: manual
+  allow_failure: true
+  environment:
+    name: production
+    url: https://opencasino.example
+  script:
+    - echo "[placeholder] deploy stage not wired — infra not ready"
+    - echo "Image to deploy: $IMAGE_SHA"
+    - echo "Target: docker compose on \$DEPLOY_HOST (TBD)"
