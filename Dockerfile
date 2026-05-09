@@ -50,25 +50,21 @@ RUN chmod +x ./gradlew \
  && ./gradlew --no-daemon --version
 
 # Pre-fetch dependencies into the Gradle cache. `|| true` keeps the layer
-# usable when a transient task graph fails — real failures surface in shadowJar.
+# usable when a transient task graph fails — real failures surface in bootJar.
 RUN --mount=type=cache,target=/root/.gradle \
     ./gradlew --no-daemon dependencies -q || true
 
 COPY src ./src
 
-# Build the executable shadow JAR. Tests are skipped here on purpose:
-# CI runs them in a dedicated job; the image build should not duplicate work.
+# Build the Spring Boot executable JAR. Tests are skipped on purpose: CI runs
+# them in a dedicated job; the image build should not duplicate work. We use
+# bootJar (not shadowJar) because Spring Boot's launcher handles nested-JAR
+# classloading and writes the right Main-Class entry without extra config.
 RUN --mount=type=cache,target=/root/.gradle \
-    ./gradlew --no-daemon clean shadowJar -x test
+    ./gradlew --no-daemon clean bootJar -x test
 
 # Normalize the artifact name so the runtime stage doesn't depend on version.
-# Prefer the shadow JAR (`*-all.jar`); fall back to the plain artifact.
-RUN set -eu; \
-    if ls build/libs/*-all.jar >/dev/null 2>&1; then \
-        cp build/libs/*-all.jar /workspace/app.jar; \
-    else \
-        cp build/libs/openCasino_server-*.jar /workspace/app.jar; \
-    fi
+RUN cp build/libs/openCasino_server-*.jar /workspace/app.jar
 
 
 # ============================================================================

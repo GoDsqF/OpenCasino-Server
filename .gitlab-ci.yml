@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Stages:
 #   test     — Gradle unit tests; JUnit reports surfaced in the GitLab UI
-#   build    — `./gradlew shadowJar` → fat JAR exposed as a downloadable artifact
+#   build    — `./gradlew bootJar` → executable Spring Boot JAR exposed as artifact
 #   package  — Docker image built with Kaniko (rootless, no DinD, no privileged)
 #              and pushed to the GitLab Container Registry
 #   verify   — JAR-level smoke test: launch the fat JAR with dummy secrets in a
@@ -104,7 +104,12 @@ build-jar:
   stage: build
   needs: ["test"]
   script:
-    - ./gradlew --no-daemon shadowJar -x test
+    # bootJar (Spring Boot's task) — produces an executable JAR with
+    # Main-Class=org.springframework.boot.loader.launch.JarLauncher and the
+    # right BOOT-INF layout. Output: build/libs/openCasino_server-<ver>.jar.
+    # We deliberately don't use shadowJar — without extra config it lacks a
+    # Main-Class entry and doesn't replicate Spring Boot's nested-JAR loader.
+    - ./gradlew --no-daemon bootJar -x test
     - ls -la build/libs/
     # Extract project version from build.gradle.kts so build-image can use it
     # as an image tag without re-running Gradle. The line in the source is
@@ -114,7 +119,6 @@ build-jar:
   artifacts:
     name: "openCasino_server-${CI_COMMIT_SHORT_SHA}"
     paths:
-      - build/libs/*-all.jar
       - build/libs/openCasino_server-*.jar
     # dotenv exposes APP_VERSION as a regular CI variable in dependent jobs
     reports:
@@ -127,7 +131,7 @@ build-jar:
 # Kaniko builds OCI images entirely in userspace — no Docker daemon, no
 # /var/run/docker.sock mount, no `--privileged`. The runner stays unprivileged.
 #
-# We let the project Dockerfile do its own internal `./gradlew shadowJar` —
+# We let the project Dockerfile do its own internal `./gradlew bootJar` —
 # that keeps the image reproducible from sources alone, without depending on
 # CI-specific JAR copying.
 build-image:
@@ -214,7 +218,7 @@ smoke-test:
     APP_OAUTH2_CLIENTSECRET: dummy
   script:
     - apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
-    - JAR=$(ls build/libs/*-all.jar 2>/dev/null | head -1)
+    - JAR=$(ls build/libs/openCasino_server-*.jar 2>/dev/null | head -1)
     - test -n "$JAR" || { echo "no shadow JAR found"; ls -la build/libs/; exit 1; }
     - echo "Launching $JAR"
     - java -jar "$JAR" > smoke.log 2>&1 &
