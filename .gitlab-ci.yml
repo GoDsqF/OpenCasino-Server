@@ -19,7 +19,7 @@
 #   - Single runner type, no tags needed for capability separation.
 #
 # Why tests are NOT executed "inside the container on the built JAR":
-#   The shadow fat JAR contains only main classpath + runtime deps. Teste
+#   The Spring Boot bootJar contains only main classpath + runtime deps. Test
 #   classes, test-scope deps (junit-platform-launcher, reactor-test, etc.) and
 #   the JUnit launcher itself are missing. So unit tests need the source tree
 #   + Gradle, run in a JDK image. What CAN run "against the built artifact" is
@@ -107,8 +107,6 @@ build-jar:
     # bootJar (Spring Boot's task) — produces an executable JAR with
     # Main-Class=org.springframework.boot.loader.launch.JarLauncher and the
     # right BOOT-INF layout. Output: build/libs/openCasino_server-<ver>.jar.
-    # We deliberately don't use shadowJar — without extra config it lacks a
-    # Main-Class entry and doesn't replicate Spring Boot's nested-JAR loader.
     - ./gradlew --no-daemon bootJar -x test
     - ls -la build/libs/
     # Extract project version from build.gradle.kts so build-image can use it
@@ -186,7 +184,7 @@ build-image:
 # Stage: verify — JAR-level smoke test
 # -----------------------------------------------------------------------------
 # We do NOT run the built image here (that would need a docker daemon and
-# privileged mode). Instead we launch the fat JAR directly inside a JDK
+# privileged mode). Instead we launch the boot JAR directly inside a JDK
 # container — same JVM, same code, same env-var contract — and probe TCP/8080
 # with curl. Dummy secrets satisfy bean construction; nothing real (DB / OAuth)
 # is contacted.
@@ -219,7 +217,7 @@ smoke-test:
   script:
     - apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
     - JAR=$(ls build/libs/openCasino_server-*.jar 2>/dev/null | head -1)
-    - test -n "$JAR" || { echo "no shadow JAR found"; ls -la build/libs/; exit 1; }
+    - test -n "$JAR" || { echo "no boot JAR found"; ls -la build/libs/; exit 1; }
     - echo "Launching $JAR"
     - java -jar "$JAR" > smoke.log 2>&1 &
     - APP_PID=$!

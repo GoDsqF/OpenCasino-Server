@@ -1,0 +1,6 @@
+server.ssl.enabled=${SSL_ENABLED:false}
+server.ssl.certificate=${SSL_CERTIFICATE:}
+server.ssl.certificate-private-key=${SSL_CERTIFICATE_PRIVATE_KEY:}
+server.ssl.trust-certificate=${SSL_TRUST_CERTIFICATE:}
+server.ssl.protocol=${SSL_PROTOCOL:TLS}
+server.ssl.enabled-protocols=${SSL_ENABLED_PROTOCOLS:TLSv1.3}
