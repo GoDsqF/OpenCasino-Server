@@ -16,7 +16,7 @@
 # ----------------------------------------------------------------------------
 # Build-time arguments. Override with: --build-arg NAME=value
 # ----------------------------------------------------------------------------
-# JDK_IMAGE   — image used to compile + assemble the shadow JAR
+# JDK_IMAGE   — image used to compile + assemble the executable Spring Boot JAR
 # JRE_IMAGE   — slim runtime base (no compiler, smaller surface)
 # APP_USER    — non-root username created in the runtime image
 # APP_UID/GID — numeric IDs; pinned so K8s `runAsUser` / `fsGroup` line up
@@ -57,9 +57,7 @@ RUN --mount=type=cache,target=/root/.gradle \
 COPY src ./src
 
 # Build the Spring Boot executable JAR. Tests are skipped on purpose: CI runs
-# them in a dedicated job; the image build should not duplicate work. We use
-# bootJar (not shadowJar) because Spring Boot's launcher handles nested-JAR
-# classloading and writes the right Main-Class entry without extra config.
+# them in a dedicated job; the image build should not duplicate work.
 RUN --mount=type=cache,target=/root/.gradle \
     ./gradlew --no-daemon clean bootJar -x test
 

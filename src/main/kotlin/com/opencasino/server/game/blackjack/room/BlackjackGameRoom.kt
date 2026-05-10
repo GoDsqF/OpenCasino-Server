@@ -272,23 +272,23 @@ class BlackjackGameRoom(
     }
 
     fun onDealerTurn(): BlackjackCondition? {
-        var result: BlackjackCondition? = null
+        var result: BlackjackCondition?
         dealerHand.openCards()
         val dealerSum = calculateScore(dealerHand)
         val playerSum = calculateScore(map.getPlayers().first().playerDeck)
 
-        if (dealerSum < 17) {
+        result = if (dealerSum < 17) {
             deck.dealCard(dealerHand)
             onDealerTurn()
             return null
         } else if (dealerSum > 21) {
-            result = BlackjackCondition.PlayerWin
+            BlackjackCondition.PlayerWin
         } else if (dealerSum < playerSum) {
-            result = BlackjackCondition.PlayerWin
+            BlackjackCondition.PlayerWin
         } else if (dealerSum > playerSum) {
-            result = BlackjackCondition.DealerWin
+            BlackjackCondition.DealerWin
         } else {
-            result = BlackjackCondition.Draw
+            BlackjackCondition.Draw
         }
 
         condition = result
