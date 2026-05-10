@@ -14,6 +14,9 @@ data class Players(
     @Column("id")
     val id: String = UUID.randomUUID().toString(),
 
+    @Column("user_id")
+    val userId: UUID,
+
     @Column("username")
     val username: String,
 
@@ -29,9 +32,6 @@ data class Players(
     @Column("email")
     val email: String?,
 
-    @Column("user_hash")
-    val userHash: String? = null,
-
     @Column("created_at")
     val createdAt: Long =
         ZonedDateTime.now(ZoneId.of("Europe/Moscow")).toEpochSecond(),
@@ -43,12 +43,12 @@ data class Players(
     override fun toString(): String {
         return "Player {" +
                 "id=$id" +
+                ", userId=$userId" +
                 ", username='$username'" +
                 ", firstName='$firstName'" +
                 ", lastName='$lastName'" +
                 ", balance=$balance" +
                 ", email='$email'" +
-                ", userHash='$userHash'" +
                 ", createdAt=$createdAt" +
                 ", lastModified=$lastModified" +
                 "}"
