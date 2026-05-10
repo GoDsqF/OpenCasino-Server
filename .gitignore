@@ -45,5 +45,6 @@ out/
 /src/main/resources/ssl.properties
 
 /AGENTS.md
+/CLAUDE.md
 /src/main/kotlin/com/opencasino/server/game/poker/holdem/room/PokerGameRoom.kt.old
 /repopackpy-output.txt
