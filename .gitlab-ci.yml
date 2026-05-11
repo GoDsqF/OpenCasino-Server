@@ -33,16 +33,13 @@ stages:
   - verify
   - deploy
 
-# Avoid duplicate pipelines for the same commit when an MR is open against
-# the source branch (merge-request pipeline + branch pipeline collision).
+# Run pipelines only for merge requests (from any branch) and for the default
+# branch itself. Plain pushes to feature branches without an open MR are
+# skipped, and so are tag pipelines.
 workflow:
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
-    - if: '$CI_COMMIT_REF_PROTECTED'
-    - if: '$CI_COMMIT_TAG'
-    - if: '$CI_COMMIT_BRANCH'
-      when: never
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
 
 variables:
   # Gradle: no daemon (one-shot runner), worker count tuned for shared runners.
@@ -50,9 +47,8 @@ variables:
   # Keep Gradle home inside the project so the `cache:` directive can persist it.
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
 
-  # Image coordinates. SHORT_SHA tags are immutable per-commit; :latest is
-  # a moving pointer published only from the default branch.
-  IMAGE_SHA:    "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+  # Image coordinates. :latest is a moving pointer; the second tag mirrors the
+  # most recent git tag at build time. Both are published only from main.
   IMAGE_LATEST: "$CI_REGISTRY_IMAGE:latest"
 
 # -----------------------------------------------------------------------------
@@ -133,16 +129,60 @@ build-jar:
 # We let the project Dockerfile do its own internal `./gradlew bootJar` —
 # that keeps the image reproducible from sources alone, without depending on
 # CI-specific JAR copying.
+# Create a git tag `v<APP_VERSION>` (from build.gradle.kts) on the current
+# commit, if it does not exist yet. Uses the Tags API with CI_JOB_TOKEN; if
+# `v*` is configured as a protected tag, swap to a project access token via a
+# masked $RELEASE_TOKEN variable.
+git-tag:
+  stage: package
+  image: alpine:3
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+  needs:
+    - job: build-jar
+      artifacts: true   # APP_VERSION dotenv
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - |
+      [ -n "$APP_VERSION" ] || { echo "APP_VERSION missing from build-jar dotenv"; exit 1; }
+      TAG="v$APP_VERSION"
+      CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
+        --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/tags/$TAG")
+      case "$CODE" in
+        200) echo "Tag $TAG already exists at this version — skipping creation" ;;
+        404)
+          echo "Creating tag $TAG at $CI_COMMIT_SHA"
+          curl -sS --fail-with-body -X POST \
+            --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+            --data-urlencode "tag_name=$TAG" \
+            --data-urlencode "ref=$CI_COMMIT_SHA" \
+            "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/tags" >/dev/null
+          ;;
+        *) echo "Unexpected HTTP $CODE while probing tag $TAG"; exit 1 ;;
+      esac
+      echo "RELEASE_TAG=$TAG" > release.env
+  artifacts:
+    reports:
+      dotenv: release.env
+
 build-image:
   stage: package
   image:
     name: gcr.io/kaniko-project/executor:v1.23.2-debug
     entrypoint: [""]
+  # Push/merge into main only — feature branches and MR pipelines stop after
+  # test/build/verify and never produce an image.
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
   needs:
     - job: test
       artifacts: false
     - job: build-jar
-      artifacts: true   # need the dotenv report to import APP_VERSION
+      artifacts: true
+    - job: git-tag
+      artifacts: true   # RELEASE_TAG dotenv
   before_script:
     # Kaniko reads registry creds from /kaniko/.docker/config.json.
     # Busybox base64 has no -w flag; tr -d '\n' strips the newline instead.
@@ -153,22 +193,16 @@ build-image:
       {"auths":{"$CI_REGISTRY":{"auth":"$AUTH"}}}
       EOF
   script:
-    # Build destination list — Kaniko pushes to every --destination it sees.
-    #   :<short_sha> — always; immutable per-commit identifier
-    #   :latest     — only on default branch; movable
-    #   :<version>  — only on default branch; movable, follows build.gradle.kts
-    #   :<git_tag>  — only when commit has a git tag; immutable per release
-    - DESTS="--destination $IMAGE_SHA"
+    # Tagging:
+    #   :latest         — always
+    #   :v<APP_VERSION> — mirrors the git tag created/confirmed by git-tag
+    - DESTS="--destination $IMAGE_LATEST"
     - |
-      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
-        DESTS="$DESTS --destination $IMAGE_LATEST"
-        if [ -n "$APP_VERSION" ]; then
-          DESTS="$DESTS --destination $CI_REGISTRY_IMAGE:$APP_VERSION"
-        fi
-      fi
-    - |
-      if [ -n "$CI_COMMIT_TAG" ]; then
-        DESTS="$DESTS --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+      if [ -n "$RELEASE_TAG" ]; then
+        echo "Tagging image with $RELEASE_TAG"
+        DESTS="$DESTS --destination $CI_REGISTRY_IMAGE:$RELEASE_TAG"
+      else
+        echo "RELEASE_TAG missing; publishing :latest only"
       fi
     - >
       /kaniko/executor
@@ -180,11 +214,6 @@ build-image:
       --label "org.opencontainers.image.source=$CI_PROJECT_URL"
       --snapshot-mode=redo
       $DESTS
-  rules:
-    - if: $CI_COMMIT_BRANCH
-      when: never
-    - if: '$CI_COMMIT_REF_PROTECTED'
-    - if: '$CI_COMMIT_TAG'
 
 # -----------------------------------------------------------------------------
 # Stage: verify — JAR-level smoke test
