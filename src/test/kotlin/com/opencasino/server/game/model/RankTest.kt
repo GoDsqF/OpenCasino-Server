@@ -10,7 +10,7 @@ class RankTest {
     fun `forCode returns correct rank for valid codes`() {
         assertEquals(Rank.C2, Rank.forCode("2"))
         assertEquals(Rank.C3, Rank.forCode("3"))
-        assertEquals(Rank.C10, Rank.forCode("1"))
+        assertEquals(Rank.C10, Rank.forCode("T"))
         assertEquals(Rank.CJ, Rank.forCode("J"))
         assertEquals(Rank.CQ, Rank.forCode("Q"))
         assertEquals(Rank.CK, Rank.forCode("K"))

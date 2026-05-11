@@ -65,7 +65,8 @@ class PokerPlayer(
 
                 }
                 else -> {
-                    throw IllegalArgumentException("Cannot use None for action in poker")
+                    madeDecision = false
+                    gameRoom.sendFailure(userSession, "Decision ${lastDecision.name} is not supported")
                 }
             }
         }

@@ -188,27 +188,27 @@ class BlackjackPlayerTest {
         }
 
         @Test
-        fun `update with DOUBLE throws TODO`() {
+        fun `update with DOUBLE sends failure and clears decision`() {
             player.updateState(BlackjackDecision.DOUBLE)
-            assertThrows(NotImplementedError::class.java) {
-                player.update()
-            }
+            player.update()
+            verify(mockRoom).sendFailure(mockSession, "Decision DOUBLE is not supported")
+            assertFalse(player.madeDecision)
         }
 
         @Test
-        fun `update with SPLIT throws TODO`() {
+        fun `update with SPLIT sends failure and clears decision`() {
             player.updateState(BlackjackDecision.SPLIT)
-            assertThrows(NotImplementedError::class.java) {
-                player.update()
-            }
+            player.update()
+            verify(mockRoom).sendFailure(mockSession, "Decision SPLIT is not supported")
+            assertFalse(player.madeDecision)
         }
 
         @Test
-        fun `update with NONE throws TODO`() {
+        fun `update with NONE sends failure and clears decision`() {
             player.updateState(BlackjackDecision.NONE)
-            assertThrows(NotImplementedError::class.java) {
-                player.update()
-            }
+            player.update()
+            verify(mockRoom).sendFailure(mockSession, "Decision NONE is not supported")
+            assertFalse(player.madeDecision)
         }
 
         @Test
