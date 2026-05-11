@@ -39,14 +39,11 @@ open class BlackjackPlayer(
                     madeDecision = false
                     gameRoom.onPlayerTurn()
                 }
-                BlackjackDecision.DOUBLE -> {
-                    TODO("this code is gay")
-                }
-                BlackjackDecision.SPLIT -> {
-                    TODO("this code is even more gay")
-                }
+                BlackjackDecision.DOUBLE,
+                BlackjackDecision.SPLIT,
                 BlackjackDecision.NONE -> {
-                    TODO("IDK why is this even exist")
+                    madeDecision = false
+                    gameRoom.sendFailure(userSession, "Decision ${lastDecision.name} is not supported")
                 }
             }
         }

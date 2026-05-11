@@ -2,6 +2,7 @@ package com.opencasino.server.game.poker.holdem.room
 
 import com.opencasino.server.config.MESSAGE
 import com.opencasino.server.game.room.GameRoom
+import com.opencasino.server.network.pack.shared.GameMessagePack
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.RoomService
@@ -68,7 +69,7 @@ abstract class AbstractPokerGameRoom protected constructor(
     }
 
     override fun sendBroadcast(type: MessageType, message: String) {
-        webSocketSessionService.sendBroadcast(type, message)
+        sendBroadcast(Message(MESSAGE, GameMessagePack(type.type, message)))
     }
 
     override fun sendBroadcast(userSessions: Collection<PlayerSession>, message: Any) {

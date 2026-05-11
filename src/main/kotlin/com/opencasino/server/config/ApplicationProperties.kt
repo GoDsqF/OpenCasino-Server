@@ -65,6 +65,4 @@ data class ApplicationProperties(
     val blackjackRoom: BlackjackRoomProperties = BlackjackRoomProperties(),
     val pokerRoom: PokerRoomProperties = PokerRoomProperties(),
     val game: GameProperties = GameProperties(),
-    //val auth: Auth = Auth(),
-    val oauth2: OAuth2Properties = OAuth2Config().oauth2Configuration(),
 )

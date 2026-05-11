@@ -45,7 +45,7 @@ class PokerRoomServiceImpl(
     }
 
     private val gameRoomMap: MutableMap<UUID, PokerGameRoom> = mutableMapOf()
-    private val sessionQueue: Map<UUID, Queue<WaitingPlayerSession>> = mapOf()
+    private val sessionQueue: MutableMap<UUID, Queue<WaitingPlayerSession>> = mutableMapOf()
     override fun getRoomSessionIds(key: UUID?): Collection<String> = getRoomByKey(key).map { room ->
         room.sessions().map { it.id }
     }.orElse(emptyList())
@@ -62,7 +62,8 @@ class PokerRoomServiceImpl(
                 val gameTable = PokerMap()
                 val room = createRoom(gameTable)
 
-                sessionQueue.plus(room.key() to WaitingPlayerSession(userSession, initialData))
+                val queue: Queue<WaitingPlayerSession> = ArrayDeque()
+                sessionQueue[room.key()] = queue
 
                 val ps: PlayerSession = userSession
 
@@ -76,27 +77,50 @@ class PokerRoomServiceImpl(
                 ps.roomKey = room.key()
                 ps.player = player
                 ps.serviceId = "Poker"
+                queue.add(WaitingPlayerSession(ps, initialData))
+                updateSettings(userSession, initialData.settings)
 
                 userRepository.findPlayer(initialData.playerUUID)
                     .map { it.balance }
                     .defaultIfEmpty(0.00)
                     .doOnNext { player.balance = it }
-                    .doOnSuccess {
-                        launchRoom(room, listOf(ps))
-                        updateSettings(userSession, initialData.settings)
-                    }
+                    .doOnSuccess { tryLaunchWaitingRoom(room) }
                     .subscribe()
             }
             is GameRoomJoinEvent -> {
                 webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))
                 val room = getRoomByKey(UUID.fromString(initialData.reconnectKey)).get()
-                sessionQueue.plus(room.key() to WaitingPlayerSession(userSession, initialData))
-                joinRoom(userSession, initialData)
+                val queue = sessionQueue[room.key()]
+                if (queue != null) {
+                    val gameTable = room.map
+                    val player: PokerPlayer = playerFactory.create(gameTable.nextPlayerId(), initialData, room, userSession)
+                    userSession.roomKey = room.key()
+                    userSession.player = player
+                    userSession.serviceId = "Poker"
+                    queue.add(WaitingPlayerSession(userSession, initialData))
+
+                    userRepository.findPlayer(initialData.playerUUID)
+                        .map { it.balance }
+                        .defaultIfEmpty(0.00)
+                        .doOnNext { player.balance = it }
+                        .doOnSuccess { tryLaunchWaitingRoom(room) }
+                        .subscribe()
+                } else {
+                    joinRoom(userSession, initialData)
+                }
             }
             else -> {
                 webSocketSessionService.send(userSession, Message(FAILURE))
             }
         }
+    }
+
+    private fun tryLaunchWaitingRoom(room: PokerGameRoom) {
+        val queue = sessionQueue[room.key()] ?: return
+        if (queue.size < applicationProperties.pokerRoom.minPlayers) return
+        val sessions = queue.map { it.playerSession }
+        sessionQueue.remove(room.key())
+        launchRoom(room, sessions)
     }
 
     /*override fun addPlayerToWait(userSession: PlayerSession, initialData: GameRoomJoinEvent) {
@@ -175,7 +199,7 @@ class PokerRoomServiceImpl(
     }
 
     fun onJoinedPlayer(room: GameRoom, userSession: PlayerSession) {
-        room.sessions().plus(userSession)
+        room.onRoomCreated(listOf(userSession))
     }
 
     override fun onGameEnd(gameRoom: GameRoom) {

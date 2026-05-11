@@ -74,4 +74,9 @@ class MessageTypesTest {
     fun `success and failure codes are different for bet`() {
         assertNotEquals(BET, BET_FAILURE)
     }
+
+    @Test
+    fun `AUTH_EVENT and GAME_LIST_UPDATE have distinct codes`() {
+        assertNotEquals(AUTH_EVENT, GAME_LIST_UPDATE)
+    }
 }

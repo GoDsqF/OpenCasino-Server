@@ -25,7 +25,7 @@ class PokerHandTest {
 
         @Test
         fun `recognizes royal straight flush`() {
-            val hand = PokerHand.fromString("1S JS QS KS AS")
+            val hand = PokerHand.fromString("TS JS QS KS AS")
             assertTrue(hand.isStraightFlush)
             assertTrue(hand.isFlush)
             assertTrue(hand.isStraight)
@@ -224,7 +224,7 @@ class PokerHandTest {
 
         @Test
         fun `higher straight wins`() {
-            val highStraight = PokerHand.fromString("6H 7S 8D 9C 1H")
+            val highStraight = PokerHand.fromString("6H 7S 8D 9C TH")
             val lowStraight = PokerHand.fromString("4H 5S 6D 7C 8S")
             assertEquals(PokerHand.WIN, highStraight.compareTo(lowStraight))
             assertEquals(PokerHand.LOSS, lowStraight.compareTo(highStraight))
@@ -254,7 +254,7 @@ class PokerHandTest {
 
         @Test
         fun `higher straight flush wins`() {
-            val high = PokerHand.fromString("7H 8H 9H 1H JH")
+            val high = PokerHand.fromString("7H 8H 9H TH JH")
             val low = PokerHand.fromString("5S 6S 7S 8S 9S")
             assertEquals(PokerHand.WIN, high.compareTo(low))
             assertEquals(PokerHand.LOSS, low.compareTo(high))

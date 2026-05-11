@@ -128,12 +128,12 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
             if (service != null) {
                 when (service) {
                     "Blackjack" -> {
-                        val room = blackjackRoomService.getRoomByKey(playerSession.roomKey!!) as BlackjackGameRoom
-                        room.onDisconnect(playerSession)
+                        (blackjackRoomService.getRoomByKey(playerSession.roomKey!!) as Optional<*>)
+                            .ifPresent { (it as BlackjackGameRoom).onDisconnect(playerSession) }
                     }
                     "Poker" -> {
-                        val room = blackjackRoomService.getRoomByKey(playerSession.roomKey!!) as PokerGameRoom
-                        room.onDisconnect(playerSession)
+                        (pokerRoomService.getRoomByKey(playerSession.roomKey!!) as Optional<*>)
+                            .ifPresent { (it as PokerGameRoom).onDisconnect(playerSession) }
                     }
                 }
             }
@@ -149,6 +149,6 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
     @Autowired
     @Qualifier("pokerRoomServiceImpl")
     fun setPokerGameRoomManagementService( @Lazy roomService: RoomService) {
-        this.blackjackRoomService = roomService
+        this.pokerRoomService = roomService
     }
 }

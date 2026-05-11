@@ -25,7 +25,7 @@ const val GAME_ROOM_CLOSE = 21
 
 const val FAILURE = 40
 
-const val GAME_LIST_UPDATE = 50
+const val GAME_LIST_UPDATE = 51
 
 const val UPDATE = 100
 const val INFO = 101
