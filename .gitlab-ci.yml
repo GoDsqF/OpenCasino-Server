@@ -37,12 +37,12 @@ stages:
 # the source branch (merge-request pipeline + branch pipeline collision).
 workflow:
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_COMMIT_BRANCH == "main"'
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
     - if: '$CI_COMMIT_REF_PROTECTED'
     - if: '$CI_COMMIT_TAG'
-      when: never
     - if: '$CI_COMMIT_BRANCH'
+      when: never
 
 variables:
   # Gradle: no daemon (one-shot runner), worker count tuned for shared runners.
@@ -180,6 +180,11 @@ build-image:
       --label "org.opencontainers.image.source=$CI_PROJECT_URL"
       --snapshot-mode=redo
       $DESTS
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      when: never
+    - if: '$CI_COMMIT_REF_PROTECTED'
+    - if: '$CI_COMMIT_TAG'
 
 # -----------------------------------------------------------------------------
 # Stage: verify — JAR-level smoke test
