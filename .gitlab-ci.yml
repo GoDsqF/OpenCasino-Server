@@ -130,9 +130,10 @@ build-jar:
 # that keeps the image reproducible from sources alone, without depending on
 # CI-specific JAR copying.
 # Create a git tag `v<APP_VERSION>` (from build.gradle.kts) on the current
-# commit, if it does not exist yet. Uses the Tags API with CI_JOB_TOKEN; if
-# `v*` is configured as a protected tag, swap to a project access token via a
-# masked $RELEASE_TOKEN variable.
+# commit, if it does not exist yet. The Tags API does NOT accept CI_JOB_TOKEN
+# (returns 403 regardless of protected-tag config), so this requires a
+# project/group access token with `api` scope, passed in as a masked CI/CD
+# variable named `RELEASE_TOKEN`.
 git-tag:
   stage: package
   image: alpine:3
@@ -146,21 +147,36 @@ git-tag:
   script:
     - |
       [ -n "$APP_VERSION" ] || { echo "APP_VERSION missing from build-jar dotenv"; exit 1; }
+      [ -n "$RELEASE_TOKEN" ] || { echo "RELEASE_TOKEN CI variable is not set"; exit 1; }
       TAG="v$APP_VERSION"
-      CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
-        --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+      # Probe — body to stdout, status code to a separate stream
+      RESP=$(mktemp)
+      CODE=$(curl -sS -o "$RESP" -w '%{http_code}' \
+        --header "PRIVATE-TOKEN: $RELEASE_TOKEN" \
         "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/tags/$TAG")
+      echo "GET tags/$TAG → HTTP $CODE"
       case "$CODE" in
         200) echo "Tag $TAG already exists at this version — skipping creation" ;;
         404)
           echo "Creating tag $TAG at $CI_COMMIT_SHA"
-          curl -sS --fail-with-body -X POST \
-            --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+          CODE=$(curl -sS -o "$RESP" -w '%{http_code}' -X POST \
+            --header "PRIVATE-TOKEN: $RELEASE_TOKEN" \
             --data-urlencode "tag_name=$TAG" \
             --data-urlencode "ref=$CI_COMMIT_SHA" \
-            "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/tags" >/dev/null
+            "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/tags")
+          echo "POST tags → HTTP $CODE"
+          echo "---- response body ----"
+          cat "$RESP"; echo
+          echo "-----------------------"
+          case "$CODE" in 2*) ;; *) echo "Tag creation failed"; exit 1 ;; esac
           ;;
-        *) echo "Unexpected HTTP $CODE while probing tag $TAG"; exit 1 ;;
+        *)
+          echo "Unexpected HTTP $CODE while probing tag $TAG"
+          echo "---- response body ----"
+          cat "$RESP"; echo
+          echo "-----------------------"
+          exit 1
+          ;;
       esac
       echo "RELEASE_TAG=$TAG" > release.env
   artifacts:
@@ -287,8 +303,8 @@ smoke-test:
 #   - ssh -o StrictHostKeyChecking=accept-new $DEPLOY_USER@$DEPLOY_HOST
 #       "cd /srv/opencasino && \
 #        docker login $CI_REGISTRY -u $CI_DEPLOY_USER -p $CI_DEPLOY_PASSWORD && \
-#        IMAGE=$IMAGE_SHA docker compose pull && \
-#        IMAGE=$IMAGE_SHA docker compose up -d --remove-orphans"
+#        IMAGE=$IMAGE_LATEST docker compose pull && \
+#        IMAGE=$IMAGE_LATEST docker compose up -d --remove-orphans"
 #
 # Required CI/CD variables (when wiring infra):
 #   DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (File-type, masked)
@@ -307,10 +323,10 @@ deploy:
     name: production
     url: https://opencasino.example
   # Lines are single-quoted because plain YAML scalars interpret `: ` as a
-  # mapping separator — leaving `echo "Image to deploy: $IMAGE_SHA"` as a
+  # mapping separator — leaving `echo "Image to deploy: $IMAGE_LATEST"` as a
   # bare entry would parse to {key: value} and trip GitLab's "script must be
   # a string" validator. Single quotes keep them as plain strings.
   script:
     - 'echo "[placeholder] deploy stage not wired — infra not ready"'
-    - 'echo "Image to deploy: $IMAGE_SHA"'
+    - 'echo "Image to deploy: $IMAGE_LATEST"'
     - 'echo "Target: docker compose on host TBD (see DEPLOY_HOST in commented block above)"'
