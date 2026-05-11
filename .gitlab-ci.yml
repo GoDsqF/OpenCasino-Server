@@ -149,34 +149,20 @@ git-tag:
       [ -n "$APP_VERSION" ] || { echo "APP_VERSION missing from build-jar dotenv"; exit 1; }
       [ -n "$RELEASE_TOKEN" ] || { echo "RELEASE_TOKEN CI variable is not set"; exit 1; }
       TAG="v$APP_VERSION"
-      # Probe — body to stdout, status code to a separate stream
-      RESP=$(mktemp)
-      CODE=$(curl -sS -o "$RESP" -w '%{http_code}' \
+      CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
         --header "PRIVATE-TOKEN: $RELEASE_TOKEN" \
         "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/tags/$TAG")
-      echo "GET tags/$TAG → HTTP $CODE"
       case "$CODE" in
-        200) echo "Tag $TAG already exists at this version — skipping creation" ;;
+        200) echo "Tag $TAG already exists — skipping creation" ;;
         404)
           echo "Creating tag $TAG at $CI_COMMIT_SHA"
-          CODE=$(curl -sS -o "$RESP" -w '%{http_code}' -X POST \
+          curl -sS --fail-with-body -X POST \
             --header "PRIVATE-TOKEN: $RELEASE_TOKEN" \
             --data-urlencode "tag_name=$TAG" \
             --data-urlencode "ref=$CI_COMMIT_SHA" \
-            "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/tags")
-          echo "POST tags → HTTP $CODE"
-          echo "---- response body ----"
-          cat "$RESP"; echo
-          echo "-----------------------"
-          case "$CODE" in 2*) ;; *) echo "Tag creation failed"; exit 1 ;; esac
+            "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/tags" >/dev/null
           ;;
-        *)
-          echo "Unexpected HTTP $CODE while probing tag $TAG"
-          echo "---- response body ----"
-          cat "$RESP"; echo
-          echo "-----------------------"
-          exit 1
-          ;;
+        *) echo "Unexpected HTTP $CODE while probing tag $TAG"; exit 1 ;;
       esac
       echo "RELEASE_TAG=$TAG" > release.env
   artifacts:
