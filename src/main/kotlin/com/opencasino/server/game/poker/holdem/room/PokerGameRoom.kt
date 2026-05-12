@@ -74,8 +74,8 @@ open class PokerGameRoom(
         }
     }
 
-    //stores last update to prevent spam on clients
-    private lateinit var lastUpdate: Message
+    //stores last update per player to prevent spam without cross-player aliasing
+    private val lastUpdateBySession: MutableMap<String, Message> = HashMap()
     //game status control
     private val started = AtomicBoolean(false)
     private val gameStarted = AtomicBoolean(false)
@@ -247,21 +247,11 @@ open class PokerGameRoom(
         if (!roundEnd.get()) {
             for (currentPlayer in map.getPlayers()) {
                 val newUpdate = collectUpdate(currentPlayer)
-                if (this::lastUpdate.isInitialized) {
-                    if (lastUpdate.data != newUpdate.data) {
-                        send(
-                            currentPlayer.userSession,
-                            newUpdate
-                        )
-                        lastUpdate = newUpdate
-                    }
-                }
-                else {
-                    lastUpdate = newUpdate
-                    send(
-                        currentPlayer.userSession,
-                        newUpdate
-                    )
+                val sessionId = currentPlayer.userSession.id
+                val previous = lastUpdateBySession[sessionId]
+                if (previous == null || previous.data != newUpdate.data) {
+                    send(currentPlayer.userSession, newUpdate)
+                    lastUpdateBySession[sessionId] = newUpdate
                 }
             }
         }
@@ -326,8 +316,22 @@ open class PokerGameRoom(
     fun onBuyIn(userSession: PlayerSession, event: BetEvent) {
         if (gameStarted.get()) return
         val player = userSession.player as PokerPlayer
-        player.bet = event.bet
-        player.balance -= event.bet
+        val buyIn = event.bet
+        if (buyIn <= 0.0) {
+            sendFailure(userSession, "Buy-in must be positive")
+            return
+        }
+        if (buyIn < roomProperties.buyIn) {
+            sendFailure(userSession, "Buy-in below table minimum ${roomProperties.buyIn}")
+            return
+        }
+        if (buyIn > player.balance) {
+            sendFailure(userSession, "Insufficient balance")
+            return
+        }
+        player.bet = buyIn
+        player.balance -= buyIn
+        player.stack = buyIn
         player.boughtIn = true
         map.getPlayers().forEach {
             if (!it.boughtIn) return

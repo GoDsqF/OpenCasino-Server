@@ -52,8 +52,13 @@ abstract class AbstractPokerGameRoom protected constructor(
     override fun schedulePeriodically(runnable: Runnable, initDelay: Long, loopRate: Long)=
         roomFutureList.add(schedulerService.schedulePeriodically(runnable,initDelay, loopRate,TimeUnit.MILLISECONDS))
 
-    override fun onDisconnect(userSession: PlayerSession): PlayerSession =
-        sessions.remove(userSession.id)!!
+    override fun onDisconnect(userSession: PlayerSession): PlayerSession {
+        val removed = sessions.remove(userSession.id) ?: return userSession
+        if (sessions.isEmpty()) {
+            roomService.onGameEnd(this)
+        }
+        return removed
+    }
 
     override fun send(userSession: PlayerSession, message: Any) =
         webSocketSessionService.send(userSession, message)
