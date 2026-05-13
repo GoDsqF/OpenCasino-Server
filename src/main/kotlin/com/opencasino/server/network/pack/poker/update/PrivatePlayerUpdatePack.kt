@@ -7,5 +7,8 @@ import com.opencasino.server.service.shared.PokerDecision
 data class PrivatePlayerUpdatePack(
     val id: Long,
     val position: Int,
-    val lastDecision: PokerDecision
+    val stack: Double,
+    val currentBet: Double,
+    val lastDecision: PokerDecision,
+    val availableActions: List<String>
 ): PrivateUpdatePack

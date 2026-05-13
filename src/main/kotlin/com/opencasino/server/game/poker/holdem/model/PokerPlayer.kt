@@ -9,6 +9,7 @@ import com.opencasino.server.network.pack.poker.update.PrivatePlayerUpdatePack
 import com.opencasino.server.network.pack.poker.update.PublicPlayerUpdatePack
 import com.opencasino.server.network.shared.PlayerSession
 
+import com.opencasino.server.service.shared.FailureCode
 import com.opencasino.server.service.shared.PokerDecision
 
 class PokerPlayer(
@@ -67,7 +68,11 @@ class PokerPlayer(
                 }
                 else -> {
                     madeDecision = false
-                    gameRoom.sendFailure(userSession, "Decision ${lastDecision.name} is not supported")
+                    gameRoom.sendFailure(
+                        userSession,
+                        FailureCode.INVALID_DECISION,
+                        "Decision ${lastDecision.name} is not supported"
+                    )
                 }
             }
         }
@@ -117,7 +122,31 @@ class PokerPlayer(
     }
 
     override fun getPrivateUpdatePack(): PrivatePlayerUpdatePack {
-        return PrivatePlayerUpdatePack(id, this.position, lastDecision)
+        return PrivatePlayerUpdatePack(
+            id,
+            this.position,
+            stack,
+            currentBet ?: 0.0,
+            lastDecision,
+            availableActions()
+        )
+    }
+
+    fun availableActions(): List<String> {
+        if (folded || allin || stack <= 0.0) return emptyList()
+        val actor = gameRoom.actorPosition() ?: return emptyList()
+        if (this.position != actor) return emptyList()
+        val toCall = gameRoom.lastMaxBet - (currentBet ?: 0.0)
+        val actions = mutableListOf(PokerDecision.FOLD.name, PokerDecision.ALL_IN.name)
+        if (toCall <= 0.0) {
+            actions.add(PokerDecision.CHECK.name)
+        } else if (stack >= toCall) {
+            actions.add(PokerDecision.CALL.name)
+        }
+        if (stack > toCall + gameRoom.bigBlind) {
+            actions.add(PokerDecision.RAISE.name)
+        }
+        return actions
     }
 
     fun getPublicUpdatePack(): PublicPlayerUpdatePack {

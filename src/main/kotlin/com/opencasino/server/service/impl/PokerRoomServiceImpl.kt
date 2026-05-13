@@ -1,7 +1,6 @@
 package com.opencasino.server.service.impl
 
 import com.opencasino.server.config.ApplicationProperties
-import com.opencasino.server.config.FAILURE
 import com.opencasino.server.config.GAME_ROOM_JOIN_WAIT
 import com.opencasino.server.event.AbstractEvent
 import com.opencasino.server.event.GameRoomJoinEvent
@@ -17,6 +16,7 @@ import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
+import com.opencasino.server.service.shared.FailureCode
 import com.opencasino.server.service.shared.PlayerRepository
 import com.opencasino.server.service.shared.WaitingPlayerSession
 import kotlinx.coroutines.NonCancellable.onJoin
@@ -110,7 +110,11 @@ class PokerRoomServiceImpl(
                 }
             }
             else -> {
-                webSocketSessionService.send(userSession, Message(FAILURE))
+                webSocketSessionService.sendJoinFailure(
+                    userSession,
+                    FailureCode.INVALID_DECISION,
+                    "Unsupported join event: ${initialData::class.simpleName}"
+                )
             }
         }
     }
