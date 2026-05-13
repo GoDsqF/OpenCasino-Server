@@ -3,7 +3,6 @@ package com.opencasino.server.game.poker.holdem.room
 import com.opencasino.server.config.*
 import com.opencasino.server.event.BetEvent
 import com.opencasino.server.event.poker.PokerPlayerDecisionEvent
-import com.opencasino.server.game.model.Card
 import com.opencasino.server.game.model.CardDeck
 import com.opencasino.server.game.poker.holdem.map.PokerMap
 import com.opencasino.server.game.poker.holdem.model.PokerBetType
@@ -200,17 +199,7 @@ open class PokerGameRoom(
                 else mapped.getUpdatePack()
             }
 
-        val dealerCards = mutableListOf<Card?>()
-
-        dealerHand.getCards()
-            .forEach {
-                if (it.visible) {
-                    dealerCards.add(it)
-                } else {
-                    dealerCards.add(null)
-                }
-            }
-        val dealerUpdatePack = DealerUpdatePack(dealerCards)
+        val dealerUpdatePack = DealerUpdatePack(dealerHand.toPublicView())
 
         return Message(
             UPDATE,
@@ -233,7 +222,11 @@ open class PokerGameRoom(
         val player = userSession.player as PokerPlayer
         if (!player.isAlive) return
         if (player.position != currentPosition) return
-        val decision = PokerDecision.valueOf(event.inputId)
+        val decision = enumValues<PokerDecision>().firstOrNull { it.name == event.inputId }
+        if (decision == null) {
+            sendFailure(userSession, "Unknown decision: ${event.inputId}")
+            return
+        }
         val amount = event.amount
         player.updateState(decision, amount)
     }

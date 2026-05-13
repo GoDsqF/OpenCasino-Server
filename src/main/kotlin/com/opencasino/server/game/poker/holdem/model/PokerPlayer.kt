@@ -6,6 +6,7 @@ import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
 import com.opencasino.server.network.pack.poker.info.PlayerInfoPack
 import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
 import com.opencasino.server.network.pack.poker.update.PrivatePlayerUpdatePack
+import com.opencasino.server.network.pack.poker.update.PublicPlayerUpdatePack
 import com.opencasino.server.network.shared.PlayerSession
 
 import com.opencasino.server.service.shared.PokerDecision
@@ -99,7 +100,7 @@ class PokerPlayer(
 
     override fun getUpdatePack(): PlayerHandUpdatePack {
         return PlayerHandUpdatePack(
-            getPrivateUpdatePack(),
+            getPublicUpdatePack(),
             playerDeck.getCards())
     }
 
@@ -108,7 +109,7 @@ class PokerPlayer(
         repeat(playerDeck.getCards().size) {
             deck += null
         }
-        return PlayerHandUpdatePack(getPrivateUpdatePack(), deck)
+        return PlayerHandUpdatePack(getPublicUpdatePack(), deck)
     }
 
     override fun getInfoPack(): PlayerInfoPack {
@@ -117,6 +118,10 @@ class PokerPlayer(
 
     override fun getPrivateUpdatePack(): PrivatePlayerUpdatePack {
         return PrivatePlayerUpdatePack(id, this.position, lastDecision)
+    }
+
+    fun getPublicUpdatePack(): PublicPlayerUpdatePack {
+        return PublicPlayerUpdatePack(id, this.position, lastDecision)
     }
 
 }

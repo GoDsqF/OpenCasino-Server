@@ -168,4 +168,41 @@ class CardDeckTest {
         assertEquals(0, source.getCards().size)
         assertEquals(52, target.getCards().size)
     }
+
+    @Test
+    fun `toPublicView projects face-down cards as null, never as Card`() {
+        val deck = CardDeck()
+        deck.addCard(Card(Rank.CA, Suit.SPADES), visibility = true)
+        deck.addCard(Card(Rank.CK, Suit.HEARTS), visibility = false)
+        deck.addCard(Card(Rank.CQ, Suit.CLUBS), visibility = true)
+        deck.addCard(Card(Rank.CJ, Suit.DIAMONDS), visibility = false)
+
+        val view = deck.toPublicView()
+
+        assertEquals(4, view.size)
+        assertNotNull(view[0])
+        assertNull(view[1], "face-down card MUST serialize as null (never Card{visible=false})")
+        assertNotNull(view[2])
+        assertNull(view[3], "face-down card MUST serialize as null (never Card{visible=false})")
+        // Defense in depth: any non-null entry must be visible.
+        view.filterNotNull().forEach {
+            assertTrue(it.visible, "PublicView leaked a non-visible card: $it")
+        }
+    }
+
+    @Test
+    fun `toPublicView on empty deck yields empty list`() {
+        assertTrue(CardDeck().toPublicView().isEmpty())
+    }
+
+    @Test
+    fun `toPublicView on all-visible deck yields no nulls`() {
+        val deck = CardDeck()
+        deck.addCard(Card(Rank.C2, Suit.SPADES))
+        deck.addCard(Card(Rank.C3, Suit.HEARTS))
+        deck.addCard(Card(Rank.C4, Suit.CLUBS))
+        val view = deck.toPublicView()
+        assertEquals(3, view.size)
+        assertTrue(view.all { it != null })
+    }
 }

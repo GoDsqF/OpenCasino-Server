@@ -45,5 +45,7 @@ class CardDeck(){
         }
     }
 
+    fun toPublicView(): List<Card?> = cards.map { if (it.visible) it else null }
+
     private fun MutableList<Card>.shuffleDeck() = cards.shuffle()
 }

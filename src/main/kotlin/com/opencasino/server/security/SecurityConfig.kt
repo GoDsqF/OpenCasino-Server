@@ -25,10 +25,11 @@ class SecurityConfig {
                         "/index.html",
                         "/favicon.ico",
                         "/static/**",
-                        "/auth/**",
-                        "/oauth2/**",
-                        "/login/**",
                     ).permitAll()
+                    // TODO(Auth phase 3-5): add allowlist entries alongside the
+                    // handlers that need them — `/auth/register`, `/auth/login`,
+                    // `/oauth2/authorize/{provider}`, `/oauth2/redirect/{provider}`,
+                    // `/auth/refresh`. Do not pre-open paths without handlers.
                     .anyExchange().authenticated()
             }
             .build()

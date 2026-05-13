@@ -1,0 +1,18 @@
+# Sample auth.properties — copy to auth.properties and fill in for your environment.
+# The real auth.properties is gitignored; mount it at runtime via /config or supply env vars.
+#
+# Defaults below resolve env vars (${VAR:default}) — supply values through
+# APP_AUTH_TOKEN_SECRET / APP_AUTH_TOKEN_EXPIRATION_MSEC / APP_OAUTH2_CLIENTID /
+# APP_OAUTH2_CLIENTSECRET / APP_OAUTH2_REDIRECTURI.
+
+# JWT signing secret + access-token TTL (Phase 4 wires real RS256 + key rotation).
+app.auth.tokenSecret=${APP_AUTH_TOKEN_SECRET:}
+app.auth.tokenExpirationMsec=${APP_AUTH_TOKEN_EXPIRATION_MSEC:864000000}
+
+# Google OAuth2 client credentials (Phase 7 adds more providers).
+app.oauth2.clientId=${APP_OAUTH2_CLIENTID:}
+app.oauth2.clientSecret=${APP_OAUTH2_CLIENTSECRET:}
+
+# Comma-separated list of allowed redirect URIs.
+# Authorize-code flow only accepts redirects whose target is in this allowlist.
+app.oauth2.redirectUri=${APP_OAUTH2_REDIRECTURI:http://localhost:3000/oauth2/redirect}

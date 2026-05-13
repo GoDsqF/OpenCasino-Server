@@ -162,16 +162,7 @@ class BlackjackGameRoom(
         val playerUpdatePackList = map.getPlayers()
             .map { it.getUpdatePack() }
 
-        val dealerCards = mutableListOf<Card?>()
-        dealerHand.getCards()
-            .forEach {
-                if (it.visible) {
-                    dealerCards.add(it)
-                } else {
-                    dealerCards.add(null)
-                }
-            }
-        val dealerUpdatePack = DealerUpdatePack(dealerCards)
+        val dealerUpdatePack = DealerUpdatePack(dealerHand.toPublicView())
 
         return Message(
             UPDATE,
@@ -299,7 +290,11 @@ class BlackjackGameRoom(
         if (!started.get()) return
         val player = userSession.player as BlackjackPlayer
         if (!player.isAlive) return
-        val decision = BlackjackDecision.valueOf(event.inputId)
+        val decision = enumValues<BlackjackDecision>().firstOrNull { it.name == event.inputId }
+        if (decision == null) {
+            sendFailure(userSession, "Unknown decision: ${event.inputId}")
+            return
+        }
         player.updateState(decision)
     }
 

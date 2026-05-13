@@ -8,6 +8,7 @@ import com.opencasino.server.game.model.Rank
 import com.opencasino.server.game.model.Suit
 import com.opencasino.server.network.pack.blackjack.info.PlayerInfoPack
 import com.opencasino.server.network.pack.blackjack.update.PrivatePlayerUpdatePack
+import com.opencasino.server.network.pack.blackjack.update.PublicPlayerUpdatePack
 import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.shared.BlackjackDecision
@@ -314,15 +315,18 @@ class BlackjackPlayerTest {
         }
 
         @Test
-        fun `getUpdatePack contains privateUpdatePack`() {
+        fun `getUpdatePack carries public pack without balance`() {
             player.balance = 750.0
             player.updateState(BlackjackDecision.HIT)
 
             val pack = player.getUpdatePack()
-            val privatePack = pack.player as PrivatePlayerUpdatePack
-            assertEquals(1L, privatePack.id)
-            assertEquals(750.0, privatePack.balance)
-            assertEquals(BlackjackDecision.HIT, privatePack.lastDecision)
+            val publicPack = pack.player as PublicPlayerUpdatePack
+            assertEquals(1L, publicPack.id)
+            assertEquals(BlackjackDecision.HIT, publicPack.lastDecision)
+            // Compile-time guarantee: PlayerHandUpdatePack.player is typed as
+            // PublicUpdatePack and PrivatePlayerUpdatePack does not extend it,
+            // so other players cannot see balance. The cast above proves the
+            // public pack reaches the wire — no balance field on it.
         }
 
         @Test
