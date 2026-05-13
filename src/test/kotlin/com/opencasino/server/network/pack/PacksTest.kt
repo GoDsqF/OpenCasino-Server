@@ -11,12 +11,14 @@ import com.opencasino.server.network.pack.blackjack.shared.GameSettingsPack
 import com.opencasino.server.network.pack.blackjack.shared.RoomPack
 import com.opencasino.server.network.pack.blackjack.update.GameUpdatePack
 import com.opencasino.server.network.pack.blackjack.update.PrivatePlayerUpdatePack
+import com.opencasino.server.network.pack.blackjack.update.PublicPlayerUpdatePack
 import com.opencasino.server.network.pack.poker.info.PlayerInfoPack as PokerPlayerInfoPack
 import com.opencasino.server.network.pack.poker.info.InfoPack as PokerInfoPack
 import com.opencasino.server.network.pack.poker.shared.PokerConditionPack
 import com.opencasino.server.network.pack.poker.shared.GameSettingsPack as PokerGameSettingsPack
 import com.opencasino.server.network.pack.poker.shared.RoomPack as PokerRoomPack
 import com.opencasino.server.network.pack.poker.update.PrivatePlayerUpdatePack as PokerPrivatePlayerUpdatePack
+import com.opencasino.server.network.pack.poker.update.PublicPlayerUpdatePack as PokerPublicPlayerUpdatePack
 import com.opencasino.server.network.pack.shared.DealerUpdatePack
 import com.opencasino.server.network.pack.shared.ExceptionPack
 import com.opencasino.server.network.pack.shared.GameMessagePack
@@ -82,8 +84,9 @@ class PacksTest {
         @Test
         fun `GameUpdatePack assembles correctly`() {
             val privateUpdate = PrivatePlayerUpdatePack(1L, 100.0, BlackjackDecision.STAND)
+            val publicUpdate = PublicPlayerUpdatePack(1L, BlackjackDecision.STAND)
             val card = Card(Rank.CA, Suit.SPADES, true)
-            val handUpdate = PlayerHandUpdatePack(privateUpdate, listOf(card))
+            val handUpdate = PlayerHandUpdatePack(publicUpdate, listOf(card))
             val dealerUpdate = DealerUpdatePack(listOf(card, null))
 
             val pack = GameUpdatePack(privateUpdate, listOf(handUpdate), dealerUpdate)
@@ -92,6 +95,13 @@ class PacksTest {
             assertEquals(1, pack.players.size)
             assertEquals(2, pack.dealer.cards.size)
             assertNull(pack.dealer.cards[1])
+        }
+
+        @Test
+        fun `PublicPlayerUpdatePack stores only id and lastDecision`() {
+            val pack = PublicPlayerUpdatePack(7L, BlackjackDecision.HIT)
+            assertEquals(7L, pack.id)
+            assertEquals(BlackjackDecision.HIT, pack.lastDecision)
         }
     }
 
@@ -184,21 +194,21 @@ class PacksTest {
 
         @Test
         fun `PlayerHandUpdatePack stores player and cards`() {
-            val privateUpdate = PrivatePlayerUpdatePack(1L, 100.0, BlackjackDecision.HIT)
+            val publicUpdate = PublicPlayerUpdatePack(1L, BlackjackDecision.HIT)
             val cards = listOf(
                 Card(Rank.CA, Suit.SPADES, true),
                 Card(Rank.CK, Suit.HEARTS, true)
             )
-            val pack = PlayerHandUpdatePack(privateUpdate, cards)
-            assertEquals(privateUpdate, pack.player)
+            val pack = PlayerHandUpdatePack(publicUpdate, cards)
+            assertEquals(publicUpdate, pack.player)
             assertEquals(2, pack.cards.size)
         }
 
         @Test
         fun `PlayerHandUpdatePack with hidden cards (nulls)`() {
-            val privateUpdate = PokerPrivatePlayerUpdatePack(2L, 1, PokerDecision.CHECK)
+            val publicUpdate = PokerPublicPlayerUpdatePack(2L, 1, PokerDecision.CHECK)
             val cards: List<Card?> = listOf(null, null)
-            val pack = PlayerHandUpdatePack(privateUpdate, cards)
+            val pack = PlayerHandUpdatePack(publicUpdate, cards)
             assertEquals(2, pack.cards.size)
             assertNull(pack.cards[0])
             assertNull(pack.cards[1])

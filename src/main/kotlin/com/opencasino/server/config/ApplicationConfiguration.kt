@@ -66,10 +66,15 @@ class OAuth2Config() {
 
     @Bean
     fun oauth2Configuration(): OAuth2Properties {
+        val redirectUris = environment?.getProperty("app.oauth2.redirectUri")
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?: emptyList()
         return OAuth2Properties(
             environment?.getProperty("app.oauth2.clientId").toString(),
             environment?.getProperty("app.oauth2.clientSecret").toString(),
-            listOf("http://localhost:3000/oauth2/redirect", "https://opencasino.duckdns.org/oauth2/redirect")
+            redirectUris
         )
     }
 }

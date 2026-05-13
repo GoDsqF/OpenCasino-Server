@@ -6,6 +6,7 @@ import com.opencasino.server.game.model.CardDeck
 import com.opencasino.server.network.pack.blackjack.info.PlayerInfoPack
 import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
 import com.opencasino.server.network.pack.blackjack.update.PrivatePlayerUpdatePack
+import com.opencasino.server.network.pack.blackjack.update.PublicPlayerUpdatePack
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.shared.BlackjackDecision
 
@@ -54,7 +55,7 @@ open class BlackjackPlayer(
     }
 
     override fun getUpdatePack(): PlayerHandUpdatePack {
-        return PlayerHandUpdatePack(getPrivateUpdatePack(), playerDeck.getCards())
+        return PlayerHandUpdatePack(getPublicUpdatePack(), playerDeck.getCards())
     }
 
     override fun getInfoPack(): PlayerInfoPack {
@@ -63,6 +64,10 @@ open class BlackjackPlayer(
 
     override fun getPrivateUpdatePack(): PrivatePlayerUpdatePack {
         return PrivatePlayerUpdatePack(id, balance, lastDecision)
+    }
+
+    fun getPublicUpdatePack(): PublicPlayerUpdatePack {
+        return PublicPlayerUpdatePack(id, lastDecision)
     }
 
 }
