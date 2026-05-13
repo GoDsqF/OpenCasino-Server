@@ -21,7 +21,10 @@ data class BlackjackRoomProperties(
     val initDelay: Long = ROOM_INIT_DELAY,
     val startDelay: Long = ROOM_START_DELAY,
     val endDelay: Long = ROOM_END_DELAY,
-    val maxPlayers: Int = MAX_BLACKJACK_PLAYERS
+    val maxPlayers: Int = MAX_BLACKJACK_PLAYERS,
+    val minBet: Double = MIN_BLACKJACK_BET,
+    val deckStacks: Int = BLACKJACK_DECK_STACKS,
+    val reshuffleThreshold: Int = BLACKJACK_RESHUFFLE_THRESHOLD
 )
 
 data class PokerRoomProperties(

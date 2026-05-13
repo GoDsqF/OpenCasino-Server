@@ -46,5 +46,6 @@ out/
 
 /AGENTS.md
 /CLAUDE.md
+/.claude/
 /src/main/kotlin/com/opencasino/server/game/poker/holdem/room/PokerGameRoom.kt.old
 /repopackpy-output.txt

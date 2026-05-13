@@ -38,7 +38,7 @@ class BlackjackGameRoom(
 ) : AbstractBlackjackGameRoom(gameRoomId, schedulerService, roomService, webSocketSessionService) {
     private val testing = AtomicBoolean(false)
     
-    private lateinit var lastUpdate: Message
+    private val lastUpdateBySession: MutableMap<String, Message> = HashMap()
     private val started = AtomicBoolean(false)
     private val gameStarted = AtomicBoolean(false)
 
@@ -61,7 +61,7 @@ class BlackjackGameRoom(
     )
 
     //deck initialize
-    var deck = CardDeck(8)
+    var deck = CardDeck(roomProperties.deckStacks)
 
     //initialize map of player hands
 
@@ -204,21 +204,11 @@ class BlackjackGameRoom(
                     }
                 val dealerUpdatePack = DealerUpdatePack(dealerCards)*/
                 val newUpdate = collectUpdate(currentPlayer)
-                if (this::lastUpdate.isInitialized) {
-                    if (lastUpdate.data != newUpdate.data) {
-                        send(
-                            currentPlayer.userSession,
-                            newUpdate
-                        )
-                        lastUpdate = newUpdate
-                    }
-                }
-                else {
-                    lastUpdate = newUpdate
-                    send(
-                        currentPlayer.userSession,
-                        newUpdate
-                    )
+                val sessionId = currentPlayer.userSession.id
+                val previous = lastUpdateBySession[sessionId]
+                if (previous == null || previous.data != newUpdate.data) {
+                    send(currentPlayer.userSession, newUpdate)
+                    lastUpdateBySession[sessionId] = newUpdate
                 }
             }
         }
@@ -272,23 +262,20 @@ class BlackjackGameRoom(
     }
 
     fun onDealerTurn(): BlackjackCondition? {
-        var result: BlackjackCondition?
         dealerHand.openCards()
-        val dealerSum = calculateScore(dealerHand)
         val playerSum = calculateScore(map.getPlayers().first().playerDeck)
 
-        result = if (dealerSum < 17) {
+        var dealerSum = calculateScore(dealerHand)
+        while (dealerSum < 17) {
             deck.dealCard(dealerHand)
-            onDealerTurn()
-            return null
-        } else if (dealerSum > 21) {
-            BlackjackCondition.PlayerWin
-        } else if (dealerSum < playerSum) {
-            BlackjackCondition.PlayerWin
-        } else if (dealerSum > playerSum) {
-            BlackjackCondition.DealerWin
-        } else {
-            BlackjackCondition.Draw
+            dealerSum = calculateScore(dealerHand)
+        }
+
+        val result: BlackjackCondition = when {
+            dealerSum > 21 -> BlackjackCondition.PlayerWin
+            dealerSum < playerSum -> BlackjackCondition.PlayerWin
+            dealerSum > playerSum -> BlackjackCondition.DealerWin
+            else -> BlackjackCondition.Draw
         }
 
         condition = result
@@ -319,8 +306,21 @@ class BlackjackGameRoom(
     override fun onBet(userSession: PlayerSession, event: BetEvent) {
         if (gameStarted.get()) return
         val player = userSession.player as BlackjackPlayer
-        player.bet = event.bet
-        player.balance -= event.bet
+        val bet = event.bet
+        if (bet <= 0.0) {
+            sendFailure(userSession, "Bet must be positive")
+            return
+        }
+        if (bet < roomProperties.minBet) {
+            sendFailure(userSession, "Bet below minimum ${roomProperties.minBet}")
+            return
+        }
+        if (bet > player.balance) {
+            sendFailure(userSession, "Insufficient balance")
+            return
+        }
+        player.bet = bet
+        player.balance -= bet
         initialDeal()
     }
 
@@ -354,7 +354,9 @@ class BlackjackGameRoom(
             it.bet = 0.00
         }
         dealerHand = CardDeck()
-        if (deck.getCards().size < 64) deck = CardDeck(8)
+        if (deck.getCards().size < roomProperties.reshuffleThreshold) {
+            deck = CardDeck(roomProperties.deckStacks)
+        }
         onGameStarted()
     }
 

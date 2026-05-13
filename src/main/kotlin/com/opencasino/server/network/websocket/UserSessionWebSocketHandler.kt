@@ -31,7 +31,9 @@ class UserSessionWebSocketHandler(
     }
 
     fun onNext(message: Message) {
-        //val messageData = if (message.data != null) message.data as Map<*, *> else null
+        // TODO(Auth phase 5): playerUUID inside GameRoom*Event is currently client-trusted.
+        // After JWT WebSocket handshake, identity must come from userSession.principal and
+        // any inbound playerUUID must be cross-checked, not consumed verbatim.
         val messageData = if (message.data != null) message.data as Map<*, *> else null
 
         when(message.serviceId) {
