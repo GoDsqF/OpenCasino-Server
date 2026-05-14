@@ -25,11 +25,13 @@ class SecurityConfig {
                         "/index.html",
                         "/favicon.ico",
                         "/static/**",
+                        "/auth/register",
+                        "/auth/login",
                     ).permitAll()
-                    // TODO(Auth phase 3-5): add allowlist entries alongside the
-                    // handlers that need them — `/auth/register`, `/auth/login`,
-                    // `/oauth2/authorize/{provider}`, `/oauth2/redirect/{provider}`,
-                    // `/auth/refresh`. Do not pre-open paths without handlers.
+                    // TODO(Auth phase 4-5): add `/auth/refresh`,
+                    // `/oauth2/authorize/{provider}`, `/oauth2/redirect/{provider}`
+                    // alongside their handlers. CSRF stays disabled — JWT bearer
+                    // auth is stateless, so the CSRF threat model doesn't apply.
                     .anyExchange().authenticated()
             }
             .build()
