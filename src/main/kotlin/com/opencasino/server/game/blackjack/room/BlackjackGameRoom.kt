@@ -20,6 +20,7 @@ import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.impl.BlackjackRoomServiceImpl
 import com.opencasino.server.service.shared.BlackjackDecision
+import com.opencasino.server.service.shared.FailureCode
 import reactor.core.scheduler.Scheduler
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -109,6 +110,7 @@ class BlackjackGameRoom(
             Message(
                 GAME_ROOM_JOIN_SUCCESS,
                 GameSettingsPack(
+                    gameRoomId.toString(),
                     roomProperties.loopRate
                 )
             )
@@ -292,7 +294,7 @@ class BlackjackGameRoom(
         if (!player.isAlive) return
         val decision = enumValues<BlackjackDecision>().firstOrNull { it.name == event.inputId }
         if (decision == null) {
-            sendFailure(userSession, "Unknown decision: ${event.inputId}")
+            sendFailure(userSession, FailureCode.INVALID_DECISION, "Unknown decision: ${event.inputId}")
             return
         }
         player.updateState(decision)
@@ -303,15 +305,15 @@ class BlackjackGameRoom(
         val player = userSession.player as BlackjackPlayer
         val bet = event.bet
         if (bet <= 0.0) {
-            sendFailure(userSession, "Bet must be positive")
+            sendBetFailure(userSession, FailureCode.INVALID_BET, "Bet must be positive")
             return
         }
         if (bet < roomProperties.minBet) {
-            sendFailure(userSession, "Bet below minimum ${roomProperties.minBet}")
+            sendBetFailure(userSession, FailureCode.BET_BELOW_MIN, "Bet below minimum ${roomProperties.minBet}")
             return
         }
         if (bet > player.balance) {
-            sendFailure(userSession, "Insufficient balance")
+            sendBetFailure(userSession, FailureCode.INSUFFICIENT_FUNDS, "Insufficient balance")
             return
         }
         player.bet = bet

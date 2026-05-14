@@ -1,15 +1,19 @@
 package com.opencasino.server.service.impl
 
+import com.opencasino.server.config.BET_FAILURE
 import com.opencasino.server.config.FAILURE
+import com.opencasino.server.config.GAME_ROOM_JOIN_FAILURE
 import com.opencasino.server.config.MESSAGE
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
 import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.shared.PlayerSession
+import com.opencasino.server.network.pack.shared.FailurePack
 import com.opencasino.server.network.pack.shared.GameMessagePack
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
+import com.opencasino.server.service.shared.FailureCode
 import com.opencasino.server.service.shared.MessageType
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -92,8 +96,14 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
             .tryEmitNext(message)
     }
 
-    override fun sendFailure(userSession: PlayerSession, message: Any) =
-        send(userSession, Message(FAILURE, message))
+    override fun sendFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) =
+        send(userSession, Message(FAILURE, FailurePack(code.name, message, details)))
+
+    override fun sendBetFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) =
+        send(userSession, Message(BET_FAILURE, FailurePack(code.name, message, details)))
+
+    override fun sendJoinFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) =
+        send(userSession, Message(GAME_ROOM_JOIN_FAILURE, FailurePack(code.name, message, details)))
 
     override fun sendBroadcast(type: MessageType, message: String) =
         sendBroadcast(Message(MESSAGE, GameMessagePack(type.type, message)))

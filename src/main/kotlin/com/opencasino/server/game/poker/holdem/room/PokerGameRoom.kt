@@ -17,7 +17,9 @@ import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
+import com.opencasino.server.service.shared.FailureCode
 import com.opencasino.server.service.shared.PokerDecision
+import com.opencasino.server.service.shared.PokerPhase
 import reactor.core.scheduler.Scheduler
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -140,6 +142,7 @@ open class PokerGameRoom(
             Message(
                 GAME_ROOM_JOIN_SUCCESS,
                 GameSettingsPack(
+                    gameRoomId.toString(),
                     roomProperties.loopRate
                 )
             )
@@ -206,9 +209,25 @@ open class PokerGameRoom(
             GameUpdatePack(
                 updatePack,
                 playerUpdatePackList,
-                dealerUpdatePack
+                dealerUpdatePack,
+                currentPhase(),
+                actorPosition(),
+                pot,
+                lastMaxBet
             )
         )
+    }
+
+    fun actorPosition(): Int? = if (roundEnd.get()) null else currentPosition
+
+    private fun currentPhase(): PokerPhase {
+        if (roundEnd.get()) return PokerPhase.SHOWDOWN
+        return when (dealerHand.getCards().size) {
+            3 -> PokerPhase.FLOP
+            4 -> PokerPhase.TURN
+            5 -> PokerPhase.RIVER
+            else -> PokerPhase.PREFLOP
+        }
     }
 
     private fun calculateHand(hand: CardDeck): String {
@@ -224,7 +243,7 @@ open class PokerGameRoom(
         if (player.position != currentPosition) return
         val decision = enumValues<PokerDecision>().firstOrNull { it.name == event.inputId }
         if (decision == null) {
-            sendFailure(userSession, "Unknown decision: ${event.inputId}")
+            sendFailure(userSession, FailureCode.INVALID_DECISION, "Unknown decision: ${event.inputId}")
             return
         }
         val amount = event.amount
@@ -311,15 +330,15 @@ open class PokerGameRoom(
         val player = userSession.player as PokerPlayer
         val buyIn = event.bet
         if (buyIn <= 0.0) {
-            sendFailure(userSession, "Buy-in must be positive")
+            sendBetFailure(userSession, FailureCode.INVALID_BET, "Buy-in must be positive")
             return
         }
         if (buyIn < roomProperties.buyIn) {
-            sendFailure(userSession, "Buy-in below table minimum ${roomProperties.buyIn}")
+            sendBetFailure(userSession, FailureCode.BET_BELOW_MIN, "Buy-in below table minimum ${roomProperties.buyIn}")
             return
         }
         if (buyIn > player.balance) {
-            sendFailure(userSession, "Insufficient balance")
+            sendBetFailure(userSession, FailureCode.INSUFFICIENT_FUNDS, "Insufficient balance")
             return
         }
         player.bet = buyIn

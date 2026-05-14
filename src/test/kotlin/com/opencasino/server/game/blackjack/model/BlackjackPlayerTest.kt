@@ -12,6 +12,7 @@ import com.opencasino.server.network.pack.blackjack.update.PublicPlayerUpdatePac
 import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.shared.BlackjackDecision
+import com.opencasino.server.service.shared.FailureCode
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -192,7 +193,7 @@ class BlackjackPlayerTest {
         fun `update with DOUBLE sends failure and clears decision`() {
             player.updateState(BlackjackDecision.DOUBLE)
             player.update()
-            verify(mockRoom).sendFailure(mockSession, "Decision DOUBLE is not supported")
+            verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "Decision DOUBLE is not supported", null)
             assertFalse(player.madeDecision)
         }
 
@@ -200,7 +201,7 @@ class BlackjackPlayerTest {
         fun `update with SPLIT sends failure and clears decision`() {
             player.updateState(BlackjackDecision.SPLIT)
             player.update()
-            verify(mockRoom).sendFailure(mockSession, "Decision SPLIT is not supported")
+            verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "Decision SPLIT is not supported", null)
             assertFalse(player.madeDecision)
         }
 
@@ -208,7 +209,7 @@ class BlackjackPlayerTest {
         fun `update with NONE sends failure and clears decision`() {
             player.updateState(BlackjackDecision.NONE)
             player.update()
-            verify(mockRoom).sendFailure(mockSession, "Decision NONE is not supported")
+            verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "Decision NONE is not supported", null)
             assertFalse(player.madeDecision)
         }
 

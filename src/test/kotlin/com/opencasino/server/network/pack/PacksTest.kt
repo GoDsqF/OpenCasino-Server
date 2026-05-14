@@ -56,15 +56,18 @@ class PacksTest {
 
         @Test
         fun `PrivatePlayerUpdatePack stores all fields`() {
-            val pack = PrivatePlayerUpdatePack(1L, 500.0, BlackjackDecision.HIT)
+            val pack = PrivatePlayerUpdatePack(1L, 500.0, 50.0, BlackjackDecision.HIT, listOf("HIT", "STAND"))
             assertEquals(1L, pack.id)
             assertEquals(500.0, pack.balance)
+            assertEquals(50.0, pack.currentBet)
             assertEquals(BlackjackDecision.HIT, pack.lastDecision)
+            assertEquals(listOf("HIT", "STAND"), pack.availableActions)
         }
 
         @Test
-        fun `GameSettingsPack stores loop rate`() {
-            val pack = GameSettingsPack(300L)
+        fun `GameSettingsPack stores roomId and loop rate`() {
+            val pack = GameSettingsPack("room-id-123", 300L)
+            assertEquals("room-id-123", pack.roomId)
             assertEquals(300L, pack.loopRate)
         }
 
@@ -83,7 +86,7 @@ class PacksTest {
 
         @Test
         fun `GameUpdatePack assembles correctly`() {
-            val privateUpdate = PrivatePlayerUpdatePack(1L, 100.0, BlackjackDecision.STAND)
+            val privateUpdate = PrivatePlayerUpdatePack(1L, 100.0, 25.0, BlackjackDecision.STAND, emptyList())
             val publicUpdate = PublicPlayerUpdatePack(1L, BlackjackDecision.STAND)
             val card = Card(Rank.CA, Suit.SPADES, true)
             val handUpdate = PlayerHandUpdatePack(publicUpdate, listOf(card))
@@ -130,15 +133,21 @@ class PacksTest {
 
         @Test
         fun `PokerPrivatePlayerUpdatePack stores all fields`() {
-            val pack = PokerPrivatePlayerUpdatePack(5L, 2, PokerDecision.RAISE)
+            val pack = PokerPrivatePlayerUpdatePack(
+                5L, 2, 1000.0, 200.0, PokerDecision.RAISE, listOf("FOLD", "ALL_IN", "CALL", "RAISE")
+            )
             assertEquals(5L, pack.id)
             assertEquals(2, pack.position)
+            assertEquals(1000.0, pack.stack)
+            assertEquals(200.0, pack.currentBet)
             assertEquals(PokerDecision.RAISE, pack.lastDecision)
+            assertEquals(listOf("FOLD", "ALL_IN", "CALL", "RAISE"), pack.availableActions)
         }
 
         @Test
-        fun `PokerGameSettingsPack stores loop rate`() {
-            val pack = PokerGameSettingsPack(150L)
+        fun `PokerGameSettingsPack stores roomId and loop rate`() {
+            val pack = PokerGameSettingsPack("poker-id-456", 150L)
+            assertEquals("poker-id-456", pack.roomId)
             assertEquals(150L, pack.loopRate)
         }
 
@@ -230,7 +239,7 @@ class PacksTest {
 
         @Test
         fun `PrivatePlayerUpdatePack implements PrivateUpdatePack`() {
-            val pack: PrivateUpdatePack = PrivatePlayerUpdatePack(1L, 100.0, BlackjackDecision.NONE)
+            val pack: PrivateUpdatePack = PrivatePlayerUpdatePack(1L, 100.0, 0.0, BlackjackDecision.NONE, emptyList())
             assertTrue(pack is UpdatePack)
             assertTrue(pack is Pack)
         }
@@ -249,7 +258,7 @@ class PacksTest {
 
         @Test
         fun `GameSettingsPack implements InitPack`() {
-            val pack: InitPack = GameSettingsPack(300L)
+            val pack: InitPack = GameSettingsPack("room-id", 300L)
             assertTrue(pack is Pack)
         }
 

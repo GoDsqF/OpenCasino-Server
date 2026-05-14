@@ -11,6 +11,7 @@ import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
+import com.opencasino.server.service.shared.FailureCode
 import com.opencasino.server.service.shared.MessageType
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -72,8 +73,16 @@ abstract class AbstractBlackjackGameRoom protected constructor(
     override fun sendBroadcast(messageFunction: Function<PlayerSession, Any>) =
         webSocketSessionService.sendBroadcast(sessions.values, messageFunction)
 
-    override fun sendFailure(userSession: PlayerSession, message: Any) {
-        webSocketSessionService.sendFailure(userSession, message)
+    override fun sendFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) {
+        webSocketSessionService.sendFailure(userSession, code, message, details)
+    }
+
+    override fun sendBetFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) {
+        webSocketSessionService.sendBetFailure(userSession, code, message, details)
+    }
+
+    override fun sendJoinFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) {
+        webSocketSessionService.sendJoinFailure(userSession, code, message, details)
     }
 
     override fun sendBroadcast(type: MessageType, message: String) {

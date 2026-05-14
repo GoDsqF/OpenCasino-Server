@@ -9,6 +9,7 @@ import com.opencasino.server.network.pack.blackjack.update.PrivatePlayerUpdatePa
 import com.opencasino.server.network.pack.blackjack.update.PublicPlayerUpdatePack
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.shared.BlackjackDecision
+import com.opencasino.server.service.shared.FailureCode
 
 open class BlackjackPlayer(
     id: Long, gameRoom: BlackjackGameRoom, userSession: PlayerSession,
@@ -44,7 +45,11 @@ open class BlackjackPlayer(
                 BlackjackDecision.SPLIT,
                 BlackjackDecision.NONE -> {
                     madeDecision = false
-                    gameRoom.sendFailure(userSession, "Decision ${lastDecision.name} is not supported")
+                    gameRoom.sendFailure(
+                        userSession,
+                        FailureCode.INVALID_DECISION,
+                        "Decision ${lastDecision.name} is not supported"
+                    )
                 }
             }
         }
@@ -63,8 +68,13 @@ open class BlackjackPlayer(
     }
 
     override fun getPrivateUpdatePack(): PrivatePlayerUpdatePack {
-        return PrivatePlayerUpdatePack(id, balance, lastDecision)
+        return PrivatePlayerUpdatePack(id, balance, bet, lastDecision, availableActions())
     }
+
+    private fun availableActions(): List<String> =
+        if (isAlive && !madeDecision && bet > 0.0 && playerDeck.getCards().isNotEmpty())
+            listOf(BlackjackDecision.HIT.name, BlackjackDecision.STAND.name)
+        else emptyList()
 
     fun getPublicUpdatePack(): PublicPlayerUpdatePack {
         return PublicPlayerUpdatePack(id, lastDecision)
