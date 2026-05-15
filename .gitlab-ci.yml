@@ -241,8 +241,17 @@ smoke-test:
     - job: build-jar
       artifacts: true
   allow_failure: true
+  # Real Postgres as a sidecar service. Spring Boot's Liquibase autoconfig
+  # applies db/changelog/db.changelog-master.yaml on startup, so the JAR boots
+  # against the actual production schema rather than a stub.
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
   variables:
-    DATABASE_HOST: db.invalid
+    POSTGRES_DB: casino
+    POSTGRES_USER: ci
+    POSTGRES_PASSWORD: ci
+    DATABASE_HOST: postgres
     DATABASE_PORT: "5432"
     DATABASE_USER: ci
     DATABASE_PASSWORD: ci
@@ -251,8 +260,27 @@ smoke-test:
     APP_AUTH_TOKENEXPIRATIONMSEC: "864000000"
     APP_OAUTH2_CLIENTID: dummy.apps.googleusercontent.com
     APP_OAUTH2_CLIENTSECRET: dummy
+    APP_JWT_KEY_ID: ci-smoke
   script:
-    - apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+    - apt-get update && apt-get install -y --no-install-recommends curl openssl postgresql-client && rm -rf /var/lib/apt/lists/*
+    # Wait for the postgres service to accept connections — Spring's Liquibase
+    # step does not retry on initial connection refused.
+    - |
+      ready=0
+      for i in $(seq 1 30); do
+        if pg_isready -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USER" -d "$DATABASE_DB" -q; then
+          ready=1; break
+        fi
+        sleep 1
+      done
+      [ "$ready" = "1" ] || { echo "postgres service did not become ready in 30s"; exit 1; }
+    # Phase 4 RS256 keys: JwtKeyMaterial.fromPem rejects blank PEMs, so the
+    # bean graph won't build without a real keypair. Generate an ephemeral one
+    # (PKCS#8 private + X.509 SubjectPublicKeyInfo public) just for this smoke run.
+    - openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt-private.pem
+    - openssl rsa -in jwt-private.pem -pubout -out jwt-public.pem
+    - export APP_JWT_PRIVATE_KEY_PEM="$(cat jwt-private.pem)"
+    - export APP_JWT_PUBLIC_KEY_PEM="$(cat jwt-public.pem)"
     - JAR=$(ls build/libs/openCasino_server-*.jar 2>/dev/null | head -1)
     - test -n "$JAR" || { echo "no boot JAR found"; ls -la build/libs/; exit 1; }
     - echo "Launching $JAR"
