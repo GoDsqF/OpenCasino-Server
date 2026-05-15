@@ -13,6 +13,7 @@ import reactor.core.scheduler.Schedulers
 class AuthService(
     private val users: UserRepository,
     private val passwordEncoder: PasswordEncoder,
+    private val jwtIssuer: JwtIssuer,
 ) {
 
     private val dummyHash: String by lazy { passwordEncoder.encode("never-matches-anything") }
@@ -52,7 +53,7 @@ class AuthService(
                 Mono.fromCallable { passwordEncoder.matches(password, hash) }
                     .subscribeOn(Schedulers.boundedElastic())
                     .flatMap { ok ->
-                        if (ok) Mono.just(buildStubLoginResponse(user))
+                        if (ok) Mono.just(buildLoginResponse(user))
                         else Mono.error(AuthException(AuthFailureCode.INVALID_CREDENTIALS))
                     }
             }
@@ -64,12 +65,15 @@ class AuthService(
             .subscribeOn(Schedulers.boundedElastic())
             .flatMap { Mono.error(AuthException(AuthFailureCode.INVALID_CREDENTIALS)) }
 
-    private fun buildStubLoginResponse(user: User): LoginResponse =
-        LoginResponse(
+    private fun buildLoginResponse(user: User): LoginResponse {
+        val issued = jwtIssuer.issueAccess(user)
+        return LoginResponse(
             userId = user.id,
-            accessToken = "stub-access-${user.id}",
+            accessToken = issued.token,
             refreshToken = "stub-refresh-${user.id}",
+            expiresAt = issued.expiresAt,
         )
+    }
 
     private fun normalizeEmail(raw: String?): String? {
         if (raw == null) return null

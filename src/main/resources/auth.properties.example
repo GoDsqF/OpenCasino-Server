@@ -1,15 +1,27 @@
 # Sample auth.properties — copy to auth.properties and fill in for your environment.
 # The real auth.properties is gitignored; mount it at runtime via /config or supply env vars.
-#
-# Defaults below resolve env vars (${VAR:default}) — supply values through
-# APP_AUTH_TOKEN_SECRET / APP_AUTH_TOKEN_EXPIRATION_MSEC / APP_OAUTH2_CLIENTID /
-# APP_OAUTH2_CLIENTSECRET / APP_OAUTH2_REDIRECTURI.
 
-# JWT signing secret + access-token TTL (Phase 4 wires real RS256 + key rotation).
-app.auth.tokenSecret=${APP_AUTH_TOKEN_SECRET:}
-app.auth.tokenExpirationMsec=${APP_AUTH_TOKEN_EXPIRATION_MSEC:864000000}
+# ---------------- JWT (Phase 4) ----------------
+# Issuer claim baked into every access token. Resource server rejects tokens
+# whose `iss` claim does not match this value.
+app.jwt.issuer=${APP_JWT_ISSUER:opencasino}
 
-# Google OAuth2 client credentials (Phase 7 adds more providers).
+# Access-token TTL (ISO-8601 duration). Refresh-token rotation lands in phase 7.
+app.jwt.accessTtl=${APP_JWT_ACCESS_TTL:PT15M}
+
+# Key id stamped into the JWT header. Required for key rotation (phase 7+).
+app.jwt.keyId=${APP_JWT_KEY_ID:default}
+
+# RS256 keypair (PEM, PKCS#8 for the private key, X.509 SubjectPublicKeyInfo for the public).
+# Generate locally:
+#   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt-private.pem
+#   openssl rsa -in jwt-private.pem -pubout -out jwt-public.pem
+# Then paste the file contents below. In production prefer env vars
+# APP_JWT_PRIVATE_KEY_PEM / APP_JWT_PUBLIC_KEY_PEM (raw multiline content).
+app.jwt.privateKeyPem=${APP_JWT_PRIVATE_KEY_PEM:}
+app.jwt.publicKeyPem=${APP_JWT_PUBLIC_KEY_PEM:}
+
+# ---------------- OAuth2 client (phases 6+) ----------------
 app.oauth2.clientId=${APP_OAUTH2_CLIENTID:}
 app.oauth2.clientSecret=${APP_OAUTH2_CLIENTSECRET:}
 

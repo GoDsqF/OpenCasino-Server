@@ -26,6 +26,7 @@ import java.util.UUID
         "spring.liquibase.url=jdbc:h2:mem:authcontrollertest;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE",
         "spring.liquibase.user=sa",
         "spring.liquibase.password=",
+        "app.jwt.issuer=opencasino-test",
     ]
 )
 @AutoConfigureWebTestClient
@@ -95,7 +96,7 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
-    fun `login returns 200 with stub tokens after successful register`() {
+    fun `login returns 200 with signed JWT after successful register`() {
         val email = freshEmail("loginok")
         val password = "correct-horse-battery"
 
@@ -110,9 +111,12 @@ class AuthControllerIntegrationTest {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$.accessToken").value<String> { assertTrue(it.startsWith("stub-access-")) }
+            .jsonPath("$.accessToken").value<String> {
+                assertTrue(it.split(".").size == 3, "accessToken should be a JWT (three segments)")
+            }
             .jsonPath("$.refreshToken").value<String> { assertTrue(it.startsWith("stub-refresh-")) }
             .jsonPath("$.tokenType").isEqualTo("Bearer")
+            .jsonPath("$.expiresAt").exists()
             .jsonPath("$.userId").exists()
     }
 

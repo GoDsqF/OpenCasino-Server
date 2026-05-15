@@ -2,13 +2,17 @@ package com.opencasino.server.security
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebInputException
 import reactor.core.publisher.Mono
+import java.util.UUID
 
 @RestController
 @RequestMapping("/auth")
@@ -23,6 +27,17 @@ class AuthController(private val authService: AuthService) {
     fun login(@RequestBody request: LoginRequest): Mono<ResponseEntity<Any>> =
         authService.login(request)
             .map { body -> ResponseEntity.ok(body as Any) }
+
+    @GetMapping("/me")
+    fun me(@AuthenticationPrincipal jwt: Jwt): MeResponse {
+        @Suppress("UNCHECKED_CAST")
+        val roles = (jwt.claims[JwtIssuer.CLAIM_ROLES] as? List<String>) ?: emptyList()
+        return MeResponse(
+            userId = UUID.fromString(jwt.subject),
+            email = jwt.getClaimAsString(JwtIssuer.CLAIM_EMAIL),
+            roles = roles,
+        )
+    }
 
     @ExceptionHandler(AuthException::class)
     fun handleAuthFailure(ex: AuthException): ResponseEntity<AuthFailureBody> {

@@ -42,8 +42,8 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     implementation("com.google.api-client:google-api-client:2.7.2")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     testImplementation("org.springframework.security:spring-security-test")
-    //implementation("org.springframework.security:spring-security-oauth2-client:6.4.4")
 }
 
 kotlin {
