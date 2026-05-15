@@ -74,6 +74,7 @@ class JwtIssuerTest {
     private fun sampleUser() = User(
         id = UUID.fromString("11111111-1111-1111-1111-111111111111"),
         email = "alice@example.com",
+        displayName = "alice",
         role = Role.USER,
     )
 

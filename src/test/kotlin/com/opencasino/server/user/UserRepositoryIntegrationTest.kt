@@ -31,7 +31,7 @@ class UserRepositoryIntegrationTest {
 
     @Test
     fun `save then find by email`() {
-        val user = User(email = "alice-${UUID.randomUUID()}@example.com")
+        val user = User(email = "alice-${UUID.randomUUID()}@example.com", displayName = "alice", balance = 42.50)
         users.save(user).block()
 
         StepVerifier.create(users.findByEmail(user.email))
@@ -41,13 +41,15 @@ class UserRepositoryIntegrationTest {
                 assertEquals(Role.USER, found.role)
                 assertFalse(found.emailVerified)
                 assertNull(found.passwordHash)
+                assertEquals("alice", found.displayName)
+                assertEquals(42.50, found.balance)
             }
             .verifyComplete()
     }
 
     @Test
     fun `save then find by id`() {
-        val user = User(email = "bob-${UUID.randomUUID()}@example.com", role = Role.ADMIN)
+        val user = User(email = "bob-${UUID.randomUUID()}@example.com", displayName = "bob", role = Role.ADMIN)
         users.save(user).block()
 
         StepVerifier.create(users.findById(user.id))
@@ -66,7 +68,7 @@ class UserRepositoryIntegrationTest {
 
     @Test
     fun `deleteById removes the row`() {
-        val user = User(email = "dave-${UUID.randomUUID()}@example.com")
+        val user = User(email = "dave-${UUID.randomUUID()}@example.com", displayName = "dave")
         users.save(user).block()
         users.deleteById(user.id).block()
 
@@ -76,7 +78,7 @@ class UserRepositoryIntegrationTest {
 
     @Test
     fun `save and lookup oauth identity`() {
-        val user = User(email = "carol-${UUID.randomUUID()}@example.com")
+        val user = User(email = "carol-${UUID.randomUUID()}@example.com", displayName = "carol")
         users.save(user).block()
 
         val subject = UUID.randomUUID().toString()
@@ -93,7 +95,7 @@ class UserRepositoryIntegrationTest {
 
     @Test
     fun `findAllByUserId returns identities for that user only`() {
-        val user = User(email = "eve-${UUID.randomUUID()}@example.com")
+        val user = User(email = "eve-${UUID.randomUUID()}@example.com", displayName = "eve")
         users.save(user).block()
         val subjectA = UUID.randomUUID().toString()
         val subjectB = UUID.randomUUID().toString()
@@ -113,6 +115,7 @@ class UserRepositoryIntegrationTest {
         val ts = Instant.parse("2026-05-10T12:34:56Z")
         val user = User(
             email = "frank-${UUID.randomUUID()}@example.com",
+            displayName = "frank",
             lastLoginAt = ts,
         )
         users.save(user).block()

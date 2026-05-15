@@ -21,6 +21,11 @@ app.jwt.keyId=${APP_JWT_KEY_ID:default}
 app.jwt.privateKeyPem=${APP_JWT_PRIVATE_KEY_PEM:}
 app.jwt.publicKeyPem=${APP_JWT_PUBLIC_KEY_PEM:}
 
+# ---------------- Display-name policy (Phase 5) ----------------
+# Comma-separated case-insensitive substrings that may not appear in a user's display name
+# (validated at /auth/register). Length is fixed at 3..32 chars matching [A-Za-z0-9_-]+.
+app.auth.displayNameBlocklist=${APP_AUTH_DISPLAY_NAME_BLOCKLIST:admin,root,system,support,moderator}
+
 # ---------------- OAuth2 client (phases 6+) ----------------
 app.oauth2.clientId=${APP_OAUTH2_CLIENTID:}
 app.oauth2.clientSecret=${APP_OAUTH2_CLIENTSECRET:}

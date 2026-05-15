@@ -14,6 +14,7 @@ class AuthService(
     private val users: UserRepository,
     private val passwordEncoder: PasswordEncoder,
     private val jwtIssuer: JwtIssuer,
+    private val authProperties: AuthProperties,
 ) {
 
     private val dummyHash: String by lazy { passwordEncoder.encode("never-matches-anything") }
@@ -26,17 +27,21 @@ class AuthService(
         if (!isAcceptablePassword(password)) {
             return Mono.error(AuthException(AuthFailureCode.WEAK_PASSWORD))
         }
+        val displayName = normalizeDisplayName(request.displayName)
+            ?: return Mono.error(AuthException(AuthFailureCode.INVALID_DISPLAY_NAME))
 
         return users.findByEmail(email)
             .flatMap<User> { Mono.error(AuthException(AuthFailureCode.EMAIL_TAKEN)) }
             .switchIfEmpty(
                 Mono.fromCallable { passwordEncoder.encode(password) }
                     .subscribeOn(Schedulers.boundedElastic())
-                    .flatMap { hash -> users.save(User(email = email, passwordHash = hash)) }
+                    .flatMap { hash ->
+                        users.save(User(email = email, passwordHash = hash, displayName = displayName))
+                    }
                     .onErrorMap(DuplicateKeyException::class.java) { AuthException(AuthFailureCode.EMAIL_TAKEN) }
                     .onErrorMap(DataIntegrityViolationException::class.java) { AuthException(AuthFailureCode.EMAIL_TAKEN) }
             )
-            .map { user -> RegisterResponse(userId = user.id, email = user.email) }
+            .map { user -> RegisterResponse(userId = user.id, email = user.email, displayName = user.displayName) }
     }
 
     fun login(request: LoginRequest): Mono<LoginResponse> {
@@ -84,8 +89,22 @@ class AuthService(
     private fun isAcceptablePassword(password: String): Boolean =
         password.length >= MIN_PASSWORD_LENGTH
 
+    private fun normalizeDisplayName(raw: String?): String? = normalizeDisplayName(raw, authProperties.displayNameBlocklist)
+
     companion object {
         const val MIN_PASSWORD_LENGTH = 8
+        const val MIN_DISPLAY_NAME_LENGTH = 3
+        const val MAX_DISPLAY_NAME_LENGTH = 32
         private val EMAIL_PATTERN = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
+        private val DISPLAY_NAME_PATTERN = Regex("^[A-Za-z0-9_-]+$")
+
+        fun normalizeDisplayName(raw: String?, blocklist: List<String>): String? {
+            val trimmed = raw?.trim() ?: return null
+            if (trimmed.length !in MIN_DISPLAY_NAME_LENGTH..MAX_DISPLAY_NAME_LENGTH) return null
+            if (!DISPLAY_NAME_PATTERN.matches(trimmed)) return null
+            val lower = trimmed.lowercase()
+            if (blocklist.any { it.isNotBlank() && lower.contains(it.lowercase()) }) return null
+            return trimmed
+        }
     }
 }

@@ -41,6 +41,27 @@ class PlayerSessionTest {
     }
 
     @Test
+    fun `userId derives from principal name when it is a UUID`() {
+        val session = PlayerSession("test-id", mockHandshake)
+        val uuid = UUID.randomUUID()
+        session.principal = java.security.Principal { uuid.toString() }
+        assertEquals(uuid, session.userId)
+    }
+
+    @Test
+    fun `userId is null when principal name is not a UUID`() {
+        val session = PlayerSession("test-id", mockHandshake)
+        session.principal = java.security.Principal { "not-a-uuid" }
+        assertNull(session.userId)
+    }
+
+    @Test
+    fun `userId is null when principal is not set`() {
+        val session = PlayerSession("test-id", mockHandshake)
+        assertNull(session.userId)
+    }
+
+    @Test
     fun `roomKey can be set`() {
         val session = PlayerSession("test-id", mockHandshake)
         val uuid = UUID.randomUUID()
