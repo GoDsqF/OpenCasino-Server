@@ -1,6 +1,15 @@
+# Sample ssl.properties — copy to ssl.properties and override only what differs.
+# The real ssl.properties is gitignored; alternatively, drop this file into
+# /config (Dockerfile volume) and Spring will import it without rebuild.
+#
+# Default certificate paths target the Dockerfile's /certs volume:
+#   docker run -v $PWD/secrets/certs:/certs ...
+# Inside /certs put: cert.pem, privkey.pem, chain.pem (chain.pem optional).
+# Override any path via env or by editing this file.
+
 server.ssl.enabled=${SSL_ENABLED:false}
-server.ssl.certificate=${SSL_CERTIFICATE:}
-server.ssl.certificate-private-key=${SSL_CERTIFICATE_PRIVATE_KEY:}
-server.ssl.trust-certificate=${SSL_TRUST_CERTIFICATE:}
+server.ssl.certificate=${SSL_CERTIFICATE:/certs/cert.pem}
+server.ssl.certificate-private-key=${SSL_CERTIFICATE_PRIVATE_KEY:/certs/privkey.pem}
+server.ssl.trust-certificate=${SSL_TRUST_CERTIFICATE:/certs/chain.pem}
 server.ssl.protocol=${SSL_PROTOCOL:TLS}
 server.ssl.enabled-protocols=${SSL_ENABLED_PROTOCOLS:TLSv1.3}

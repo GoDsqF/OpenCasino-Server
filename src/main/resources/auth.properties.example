@@ -16,10 +16,17 @@ app.jwt.keyId=${APP_JWT_KEY_ID:default}
 # Generate locally:
 #   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt-private.pem
 #   openssl rsa -in jwt-private.pem -pubout -out jwt-public.pem
-# Then paste the file contents below. In production prefer env vars
-# APP_JWT_PRIVATE_KEY_PEM / APP_JWT_PUBLIC_KEY_PEM (raw multiline content).
+#
+# Two ways to supply the keys — pick one (path takes effect only if PEM is blank):
+#   (a) Mount the PEM files into the container at /certs and leave defaults:
+#         docker run -v $PWD/secrets/certs:/certs ...
+#       The defaults below point to /certs/jwt-private.pem and /certs/jwt-public.pem.
+#   (b) Paste raw PEM via env (APP_JWT_PRIVATE_KEY_PEM / APP_JWT_PUBLIC_KEY_PEM).
+#       Inline PEM wins over path when both are set.
 app.jwt.privateKeyPem=${APP_JWT_PRIVATE_KEY_PEM:}
 app.jwt.publicKeyPem=${APP_JWT_PUBLIC_KEY_PEM:}
+app.jwt.privateKeyPath=${APP_JWT_PRIVATE_KEY_PATH:/certs/jwt-private.pem}
+app.jwt.publicKeyPath=${APP_JWT_PUBLIC_KEY_PATH:/certs/jwt-public.pem}
 
 # ---------------- Display-name policy (Phase 5) ----------------
 # Comma-separated case-insensitive substrings that may not appear in a user's display name

@@ -12,5 +12,5 @@ class JwtKeyConfiguration {
     @Bean
     @ConditionalOnMissingBean
     fun jwtKeyMaterial(props: JwtProperties): JwtKeyMaterial =
-        JwtKeyMaterial.fromPem(props.privateKeyPem, props.publicKeyPem, props.keyId)
+        JwtKeyMaterial.fromProperties(props)
 }
