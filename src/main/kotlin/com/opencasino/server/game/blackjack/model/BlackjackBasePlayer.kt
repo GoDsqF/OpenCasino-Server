@@ -20,5 +20,12 @@ abstract class BlackjackBasePlayer<GR, IP : InitPack, UP : UpdatePack, PUP : Pri
 
     lateinit var lastDecision: BlackjackDecision
 
-    lateinit var playerDeck: CardDeck
+    val hands: MutableList<BlackjackHand> = mutableListOf()
+
+    var activeHandIndex: Int = 0
+
+    val playerDeck: CardDeck
+        get() = hands[activeHandIndex].deck
+
+    fun currentHand(): BlackjackHand = hands[activeHandIndex]
 }

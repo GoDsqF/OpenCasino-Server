@@ -9,5 +9,7 @@ data class PrivatePlayerUpdatePack(
     val balance: Double,
     val currentBet: Double,
     val lastDecision: BlackjackDecision,
-    val availableActions: List<String>
+    val availableActions: List<String>,
+    val hands: List<BlackjackHandView>,
+    val activeHandIndex: Int,
 ): PrivateUpdatePack

@@ -56,12 +56,17 @@ class PacksTest {
 
         @Test
         fun `PrivatePlayerUpdatePack stores all fields`() {
-            val pack = PrivatePlayerUpdatePack(1L, 500.0, 50.0, BlackjackDecision.HIT, listOf("HIT", "STAND"))
+            val pack = PrivatePlayerUpdatePack(
+                1L, 500.0, 50.0, BlackjackDecision.HIT, listOf("HIT", "STAND"),
+                emptyList(), 0
+            )
             assertEquals(1L, pack.id)
             assertEquals(500.0, pack.balance)
             assertEquals(50.0, pack.currentBet)
             assertEquals(BlackjackDecision.HIT, pack.lastDecision)
             assertEquals(listOf("HIT", "STAND"), pack.availableActions)
+            assertEquals(0, pack.activeHandIndex)
+            assertTrue(pack.hands.isEmpty())
         }
 
         @Test
@@ -79,14 +84,27 @@ class PacksTest {
         }
 
         @Test
-        fun `BlackjackConditionPack stores condition string`() {
-            val pack = BlackjackConditionPack(BlackjackCondition.PlayerWin.toString())
-            assertEquals("PlayerWin", pack.condition)
+        fun `BlackjackConditionPack stores hand conditions list`() {
+            val pack = BlackjackConditionPack(listOf(BlackjackCondition.PlayerWin.toString()))
+            assertEquals(listOf("PlayerWin"), pack.handConditions)
+        }
+
+        @Test
+        fun `BlackjackConditionPack supports multi-hand list`() {
+            val pack = BlackjackConditionPack(
+                listOf(
+                    BlackjackCondition.PlayerWin.toString(),
+                    BlackjackCondition.DealerWin.toString(),
+                )
+            )
+            assertEquals(2, pack.handConditions.size)
         }
 
         @Test
         fun `GameUpdatePack assembles correctly`() {
-            val privateUpdate = PrivatePlayerUpdatePack(1L, 100.0, 25.0, BlackjackDecision.STAND, emptyList())
+            val privateUpdate = PrivatePlayerUpdatePack(
+                1L, 100.0, 25.0, BlackjackDecision.STAND, emptyList(), emptyList(), 0
+            )
             val publicUpdate = PublicPlayerUpdatePack(1L, BlackjackDecision.STAND)
             val card = Card(Rank.CA, Suit.SPADES)
             val handUpdate = PlayerHandUpdatePack(publicUpdate, listOf(card))
@@ -239,7 +257,9 @@ class PacksTest {
 
         @Test
         fun `PrivatePlayerUpdatePack implements PrivateUpdatePack`() {
-            val pack: PrivateUpdatePack = PrivatePlayerUpdatePack(1L, 100.0, 0.0, BlackjackDecision.NONE, emptyList())
+            val pack: PrivateUpdatePack = PrivatePlayerUpdatePack(
+                1L, 100.0, 0.0, BlackjackDecision.NONE, emptyList(), emptyList(), 0
+            )
             assertTrue(pack is UpdatePack)
             assertTrue(pack is Pack)
         }

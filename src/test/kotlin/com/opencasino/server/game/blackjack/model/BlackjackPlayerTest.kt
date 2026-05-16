@@ -148,21 +148,21 @@ class BlackjackPlayerTest {
         fun `update does nothing when madeDecision is false`() {
             player.madeDecision = false
             player.update()
-            // No interactions with room
-            verify(mockRoom, never()).onDealerTurn()
-            verify(mockRoom, never()).onPlayerTurn()
+            verify(mockRoom, never()).onHandResolved(player)
+            verify(mockRoom, never()).onPlayerHit(player)
         }
 
         @Test
-        fun `update with STAND calls onDealerTurn and resets madeDecision`() {
+        fun `update with STAND resolves current hand and calls onHandResolved`() {
             player.updateState(BlackjackDecision.STAND)
             player.update()
             assertFalse(player.madeDecision)
-            verify(mockRoom).onDealerTurn()
+            assertTrue(player.currentHand().resolved)
+            verify(mockRoom).onHandResolved(player)
         }
 
         @Test
-        fun `update with HIT deals card and calls onPlayerTurn`() {
+        fun `update with HIT deals card and calls onPlayerHit`() {
             val gameDeck = CardDeck(1)
             `when`(mockRoom.deck).thenReturn(gameDeck)
 
@@ -171,7 +171,7 @@ class BlackjackPlayerTest {
 
             assertFalse(player.madeDecision)
             assertEquals(1, player.playerDeck.getCards().size)
-            verify(mockRoom).onPlayerTurn()
+            verify(mockRoom).onPlayerHit(player)
         }
 
         @Test
@@ -186,22 +186,22 @@ class BlackjackPlayerTest {
             player.update()
 
             assertEquals(2, player.playerDeck.getCards().size)
-            verify(mockRoom, times(2)).onPlayerTurn()
+            verify(mockRoom, times(2)).onPlayerHit(player)
         }
 
         @Test
-        fun `update with DOUBLE sends failure and clears decision`() {
+        fun `update with DOUBLE without two-card hand sends failure`() {
             player.updateState(BlackjackDecision.DOUBLE)
             player.update()
-            verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "Decision DOUBLE is not supported", null)
+            verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "DOUBLE is not available", null)
             assertFalse(player.madeDecision)
         }
 
         @Test
-        fun `update with SPLIT sends failure and clears decision`() {
+        fun `update with SPLIT without pair sends failure`() {
             player.updateState(BlackjackDecision.SPLIT)
             player.update()
-            verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "Decision SPLIT is not supported", null)
+            verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "SPLIT is not available", null)
             assertFalse(player.madeDecision)
         }
 
@@ -551,8 +551,8 @@ class BlackjackPlayerTest {
             assertEquals(2, player.playerDeck.getCards().size) // no new cards
             assertFalse(player.madeDecision)
 
-            verify(mockRoom, times(2)).onPlayerTurn()
-            verify(mockRoom, times(1)).onDealerTurn()
+            verify(mockRoom, times(2)).onPlayerHit(player)
+            verify(mockRoom, times(1)).onHandResolved(player)
         }
 
         @Test
@@ -561,8 +561,8 @@ class BlackjackPlayerTest {
             player.update()
 
             assertTrue(player.playerDeck.getCards().isEmpty())
-            verify(mockRoom).onDealerTurn()
-            verify(mockRoom, never()).onPlayerTurn()
+            verify(mockRoom).onHandResolved(player)
+            verify(mockRoom, never()).onPlayerHit(player)
         }
 
         @Test
@@ -605,8 +605,8 @@ class BlackjackPlayerTest {
             player.update()
             player.update()
 
-            verify(mockRoom, never()).onDealerTurn()
-            verify(mockRoom, never()).onPlayerTurn()
+            verify(mockRoom, never()).onHandResolved(player)
+            verify(mockRoom, never()).onPlayerHit(player)
             assertTrue(player.playerDeck.getCards().isEmpty())
         }
     }
@@ -657,6 +657,237 @@ class BlackjackPlayerTest {
             player.isAlive = false
             assertTrue(player2.isAlive)
             assertFalse(player.isAlive)
+        }
+    }
+
+    // =========================================================================
+    // DOUBLE
+    // =========================================================================
+
+    @Nested
+    inner class DoubleDown {
+
+        @Test
+        fun `DOUBLE deals one card, doubles bet, resolves hand and advances`() {
+            val gameDeck = CardDeck(1)
+            `when`(mockRoom.deck).thenReturn(gameDeck)
+
+            player.currentHand().bet = 50.0
+            player.currentHand().deck.addCard(Card(Rank.C5, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C6, Suit.HEARTS))
+            player.balance = 1000.0
+
+            player.updateState(BlackjackDecision.DOUBLE)
+            player.update()
+
+            assertEquals(3, player.currentHand().deck.getCards().size)
+            assertEquals(100.0, player.currentHand().bet)
+            assertEquals(950.0, player.balance)
+            assertTrue(player.currentHand().resolved)
+            assertTrue(player.currentHand().doubled)
+            verify(mockRoom).onHandResolved(player)
+        }
+
+        @Test
+        fun `DOUBLE rejected when balance below bet`() {
+            player.currentHand().bet = 100.0
+            player.currentHand().deck.addCard(Card(Rank.C5, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C6, Suit.HEARTS))
+            player.balance = 50.0
+
+            player.updateState(BlackjackDecision.DOUBLE)
+            player.update()
+
+            verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "DOUBLE is not available", null)
+            assertEquals(2, player.currentHand().deck.getCards().size)
+            assertEquals(100.0, player.currentHand().bet)
+            assertFalse(player.currentHand().resolved)
+        }
+
+        @Test
+        fun `DOUBLE rejected after a HIT (more than 2 cards)`() {
+            player.currentHand().bet = 50.0
+            player.currentHand().deck.addCard(Card(Rank.C5, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C3, Suit.HEARTS))
+            player.currentHand().deck.addCard(Card(Rank.C4, Suit.DIAMONDS))
+            player.balance = 1000.0
+
+            player.updateState(BlackjackDecision.DOUBLE)
+            player.update()
+
+            verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "DOUBLE is not available", null)
+        }
+    }
+
+    // =========================================================================
+    // SPLIT
+    // =========================================================================
+
+    @Nested
+    inner class Split {
+
+        @Test
+        fun `SPLIT on pair creates two hands, deducts second bet, deals one card to each`() {
+            val gameDeck = CardDeck()
+            gameDeck.addCard(Card(Rank.C2, Suit.SPADES))
+            gameDeck.addCard(Card(Rank.C3, Suit.HEARTS))
+            `when`(mockRoom.deck).thenReturn(gameDeck)
+
+            player.currentHand().bet = 50.0
+            player.currentHand().deck.addCard(Card(Rank.C8, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C8, Suit.HEARTS))
+            player.balance = 1000.0
+
+            player.updateState(BlackjackDecision.SPLIT)
+            player.update()
+
+            assertEquals(2, player.hands.size)
+            assertEquals(50.0, player.hands[0].bet)
+            assertEquals(50.0, player.hands[1].bet)
+            assertEquals(950.0, player.balance)
+            assertEquals(2, player.hands[0].deck.getCards().size)
+            assertEquals(2, player.hands[1].deck.getCards().size)
+            assertEquals(Rank.C8, player.hands[0].deck.getCards()[0].rank)
+            assertEquals(Rank.C8, player.hands[1].deck.getCards()[0].rank)
+            assertTrue(player.hands[0].fromSplit)
+            assertTrue(player.hands[1].fromSplit)
+            verify(mockRoom).onSplitCompleted(player)
+        }
+
+        @Test
+        fun `SPLIT rejected when not a pair`() {
+            player.currentHand().bet = 50.0
+            player.currentHand().deck.addCard(Card(Rank.C5, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C6, Suit.HEARTS))
+            player.balance = 1000.0
+
+            player.updateState(BlackjackDecision.SPLIT)
+            player.update()
+
+            verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "SPLIT is not available", null)
+            assertEquals(1, player.hands.size)
+        }
+
+        @Test
+        fun `SPLIT rejected when balance insufficient`() {
+            player.currentHand().bet = 100.0
+            player.currentHand().deck.addCard(Card(Rank.C8, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C8, Suit.HEARTS))
+            player.balance = 50.0
+
+            player.updateState(BlackjackDecision.SPLIT)
+            player.update()
+
+            verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "SPLIT is not available", null)
+            assertEquals(1, player.hands.size)
+        }
+
+        @Test
+        fun `SPLIT rejected when already split`() {
+            val gameDeck = CardDeck()
+            gameDeck.addCard(Card(Rank.C2, Suit.SPADES))
+            gameDeck.addCard(Card(Rank.C3, Suit.HEARTS))
+            `when`(mockRoom.deck).thenReturn(gameDeck)
+
+            player.currentHand().bet = 50.0
+            player.currentHand().deck.addCard(Card(Rank.C8, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C8, Suit.HEARTS))
+            player.balance = 1000.0
+            player.updateState(BlackjackDecision.SPLIT)
+            player.update()
+
+            // Second SPLIT attempt on first split hand
+            // Hand has C8 + a non-8 card now, so canSplit() is false anyway,
+            // but the canonical guard is "hands.size != 1"
+            assertEquals(2, player.hands.size)
+            player.updateState(BlackjackDecision.SPLIT)
+            player.update()
+
+            verify(mockRoom, times(1)).sendFailure(
+                mockSession, FailureCode.INVALID_DECISION, "SPLIT is not available", null
+            )
+        }
+    }
+
+    // =========================================================================
+    // availableActions
+    // =========================================================================
+
+    @Nested
+    inner class AvailableActions {
+
+        @Test
+        fun `HIT and STAND when hand has cards and bet is positive`() {
+            player.currentHand().bet = 50.0
+            player.currentHand().deck.addCard(Card(Rank.C5, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C7, Suit.HEARTS))
+
+            val actions = player.getPrivateUpdatePack().availableActions
+            assertTrue(actions.contains("HIT"))
+            assertTrue(actions.contains("STAND"))
+            assertTrue(actions.contains("DOUBLE"))
+        }
+
+        @Test
+        fun `DOUBLE excluded when balance insufficient`() {
+            player.currentHand().bet = 100.0
+            player.currentHand().deck.addCard(Card(Rank.C5, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C7, Suit.HEARTS))
+            player.balance = 50.0
+
+            val actions = player.getPrivateUpdatePack().availableActions
+            assertFalse(actions.contains("DOUBLE"))
+        }
+
+        @Test
+        fun `SPLIT included only on pair`() {
+            player.currentHand().bet = 50.0
+            player.currentHand().deck.addCard(Card(Rank.C8, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C8, Suit.HEARTS))
+
+            val actions = player.getPrivateUpdatePack().availableActions
+            assertTrue(actions.contains("SPLIT"))
+        }
+
+        @Test
+        fun `SPLIT excluded after split (only one hand allowed)`() {
+            val gameDeck = CardDeck()
+            gameDeck.addCard(Card(Rank.C8, Suit.DIAMONDS))
+            gameDeck.addCard(Card(Rank.C8, Suit.CLUBS))
+            `when`(mockRoom.deck).thenReturn(gameDeck)
+
+            player.currentHand().bet = 50.0
+            player.currentHand().deck.addCard(Card(Rank.C8, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C8, Suit.HEARTS))
+            player.balance = 1000.0
+
+            player.updateState(BlackjackDecision.SPLIT)
+            player.update()
+
+            // Now there are 2 hands each [8, 8]; SPLIT must NOT be available
+            assertEquals(2, player.hands.size)
+            val actions = player.getPrivateUpdatePack().availableActions
+            assertFalse(actions.contains("SPLIT"))
+        }
+
+        @Test
+        fun `no actions when madeDecision is true`() {
+            player.currentHand().bet = 50.0
+            player.currentHand().deck.addCard(Card(Rank.C5, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C7, Suit.HEARTS))
+            player.madeDecision = true
+
+            assertTrue(player.getPrivateUpdatePack().availableActions.isEmpty())
+        }
+
+        @Test
+        fun `no actions when current hand resolved`() {
+            player.currentHand().bet = 50.0
+            player.currentHand().deck.addCard(Card(Rank.C5, Suit.SPADES))
+            player.currentHand().deck.addCard(Card(Rank.C7, Suit.HEARTS))
+            player.currentHand().resolved = true
+
+            assertTrue(player.getPrivateUpdatePack().availableActions.isEmpty())
         }
     }
 }
