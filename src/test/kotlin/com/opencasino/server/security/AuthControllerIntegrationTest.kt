@@ -159,10 +159,130 @@ class AuthControllerIntegrationTest {
             .jsonPath("$.accessToken").value<String> {
                 assertTrue(it.split(".").size == 3, "accessToken should be a JWT (three segments)")
             }
-            .jsonPath("$.refreshToken").value<String> { assertTrue(it.startsWith("stub-refresh-")) }
+            .jsonPath("$.refreshToken").value<String> {
+                assertTrue(it.isNotBlank() && it.length >= 32, "refreshToken should look like a high-entropy random: got $it")
+            }
+            .jsonPath("$.refreshExpiresAt").exists()
             .jsonPath("$.tokenType").isEqualTo("Bearer")
             .jsonPath("$.expiresAt").exists()
             .jsonPath("$.userId").exists()
+    }
+
+    private fun registerAndLogin(prefix: String): Map<String, Any> {
+        val email = freshEmail(prefix)
+        val password = "correct-horse-battery"
+        webClient.post().uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(email, password))
+            .exchange().expectStatus().isCreated
+
+        @Suppress("UNCHECKED_CAST")
+        return webClient.post().uri("/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("email" to email, "password" to password))
+            .exchange()
+            .expectStatus().isOk
+            .returnResult(Map::class.java)
+            .responseBody.blockFirst() as Map<String, Any>
+    }
+
+    @Test
+    fun `refresh rotates the token and returns a new pair`() {
+        val first = registerAndLogin("refresh1")
+        val firstRefresh = first["refreshToken"] as String
+        val firstAccess = first["accessToken"] as String
+
+        val second = webClient.post().uri("/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("refreshToken" to firstRefresh))
+            .exchange()
+            .expectStatus().isOk
+            .returnResult(Map::class.java)
+            .responseBody.blockFirst()!!
+
+        val secondRefresh = second["refreshToken"] as String
+        val secondAccess = second["accessToken"] as String
+        assertTrue(secondRefresh != firstRefresh, "refresh should rotate")
+        assertTrue(secondAccess != firstAccess || (secondAccess as String).split(".").size == 3)
+    }
+
+    @Test
+    fun `using refresh after rotation triggers replay detection and revokes all sessions`() {
+        val first = registerAndLogin("replay1")
+        val firstRefresh = first["refreshToken"] as String
+
+        val rotated = webClient.post().uri("/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("refreshToken" to firstRefresh))
+            .exchange()
+            .expectStatus().isOk
+            .returnResult(Map::class.java)
+            .responseBody.blockFirst()!!
+
+        webClient.post().uri("/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("refreshToken" to firstRefresh))
+            .exchange()
+            .expectStatus().isUnauthorized
+            .expectBody()
+            .jsonPath("$.code").isEqualTo("REFRESH_REPLAY_DETECTED")
+
+        webClient.post().uri("/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("refreshToken" to rotated["refreshToken"] as String))
+            .exchange()
+            .expectStatus().isUnauthorized
+            .expectBody()
+            .jsonPath("$.code").isEqualTo("REFRESH_REVOKED")
+    }
+
+    @Test
+    fun `unknown refresh token is rejected with REFRESH_INVALID`() {
+        webClient.post().uri("/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("refreshToken" to "definitely-not-a-real-token"))
+            .exchange()
+            .expectStatus().isUnauthorized
+            .expectBody()
+            .jsonPath("$.code").isEqualTo("REFRESH_INVALID")
+    }
+
+    @Test
+    fun `logout revokes the refresh token`() {
+        val pair = registerAndLogin("logout1")
+        val refresh = pair["refreshToken"] as String
+
+        webClient.post().uri("/auth/logout")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("refreshToken" to refresh))
+            .exchange()
+            .expectStatus().isNoContent
+
+        webClient.post().uri("/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("refreshToken" to refresh))
+            .exchange()
+            .expectStatus().isUnauthorized
+            .expectBody()
+            .jsonPath("$.code").isEqualTo("REFRESH_REVOKED")
+    }
+
+    @Test
+    fun `access token remains valid after logout until its own TTL expires`() {
+        val pair = registerAndLogin("logoutaccess")
+        val refresh = pair["refreshToken"] as String
+        val access = pair["accessToken"] as String
+
+        webClient.post().uri("/auth/logout")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("refreshToken" to refresh))
+            .exchange()
+            .expectStatus().isNoContent
+
+        webClient.get().uri("/auth/me")
+            .header("Authorization", "Bearer $access")
+            .exchange()
+            .expectStatus().isOk
     }
 
     @Test

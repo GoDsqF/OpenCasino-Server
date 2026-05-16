@@ -8,10 +8,23 @@ import java.net.URI
 
 internal object OAuth2RedirectWriter {
 
-    fun successRedirect(exchange: ServerWebExchange, base: String, issued: IssuedToken): Mono<Void> =
+    fun successRedirect(
+        exchange: ServerWebExchange,
+        base: String,
+        issued: IssuedToken,
+        refresh: IssuedRefresh,
+    ): Mono<Void> =
         sendRedirect(
             exchange,
-            buildUri(base, mapOf("token" to issued.token, "expiresAt" to issued.expiresAt.toString())),
+            buildUri(
+                base,
+                mapOf(
+                    "token" to issued.token,
+                    "expiresAt" to issued.expiresAt.toString(),
+                    "refresh" to refresh.plaintext,
+                    "refreshExpiresAt" to refresh.expiresAt.toString(),
+                ),
+            ),
         )
 
     fun errorRedirect(exchange: ServerWebExchange, base: String, code: AuthFailureCode): Mono<Void> =

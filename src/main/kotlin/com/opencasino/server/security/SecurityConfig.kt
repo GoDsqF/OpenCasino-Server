@@ -41,6 +41,8 @@ class SecurityConfig {
                         "/static/**",
                         "/auth/register",
                         "/auth/login",
+                        "/auth/refresh",
+                        "/auth/logout",
                         "/oauth2/authorization/*",
                         "/login/oauth2/code/*",
                     ).permitAll()

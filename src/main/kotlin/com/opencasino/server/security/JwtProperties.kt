@@ -7,6 +7,7 @@ import java.time.Duration
 data class JwtProperties(
     val issuer: String = "opencasino",
     val accessTtl: Duration = Duration.ofMinutes(15),
+    val refreshTtl: Duration = Duration.ofDays(30),
     val keyId: String = "default",
     val privateKeyPem: String = "",
     val publicKeyPem: String = "",

@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changes/003-merge-players-into-users.sql
   - include:
       file: db/changelog/changes/004-email-verified-default-true.sql
+  - include:
+      file: db/changelog/changes/005-refresh-tokens.sql

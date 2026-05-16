@@ -28,6 +28,16 @@ class AuthController(private val authService: AuthService) {
         authService.login(request)
             .map { body -> ResponseEntity.ok(body as Any) }
 
+    @PostMapping("/refresh")
+    fun refresh(@RequestBody request: RefreshRequest): Mono<ResponseEntity<Any>> =
+        authService.refresh(request)
+            .map { body -> ResponseEntity.ok(body as Any) }
+
+    @PostMapping("/logout")
+    fun logout(@RequestBody request: LogoutRequest): Mono<ResponseEntity<Void>> =
+        authService.logout(request)
+            .then(Mono.fromCallable { ResponseEntity.noContent().build<Void>() })
+
     @GetMapping("/me")
     fun me(@AuthenticationPrincipal jwt: Jwt): MeResponse {
         @Suppress("UNCHECKED_CAST")
@@ -48,7 +58,11 @@ class AuthController(private val authService: AuthService) {
             AuthFailureCode.MALFORMED_REQUEST -> HttpStatus.BAD_REQUEST
             AuthFailureCode.EMAIL_TAKEN -> HttpStatus.CONFLICT
             AuthFailureCode.INVALID_CREDENTIALS,
-            AuthFailureCode.OAUTH_EMAIL_UNVERIFIED -> HttpStatus.UNAUTHORIZED
+            AuthFailureCode.OAUTH_EMAIL_UNVERIFIED,
+            AuthFailureCode.REFRESH_INVALID,
+            AuthFailureCode.REFRESH_EXPIRED,
+            AuthFailureCode.REFRESH_REVOKED,
+            AuthFailureCode.REFRESH_REPLAY_DETECTED -> HttpStatus.UNAUTHORIZED
             AuthFailureCode.OAUTH_PROVIDER_ERROR -> HttpStatus.BAD_GATEWAY
         }
         return ResponseEntity.status(status).body(
@@ -78,5 +92,10 @@ class AuthController(private val authService: AuthService) {
         AuthFailureCode.OAUTH_EMAIL_UNVERIFIED ->
             "OAuth provider did not return a verified email."
         AuthFailureCode.OAUTH_PROVIDER_ERROR -> "OAuth provider exchange failed."
+        AuthFailureCode.REFRESH_INVALID -> "Refresh token is missing or unknown."
+        AuthFailureCode.REFRESH_EXPIRED -> "Refresh token has expired."
+        AuthFailureCode.REFRESH_REVOKED -> "Refresh token has been revoked."
+        AuthFailureCode.REFRESH_REPLAY_DETECTED ->
+            "Refresh token reuse detected; all sessions for this account have been revoked."
     }
 }
