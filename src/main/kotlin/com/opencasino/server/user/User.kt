@@ -17,7 +17,7 @@ data class User(
     val email: String,
 
     @Column("email_verified")
-    val emailVerified: Boolean = false,
+    val emailVerified: Boolean = true,
 
     @Column("password_hash")
     val passwordHash: String? = null,

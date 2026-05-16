@@ -25,6 +25,12 @@ class UserRepository(
             .matching(Query.query(Criteria.where("email").`is`(email)).limit(1))
             .one()
 
+    fun existsByDisplayName(displayName: String): Mono<Boolean> =
+        template.exists(
+            Query.query(Criteria.where("display_name").`is`(displayName)),
+            User::class.java,
+        )
+
     fun save(user: User): Mono<User> =
         template.insert<User>().using(user)
 

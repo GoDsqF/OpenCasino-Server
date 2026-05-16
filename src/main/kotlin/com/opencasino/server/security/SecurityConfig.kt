@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.core.convert.converter.Converter
 import org.springframework.security.authentication.AbstractAuthenticationToken
-import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository
@@ -26,6 +25,8 @@ class SecurityConfig {
         jwtDecoder: ReactiveJwtDecoder,
         jwtAuthenticationConverter: Converter<Jwt, Mono<AbstractAuthenticationToken>>,
         clientRegistrations: ObjectProvider<ReactiveClientRegistrationRepository>,
+        oauth2SuccessHandler: OAuth2LoginSuccessHandler,
+        oauth2FailureHandler: OAuth2LoginFailureHandler,
     ): SecurityWebFilterChain {
         http
             .csrf { it.disable() }
@@ -59,7 +60,10 @@ class SecurityConfig {
         // Spring Boot only creates the bean when spring.security.oauth2.client.registration.*
         // properties are present, so empty env vars => the app starts without OAuth.
         if (clientRegistrations.getIfAvailable() != null) {
-            http.oauth2Login(Customizer.withDefaults())
+            http.oauth2Login {
+                it.authenticationSuccessHandler(oauth2SuccessHandler)
+                it.authenticationFailureHandler(oauth2FailureHandler)
+            }
         }
 
         return http.build()

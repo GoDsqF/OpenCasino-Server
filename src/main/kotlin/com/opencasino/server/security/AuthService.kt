@@ -95,8 +95,10 @@ class AuthService(
         const val MIN_PASSWORD_LENGTH = 8
         const val MIN_DISPLAY_NAME_LENGTH = 3
         const val MAX_DISPLAY_NAME_LENGTH = 32
+        const val DEFAULT_OAUTH_DISPLAY_NAME = "user"
         private val EMAIL_PATTERN = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
         private val DISPLAY_NAME_PATTERN = Regex("^[A-Za-z0-9_-]+$")
+        private val NON_DISPLAY_NAME_CHARS = Regex("[^A-Za-z0-9_-]")
 
         fun normalizeDisplayName(raw: String?, blocklist: List<String>): String? {
             val trimmed = raw?.trim() ?: return null
@@ -105,6 +107,28 @@ class AuthService(
             val lower = trimmed.lowercase()
             if (blocklist.any { it.isNotBlank() && lower.contains(it.lowercase()) }) return null
             return trimmed
+        }
+
+        // Best-effort display-name candidate from an OAuth provider profile.
+        // Tries the provider-supplied name first (sanitized), then the email
+        // local-part, then a generic last-resort default. Result is guaranteed
+        // non-null and 3..32 [A-Za-z0-9_-]+, but uniqueness is not guaranteed —
+        // callers should disambiguate against existing rows (suffix or retry).
+        fun deriveDisplayNameForOAuth(profileName: String?, email: String?, blocklist: List<String>): String {
+            val candidates = sequenceOf(
+                profileName,
+                email?.substringBefore('@')?.takeIf { it.isNotBlank() },
+            )
+            return candidates
+                .mapNotNull { sanitizeForDisplay(it) }
+                .firstOrNull { normalizeDisplayName(it, blocklist) != null }
+                ?: DEFAULT_OAUTH_DISPLAY_NAME
+        }
+
+        private fun sanitizeForDisplay(raw: String?): String? {
+            if (raw == null) return null
+            val cleaned = raw.replace(NON_DISPLAY_NAME_CHARS, "").take(MAX_DISPLAY_NAME_LENGTH)
+            return cleaned.takeIf { it.length >= MIN_DISPLAY_NAME_LENGTH }
         }
     }
 }

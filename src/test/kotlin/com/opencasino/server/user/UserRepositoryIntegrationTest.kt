@@ -39,7 +39,7 @@ class UserRepositoryIntegrationTest {
                 assertEquals(user.id, found.id)
                 assertEquals(user.email, found.email)
                 assertEquals(Role.USER, found.role)
-                assertFalse(found.emailVerified)
+                assertTrue(found.emailVerified)
                 assertNull(found.passwordHash)
                 assertEquals("alice", found.displayName)
                 assertEquals(42.50, found.balance)
