@@ -45,14 +45,14 @@ class PokerPlayer(
                     madeDecision = false
                     //should be somewhat transactional
                     if (lastBet.isValidBet(lastDecision)) {
-                        currentBet = currentBet!! + lastBet!!
+                        commitToStake(lastBet!!)
                         gameRoom.nextMove(this.userSession)
                     }
                 }
                 PokerDecision.RAISE -> {
                     madeDecision = false
                     if (lastBet.isValidBet(lastDecision)) {
-                        currentBet = currentBet!! + lastBet!!
+                        commitToStake(lastBet!!)
                         gameRoom.nextMove(this.userSession)
                     }
                 }
@@ -63,8 +63,11 @@ class PokerPlayer(
                 }
                 PokerDecision.ALL_IN -> {
                     madeDecision = false
+                    if (stack > 0.0) {
+                        commitToStake(stack)
+                    }
                     allin = true
-
+                    gameRoom.nextMove(this.userSession)
                 }
                 else -> {
                     madeDecision = false
@@ -75,6 +78,16 @@ class PokerPlayer(
                     )
                 }
             }
+        }
+    }
+
+    private fun commitToStake(amount: Double) {
+        val taken = if (amount > stack) stack else amount
+        stack -= taken
+        currentBet = (currentBet ?: 0.0) + taken
+        totalContribution += taken
+        if ((currentBet ?: 0.0) > gameRoom.lastMaxBet) {
+            gameRoom.lastMaxBet = currentBet!!
         }
     }
 
