@@ -6,7 +6,6 @@ import com.opencasino.server.event.BlackjackPlayerDecisionEvent
 import com.opencasino.server.game.blackjack.map.BlackjackMap
 import com.opencasino.server.game.blackjack.model.BlackjackPlayer
 import com.opencasino.server.game.blackjack.model.BlackjackCondition
-import com.opencasino.server.game.model.Card
 import com.opencasino.server.game.model.CardDeck
 import com.opencasino.server.game.model.Rank
 import com.opencasino.server.network.pack.blackjack.info.InfoPack
@@ -38,12 +37,12 @@ class BlackjackGameRoom(
     val roomProperties: BlackjackRoomProperties
 ) : AbstractBlackjackGameRoom(gameRoomId, schedulerService, roomService, webSocketSessionService) {
     private val testing = AtomicBoolean(false)
-    
+
     private val lastUpdateBySession: MutableMap<String, Message> = HashMap()
     private val started = AtomicBoolean(false)
     private val gameStarted = AtomicBoolean(false)
 
-    private var condition: BlackjackCondition? = null
+    private var handConditions: List<BlackjackCondition>? = null
 
     private val combiner: Map<Rank, Int> = mapOf(
         Rank.C2 to 2,
@@ -61,19 +60,16 @@ class BlackjackGameRoom(
         Rank.CA to 11
     )
 
-    //deck initialize
     var deck = CardDeck(roomProperties.deckStacks)
 
-    //initialize map of player hands
-
-
-    //dealer hand
     var dealerHand = CardDeck()
 
     private fun initialDeal() {
         val players = map.getPlayers()
         for (player in players) {
-            deck.dealCards(2, player.playerDeck)
+            val hand = player.currentHand()
+            hand.bet = player.bet
+            deck.dealCards(2, hand.deck)
         }
         deck.dealCard(dealerHand, true)
         deck.dealCard(dealerHand, false)
@@ -81,18 +77,22 @@ class BlackjackGameRoom(
         initialCheck()
     }
 
-    private fun initialCheck(): BlackjackCondition? {
-        var result: BlackjackCondition? = null
+    private fun initialCheck(): List<BlackjackCondition>? {
+        val player = map.getPlayers().first()
+        val playerSum = calculateScore(player.currentHand().deck)
         val dealerSum = calculateScore(dealerHand)
-        val playerSum = calculateScore(map.getPlayers().first().playerDeck)
 
-        if (dealerSum == 21) {
-            if (playerSum != 21) result = BlackjackCondition.DealerBlackjack
+        val outcome: BlackjackCondition? = when {
+            dealerSum == 21 && playerSum != 21 -> BlackjackCondition.DealerBlackjack
+            playerSum == 21 -> BlackjackCondition.PlayerWinBlackjack
+            else -> null
         }
-        else if (playerSum == 21) result = BlackjackCondition.PlayerWinBlackjack
 
-        condition = result
-        return result
+        if (outcome != null) {
+            player.currentHand().resolved = true
+            handConditions = listOf(outcome)
+        }
+        return handConditions
     }
 
     override fun onRoomCreated(userSessions: List<PlayerSession>) {
@@ -178,7 +178,7 @@ class BlackjackGameRoom(
 
     override fun update() {
         if (!gameStarted.get()) return
-        if (condition == null) {
+        if (handConditions == null) {
             for (currentPlayer in map.getPlayers()) {
                 val newUpdate = collectUpdate(currentPlayer)
                 val sessionId = currentPlayer.userSession.id
@@ -191,6 +191,7 @@ class BlackjackGameRoom(
         }
         else {
             dealerHand.openCards()
+            val conditions = handConditions!!.map { it.name }
             for (currentPlayer in map.getPlayers()) {
                 send(
                     currentPlayer.userSession,
@@ -200,9 +201,7 @@ class BlackjackGameRoom(
                     currentPlayer.userSession,
                     Message(
                         GAME_ROOM_STATUS,
-                        BlackjackConditionPack(
-                            condition.toString()
-                        )
+                        BlackjackConditionPack(conditions)
                     )
                 )
             }
@@ -223,37 +222,50 @@ class BlackjackGameRoom(
         )
     }
 
-    fun onPlayerTurn(): Pair<BlackjackCondition?, Int> {
-        var result: Pair<BlackjackCondition?, Int> = Pair(null, 0)
-        val playerSum = calculateScore(map.getPlayers().first().playerDeck)
-
-        if (playerSum > 21) {
-            result = Pair(BlackjackCondition.DealerWin, playerSum)
-        } else if (playerSum == 21) onDealerTurn()
-
-        condition = result.first
-        return result
+    fun onPlayerHit(player: BlackjackPlayer) {
+        val hand = player.currentHand()
+        val sum = calculateScore(hand.deck)
+        if (sum >= 21) {
+            hand.resolved = true
+            onHandResolved(player)
+        }
     }
 
-    fun onDealerTurn(): BlackjackCondition? {
-        dealerHand.openCards()
-        val playerSum = calculateScore(map.getPlayers().first().playerDeck)
+    fun onHandResolved(player: BlackjackPlayer) {
+        if (player.advanceToNextHand()) return
+        playDealerAndResolve(player)
+    }
 
+    fun onSplitCompleted(player: BlackjackPlayer) {
+        for (hand in player.hands) {
+            if (calculateScore(hand.deck) == 21) hand.resolved = true
+        }
+        if (player.hands.all { it.resolved }) {
+            playDealerAndResolve(player)
+        } else {
+            player.advanceToNextHand()
+        }
+    }
+
+    private fun playDealerAndResolve(player: BlackjackPlayer) {
+        dealerHand.openCards()
         var dealerSum = calculateScore(dealerHand)
         while (dealerSum < 17) {
             deck.dealCard(dealerHand)
             dealerSum = calculateScore(dealerHand)
         }
 
-        val result: BlackjackCondition = when {
-            dealerSum > 21 -> BlackjackCondition.PlayerWin
-            dealerSum < playerSum -> BlackjackCondition.PlayerWin
-            dealerSum > playerSum -> BlackjackCondition.DealerWin
-            else -> BlackjackCondition.Draw
+        val results = player.hands.map { hand ->
+            val playerSum = calculateScore(hand.deck)
+            when {
+                playerSum > 21 -> BlackjackCondition.DealerWin
+                dealerSum > 21 -> BlackjackCondition.PlayerWin
+                dealerSum < playerSum -> BlackjackCondition.PlayerWin
+                dealerSum > playerSum -> BlackjackCondition.DealerWin
+                else -> BlackjackCondition.Draw
+            }
         }
-
-        condition = result
-        return result
+        handConditions = results
     }
 
     private fun calculateScore(hand: CardDeck): Int {
@@ -304,11 +316,8 @@ class BlackjackGameRoom(
 
     private fun reset() {
         gameStarted.set(false)
-        condition = null
-        map.getPlayers().forEach {
-            it.playerDeck.clear()
-            it.bet = 0.00
-        }
+        handConditions = null
+        map.getPlayers().forEach { it.resetForNewRound() }
         dealerHand = CardDeck()
         if (deck.getCards().size < roomProperties.reshuffleThreshold) {
             deck = CardDeck(roomProperties.deckStacks)

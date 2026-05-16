@@ -25,11 +25,17 @@ class CardDeck(){
     }
 
     fun dealCards(count: Int, to: CardDeck) {
-        for (i in 1..count) {
-            to.addCard(cards[i])
-            cards.removeAt(i)
-            visibilities.removeAt(i)
+        repeat(count) {
+            val card = cards.removeFirst()
+            visibilities.removeFirst()
+            to.addCard(card)
         }
+    }
+
+    fun removeAt(index: Int): Card {
+        val card = cards.removeAt(index)
+        visibilities.removeAt(index)
+        return card
     }
 
     fun addCard(card: Card, visibility: Boolean = true) {
