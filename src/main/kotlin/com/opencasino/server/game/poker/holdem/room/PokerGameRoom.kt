@@ -83,7 +83,7 @@ open class PokerGameRoom(
     private val dealerTurn = AtomicBoolean(false)
     private val roundEnd = AtomicBoolean(false)
 
-    var deck = CardDeck(8)
+    var deck = CardDeck(roomProperties.deckStacks)
 
     var dealerHand = CardDeck()
 
@@ -367,7 +367,7 @@ open class PokerGameRoom(
         // Clear table cards
         dealerHand.clear()
         map.getPlayers().forEach { it.playerDeck.clear() }
-        deck = CardDeck(8)
+        deck = CardDeck(roomProperties.deckStacks)
 
         // Reset round-level state
         lastMaxBet = 0.00

@@ -21,11 +21,4 @@ abstract class BlackjackBasePlayer<GR, IP : InitPack, UP : UpdatePack, PUP : Pri
     lateinit var lastDecision: BlackjackDecision
 
     lateinit var playerDeck: CardDeck
-
-    /*var movingState: MutableMap<BlackjackDecision, Boolean> = Arrays.stream(BlackjackDecision.entries.toTypedArray()).collect(
-        Collectors.toMap(
-            { decision: BlackjackDecision -> decision },
-            { false }
-        )
-    )*/
 }

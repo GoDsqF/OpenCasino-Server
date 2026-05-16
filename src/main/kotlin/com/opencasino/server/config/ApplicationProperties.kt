@@ -28,9 +28,10 @@ data class PokerRoomProperties(
     val initDelay: Long = ROOM_INIT_DELAY,
     val startDelay: Long = ROOM_START_DELAY,
     val endDelay: Long = ROOM_END_DELAY,
-    val maxPlayers: Int = MAX_POCKER_PLAYERS,
-    val minPlayers: Int = MIN_POCKER_PLAYERS,
-    val buyIn: Int = POKER_BUY_IN
+    val maxPlayers: Int = MAX_POKER_PLAYERS,
+    val minPlayers: Int = MIN_POKER_PLAYERS,
+    val buyIn: Int = POKER_BUY_IN,
+    val deckStacks: Int = POKER_DECK_STACKS
 )
 
 data class DatabaseProperties(

@@ -16,7 +16,6 @@ import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.RoomService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.springframework.beans.factory.annotation.Qualifier
 
 class UserSessionWebSocketHandler(
     private val userSession: PlayerSession,
@@ -39,7 +38,6 @@ class UserSessionWebSocketHandler(
 
         when(message.serviceId) {
             AvailableGames.Blackjack.name -> {
-                @Qualifier("blackjackRoomServiceImpl")
                 when (message.type) {
                     GAME_ROOM_JOIN -> {
                         log.debug("Join attempt from {} to Blackjack", userSession.handshakeInfo.remoteAddress)
@@ -73,10 +71,9 @@ class UserSessionWebSocketHandler(
             }
 
             AvailableGames.Poker.name -> {
-                @Qualifier("pockerHoldEmRoomServiceImpl")
                 when (message.type) {
                     GAME_ROOM_CREATE -> {
-                        log.debug("HoldEm Pocker room create attempt from {}",
+                        log.debug("HoldEm Poker room create attempt from {}",
                             userSession.handshakeInfo.remoteAddress)
                         pokerRoomService.addPlayerToWait(
                             userSession,
@@ -85,7 +82,7 @@ class UserSessionWebSocketHandler(
                     }
 
                     GAME_ROOM_JOIN -> {
-                        log.debug("Join attempt from {} to HoldEm Pocker",
+                        log.debug("Join attempt from {} to HoldEm Poker",
                             userSession.handshakeInfo.remoteAddress)
                         pokerRoomService.addPlayerToWait(
                             userSession,
