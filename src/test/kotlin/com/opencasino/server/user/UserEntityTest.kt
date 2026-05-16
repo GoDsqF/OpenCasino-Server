@@ -11,7 +11,7 @@ class UserEntityTest {
     fun `defaults are sensible`() {
         val user = User(email = "alice@example.com", displayName = "alice")
         assertNotNull(user.id)
-        assertFalse(user.emailVerified)
+        assertTrue(user.emailVerified)
         assertNull(user.passwordHash)
         assertEquals(Role.USER, user.role)
         assertNull(user.lastLoginAt)

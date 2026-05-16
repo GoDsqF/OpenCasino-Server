@@ -1,10 +1,6 @@
 package com.opencasino.server.config
 
-import com.opencasino.server.game.poker.holdem.model.PokerBetType
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.EnableConfigurationProperties
-import org.springframework.core.env.Environment
 
 
 data class GameProperties(
@@ -35,23 +31,6 @@ data class PokerRoomProperties(
     val maxPlayers: Int = MAX_POCKER_PLAYERS,
     val minPlayers: Int = MIN_POCKER_PLAYERS,
     val buyIn: Int = POKER_BUY_IN
-)
-
-@ConfigurationProperties(prefix = "auth")
-@EnableConfigurationProperties(Auth::class)
-class Auth{
-    private var tokenSecret: String = ""
-    private var tokenExpirationMsec: String = ""
-}
-
-@Autowired
-var environment: Environment? = null
-
-
-data class OAuth2Properties(
-    var clientId: String,
-    var clientSecret: String,
-    var redirectUri: List<String>
 )
 
 data class DatabaseProperties(

@@ -26,10 +26,19 @@ app.jwt.publicKeyPem=${APP_JWT_PUBLIC_KEY_PEM:}
 # (validated at /auth/register). Length is fixed at 3..32 chars matching [A-Za-z0-9_-]+.
 app.auth.displayNameBlocklist=${APP_AUTH_DISPLAY_NAME_BLOCKLIST:admin,root,system,support,moderator}
 
-# ---------------- OAuth2 client (phases 6+) ----------------
-app.oauth2.clientId=${APP_OAUTH2_CLIENTID:}
-app.oauth2.clientSecret=${APP_OAUTH2_CLIENTSECRET:}
+# ---------------- OAuth2 client (Phase 6) ----------------
+# Google as identity provider. Leave the env vars blank to skip OAuth wiring
+# entirely — the rest of the app starts unaffected, /oauth2/authorization/google
+# returns 404 (no registration). Set both to enable the flow.
+spring.security.oauth2.client.registration.google.client-id=${GOOGLE_OAUTH_CLIENT_ID:}
+spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_OAUTH_CLIENT_SECRET:}
+spring.security.oauth2.client.registration.google.scope=openid,email,profile
 
-# Comma-separated list of allowed redirect URIs.
-# Authorize-code flow only accepts redirects whose target is in this allowlist.
-app.oauth2.redirectUri=${APP_OAUTH2_REDIRECTURI:http://localhost:3000/oauth2/redirect}
+# Where the server 302-redirects after a successful OAuth login, carrying
+# ?token=<jwt>&expiresAt=<iso>. Single URI per environment (dev: localhost,
+# prod: real domain). Override via env in prod.
+app.auth.oauth2.success-redirect=${APP_AUTH_OAUTH2_SUCCESS:http://localhost:3000/oauth2/redirect}
+
+# Where the server 302-redirects on OAuth failure with ?error=<code>.
+# When unset, falls back to success-redirect.
+app.auth.oauth2.failure-redirect=${APP_AUTH_OAUTH2_FAILURE:}

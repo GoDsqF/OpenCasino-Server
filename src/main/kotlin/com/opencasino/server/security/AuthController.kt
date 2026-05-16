@@ -47,7 +47,9 @@ class AuthController(private val authService: AuthService) {
             AuthFailureCode.INVALID_DISPLAY_NAME,
             AuthFailureCode.MALFORMED_REQUEST -> HttpStatus.BAD_REQUEST
             AuthFailureCode.EMAIL_TAKEN -> HttpStatus.CONFLICT
-            AuthFailureCode.INVALID_CREDENTIALS -> HttpStatus.UNAUTHORIZED
+            AuthFailureCode.INVALID_CREDENTIALS,
+            AuthFailureCode.OAUTH_EMAIL_UNVERIFIED -> HttpStatus.UNAUTHORIZED
+            AuthFailureCode.OAUTH_PROVIDER_ERROR -> HttpStatus.BAD_GATEWAY
         }
         return ResponseEntity.status(status).body(
             AuthFailureBody(code = ex.failure.name, message = messageFor(ex.failure))
@@ -73,5 +75,8 @@ class AuthController(private val authService: AuthService) {
         AuthFailureCode.MALFORMED_REQUEST -> "Request body could not be parsed."
         AuthFailureCode.EMAIL_TAKEN -> "An account with this email already exists."
         AuthFailureCode.INVALID_CREDENTIALS -> "Email or password is incorrect."
+        AuthFailureCode.OAUTH_EMAIL_UNVERIFIED ->
+            "OAuth provider did not return a verified email."
+        AuthFailureCode.OAUTH_PROVIDER_ERROR -> "OAuth provider exchange failed."
     }
 }
