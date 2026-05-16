@@ -4,13 +4,9 @@
 # Defaults below resolve env vars (${VAR:default}) — leave the placeholders and provide values
 # through DATABASE_HOST / DATABASE_PORT / DATABASE_DB / DATABASE_USER / DATABASE_PASSWORD.
 
-# R2DBC (runtime queries)
+# R2DBC (runtime queries). Single source of truth — Liquibase migrations derive
+# their JDBC URL from this via LiquibaseDataSourceConfig (strips r2dbc: prefix).
 spring.r2dbc.url=r2dbc:postgresql://${DATABASE_HOST:127.0.0.1}:${DATABASE_PORT:5432}/${DATABASE_DB:casino}
 spring.r2dbc.username=${DATABASE_USER:postgres}
 spring.r2dbc.password=${DATABASE_PASSWORD:}
 spring.r2dbc.properties.lock_timeout=10s
-
-# JDBC URL for Liquibase migrations (run once on app startup, same DB as R2DBC).
-spring.liquibase.url=jdbc:postgresql://${DATABASE_HOST:127.0.0.1}:${DATABASE_PORT:5432}/${DATABASE_DB:casino}
-spring.liquibase.user=${DATABASE_USER:postgres}
-spring.liquibase.password=${DATABASE_PASSWORD:}
