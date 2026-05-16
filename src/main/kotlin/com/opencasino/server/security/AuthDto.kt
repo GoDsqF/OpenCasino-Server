@@ -3,10 +3,14 @@ package com.opencasino.server.security
 import java.time.Instant
 import java.util.UUID
 
-data class RegisterRequest(val email: String? = null, val password: String? = null)
+data class RegisterRequest(
+    val email: String? = null,
+    val password: String? = null,
+    val displayName: String? = null,
+)
 data class LoginRequest(val email: String? = null, val password: String? = null)
 
-data class RegisterResponse(val userId: UUID, val email: String)
+data class RegisterResponse(val userId: UUID, val email: String, val displayName: String)
 
 data class LoginResponse(
     val userId: UUID,

@@ -17,8 +17,8 @@ import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.FailureCode
-import com.opencasino.server.service.shared.PlayerRepository
 import com.opencasino.server.service.shared.WaitingPlayerSession
+import com.opencasino.server.user.UserRepository
 import kotlinx.coroutines.NonCancellable.onJoin
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -37,7 +37,7 @@ class PokerRoomServiceImpl(
 ) : RoomService {
 
     @Autowired
-    private lateinit var userRepository: PlayerRepository
+    private lateinit var userRepository: UserRepository
     private lateinit var webSocketSessionService: WebSocketSessionService
 
     companion object {
@@ -80,12 +80,7 @@ class PokerRoomServiceImpl(
                 queue.add(WaitingPlayerSession(ps, initialData))
                 updateSettings(userSession, initialData.settings)
 
-                userRepository.findPlayer(initialData.playerUUID)
-                    .map { it.balance }
-                    .defaultIfEmpty(0.00)
-                    .doOnNext { player.balance = it }
-                    .doOnSuccess { tryLaunchWaitingRoom(room) }
-                    .subscribe()
+                loadBalanceAndLaunch(ps, player, room)
             }
             is GameRoomJoinEvent -> {
                 webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))
@@ -99,12 +94,7 @@ class PokerRoomServiceImpl(
                     userSession.serviceId = "Poker"
                     queue.add(WaitingPlayerSession(userSession, initialData))
 
-                    userRepository.findPlayer(initialData.playerUUID)
-                        .map { it.balance }
-                        .defaultIfEmpty(0.00)
-                        .doOnNext { player.balance = it }
-                        .doOnSuccess { tryLaunchWaitingRoom(room) }
-                        .subscribe()
+                    loadBalanceAndLaunch(userSession, player, room)
                 } else {
                     joinRoom(userSession, initialData)
                 }
@@ -180,11 +170,22 @@ class PokerRoomServiceImpl(
         userSession.player = player
         userSession.serviceId = "Poker"
 
-        userRepository.findPlayer(initialData.playerUUID)
-            .map { it.balance }
-            .defaultIfEmpty(0.00)
+        val userId = userSession.userId
+        val balance = if (userId == null) Mono.just(0.00)
+        else userRepository.findById(userId).map { it.balance }.defaultIfEmpty(0.00)
+        balance
             .doOnNext { player.balance = it }
             .doOnSuccess { onJoinedPlayer(room, userSession) }
+            .subscribe()
+    }
+
+    private fun loadBalanceAndLaunch(ps: PlayerSession, player: PokerPlayer, room: PokerGameRoom) {
+        val userId = ps.userId
+        val balance = if (userId == null) Mono.just(0.00)
+        else userRepository.findById(userId).map { it.balance }.defaultIfEmpty(0.00)
+        balance
+            .doOnNext { player.balance = it }
+            .doOnSuccess { tryLaunchWaitingRoom(room) }
             .subscribe()
     }
 

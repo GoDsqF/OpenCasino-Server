@@ -27,6 +27,8 @@ import java.util.UUID
         "spring.liquibase.user=sa",
         "spring.liquibase.password=",
         "app.jwt.issuer=opencasino-test",
+        "app.auth.displayNameBlocklist=admin,root,moderator",
+        "spring.test.webtestclient.timeout=30s",
     ]
 )
 @AutoConfigureWebTestClient
@@ -37,36 +39,46 @@ class AuthControllerIntegrationTest {
     @Autowired lateinit var users: UserRepository
 
     private fun freshEmail(prefix: String) = "$prefix-${UUID.randomUUID()}@example.com"
+    private fun freshName(prefix: String) = "$prefix${UUID.randomUUID().toString().take(8).replace("-", "")}"
+
+    private fun registerBody(email: String, password: String = "correct-horse-battery", displayName: String? = freshName("u")) =
+        buildMap<String, Any> {
+            put("email", email)
+            put("password", password)
+            if (displayName != null) put("displayName", displayName)
+        }
 
     @Test
     fun `register creates a user with password hash and returns 201`() {
         val email = freshEmail("alice")
+        val displayName = freshName("alice")
 
         webClient.post().uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(mapOf("email" to email, "password" to "correct-horse-battery"))
+            .bodyValue(registerBody(email, displayName = displayName))
             .exchange()
             .expectStatus().isCreated
             .expectBody()
             .jsonPath("$.userId").exists()
             .jsonPath("$.email").isEqualTo(email)
+            .jsonPath("$.displayName").isEqualTo(displayName)
 
         val saved = users.findByEmail(email).block()
         assertNotNull(saved)
-        assertTrue(saved!!.passwordHash!!.startsWith("{bcrypt}"))
+        assertEquals(displayName, saved!!.displayName)
+        assertTrue(saved.passwordHash!!.startsWith("{bcrypt}"))
     }
 
     @Test
     fun `duplicate registration returns 409`() {
         val email = freshEmail("dup")
-        val body = mapOf("email" to email, "password" to "correct-horse-battery")
 
         webClient.post().uri("/auth/register")
-            .contentType(MediaType.APPLICATION_JSON).bodyValue(body)
+            .contentType(MediaType.APPLICATION_JSON).bodyValue(registerBody(email))
             .exchange().expectStatus().isCreated
 
         webClient.post().uri("/auth/register")
-            .contentType(MediaType.APPLICATION_JSON).bodyValue(body)
+            .contentType(MediaType.APPLICATION_JSON).bodyValue(registerBody(email))
             .exchange()
             .expectStatus().isEqualTo(409)
             .expectBody()
@@ -77,7 +89,7 @@ class AuthControllerIntegrationTest {
     fun `weak password is rejected with 400`() {
         webClient.post().uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(mapOf("email" to freshEmail("weak"), "password" to "short"))
+            .bodyValue(registerBody(freshEmail("weak"), password = "short"))
             .exchange()
             .expectStatus().isBadRequest
             .expectBody()
@@ -88,11 +100,44 @@ class AuthControllerIntegrationTest {
     fun `invalid email format is rejected with 400`() {
         webClient.post().uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(mapOf("email" to "not-an-email", "password" to "correct-horse-battery"))
+            .bodyValue(registerBody("not-an-email"))
             .exchange()
             .expectStatus().isBadRequest
             .expectBody()
             .jsonPath("$.code").isEqualTo("INVALID_EMAIL")
+    }
+
+    @Test
+    fun `missing displayName is rejected with 400`() {
+        webClient.post().uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(freshEmail("noname"), displayName = null))
+            .exchange()
+            .expectStatus().isBadRequest
+            .expectBody()
+            .jsonPath("$.code").isEqualTo("INVALID_DISPLAY_NAME")
+    }
+
+    @Test
+    fun `displayName with denylisted substring is rejected with 400`() {
+        webClient.post().uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(freshEmail("evil"), displayName = "superadmin42"))
+            .exchange()
+            .expectStatus().isBadRequest
+            .expectBody()
+            .jsonPath("$.code").isEqualTo("INVALID_DISPLAY_NAME")
+    }
+
+    @Test
+    fun `displayName with illegal characters is rejected with 400`() {
+        webClient.post().uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(freshEmail("bad"), displayName = "spaces are bad"))
+            .exchange()
+            .expectStatus().isBadRequest
+            .expectBody()
+            .jsonPath("$.code").isEqualTo("INVALID_DISPLAY_NAME")
     }
 
     @Test
@@ -102,7 +147,7 @@ class AuthControllerIntegrationTest {
 
         webClient.post().uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(mapOf("email" to email, "password" to password))
+            .bodyValue(registerBody(email, password))
             .exchange().expectStatus().isCreated
 
         webClient.post().uri("/auth/login")
@@ -125,7 +170,7 @@ class AuthControllerIntegrationTest {
         val email = freshEmail("wrongpw")
         webClient.post().uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(mapOf("email" to email, "password" to "correct-horse-battery"))
+            .bodyValue(registerBody(email))
             .exchange().expectStatus().isCreated
 
         webClient.post().uri("/auth/login")
@@ -155,7 +200,7 @@ class AuthControllerIntegrationTest {
 
         webClient.post().uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(mapOf("email" to mixedCase, "password" to "correct-horse-battery"))
+            .bodyValue(registerBody(mixedCase))
             .exchange().expectStatus().isCreated
 
         assertNotNull(users.findByEmail(lower).block())

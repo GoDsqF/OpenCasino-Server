@@ -44,6 +44,7 @@ class AuthController(private val authService: AuthService) {
         val status = when (ex.failure) {
             AuthFailureCode.INVALID_EMAIL,
             AuthFailureCode.WEAK_PASSWORD,
+            AuthFailureCode.INVALID_DISPLAY_NAME,
             AuthFailureCode.MALFORMED_REQUEST -> HttpStatus.BAD_REQUEST
             AuthFailureCode.EMAIL_TAKEN -> HttpStatus.CONFLICT
             AuthFailureCode.INVALID_CREDENTIALS -> HttpStatus.UNAUTHORIZED
@@ -66,6 +67,9 @@ class AuthController(private val authService: AuthService) {
         AuthFailureCode.INVALID_EMAIL -> "Email is missing or not a valid address."
         AuthFailureCode.WEAK_PASSWORD ->
             "Password must be at least ${AuthService.MIN_PASSWORD_LENGTH} characters."
+        AuthFailureCode.INVALID_DISPLAY_NAME ->
+            "Display name must be ${AuthService.MIN_DISPLAY_NAME_LENGTH}–${AuthService.MAX_DISPLAY_NAME_LENGTH}" +
+                " characters of [A-Za-z0-9_-] and not contain reserved substrings."
         AuthFailureCode.MALFORMED_REQUEST -> "Request body could not be parsed."
         AuthFailureCode.EMAIL_TAKEN -> "An account with this email already exists."
         AuthFailureCode.INVALID_CREDENTIALS -> "Email or password is incorrect."

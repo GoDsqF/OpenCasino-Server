@@ -29,7 +29,10 @@ class MainWebSocketHandler(
 
     companion object {
         val log: Logger = LoggerFactory.getLogger(this::class.java)
+        private const val SUB_PROTOCOL_BEARER = "bearer"
     }
+
+    override fun getSubProtocols(): List<String> = listOf(SUB_PROTOCOL_BEARER)
 
     override fun handle(webSocketSession: WebSocketSession): Mono<Void> {
         val input = webSocketSession.receive().share()

@@ -14,6 +14,10 @@ open class PlayerSession(
     open var serviceId: String? = null
     open var roomKey: UUID? = null
     open var principal: Principal? = null
+
+    val userId: UUID?
+        get() = principal?.name?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+
     override fun toString(): String = "UserSession [id=$id, player=$player" +
             ", serviceId=$serviceId, parentGameRoom=$roomKey]"
 }

@@ -25,6 +25,18 @@ data class User(
     @Column("role")
     val role: Role = Role.USER,
 
+    @Column("balance")
+    val balance: Double = 0.0,
+
+    @Column("display_name")
+    val displayName: String,
+
+    @Column("first_name")
+    val firstName: String? = null,
+
+    @Column("last_name")
+    val lastName: String? = null,
+
     @Column("created_at")
     val createdAt: Instant = Instant.now(),
 

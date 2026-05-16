@@ -13,8 +13,8 @@ import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
-import com.opencasino.server.service.shared.PlayerRepository
 import com.opencasino.server.service.shared.WaitingPlayerSession
+import com.opencasino.server.user.UserRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.springframework.beans.factory.annotation.Autowired
@@ -33,7 +33,7 @@ class BlackjackRoomServiceImpl(
 ) : RoomService {
 
     @Autowired
-    private lateinit var userRepository: PlayerRepository
+    private lateinit var userRepository: UserRepository
     private lateinit var webSocketSessionService: WebSocketSessionService
 
     companion object {
@@ -67,12 +67,14 @@ class BlackjackRoomServiceImpl(
             ps.roomKey = room.key()
             ps.player = player
             ps.serviceId = "Blackjack"
-            Triple(ps, player, joinEvent.playerUUID)
+            Pair(ps, player)
         }
 
         Flux.fromIterable(pending)
-            .flatMap { (_, player, uuid) ->
-                userRepository.findPlayer(uuid)
+            .flatMap { (ps, player) ->
+                val userId = ps.userId
+                if (userId == null) Mono.just(0.00).doOnNext { player.balance = it }
+                else userRepository.findById(userId)
                     .map { it.balance }
                     .defaultIfEmpty(0.00)
                     .doOnNext { player.balance = it }
