@@ -24,6 +24,38 @@ class PokerHandTest {
         }
 
         @Test
+        fun `bestOf picks the strongest 5-card hand from 7`() {
+            // Hole+community = KH KS KD KC 2H 7D 9C → four kings + 9 kicker
+            val cards = "KH KS KD KC 2H 7D 9C".split(" ").map { s ->
+                com.opencasino.server.game.model.Card(
+                    com.opencasino.server.game.model.Rank.forCode(s[0]),
+                    com.opencasino.server.game.model.Suit.forCode(s[1]),
+                )
+            }
+            val best = PokerHand.bestOf(cards)
+            assertEquals("FourOfAKind", best.getHighestRank())
+        }
+
+        @Test
+        fun `bestOf returns the same hand when given exactly 5 cards`() {
+            val hand = PokerHand.bestOf(PokerHand.fromString("KH KS KD KC 2H").cards)
+            assertEquals("FourOfAKind", hand.getHighestRank())
+        }
+
+        @Test
+        fun `bestOf prefers straight over pair from 7 cards`() {
+            // 7 cards: 5H 6S 7D 8C 9H 9S 2D → straight 5-9 beats pair of nines
+            val cards = "5H 6S 7D 8C 9H 9S 2D".split(" ").map { s ->
+                com.opencasino.server.game.model.Card(
+                    com.opencasino.server.game.model.Rank.forCode(s[0]),
+                    com.opencasino.server.game.model.Suit.forCode(s[1]),
+                )
+            }
+            val best = PokerHand.bestOf(cards)
+            assertEquals("Straight", best.getHighestRank())
+        }
+
+        @Test
         fun `recognizes royal straight flush`() {
             val hand = PokerHand.fromString("TS JS QS KS AS")
             assertTrue(hand.isStraightFlush)

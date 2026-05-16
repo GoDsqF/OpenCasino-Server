@@ -6,11 +6,17 @@ import com.opencasino.server.event.poker.PokerPlayerDecisionEvent
 import com.opencasino.server.game.model.CardDeck
 import com.opencasino.server.game.poker.holdem.map.PokerMap
 import com.opencasino.server.game.poker.holdem.model.PokerBetType
+import com.opencasino.server.game.poker.holdem.model.PokerContestant
+import com.opencasino.server.game.poker.holdem.model.PokerDistribution
 import com.opencasino.server.game.poker.holdem.model.PokerHand
 import com.opencasino.server.game.poker.holdem.model.PokerPlayer
+import com.opencasino.server.game.poker.holdem.model.PokerSidePotDistribution
 import com.opencasino.server.network.pack.poker.info.InfoPack
 import com.opencasino.server.network.pack.poker.shared.GameSettingsPack
 import com.opencasino.server.network.pack.poker.shared.RoomPack
+import com.opencasino.server.network.pack.poker.showdown.PokerShowdownEntry
+import com.opencasino.server.network.pack.poker.showdown.PokerShowdownPack
+import com.opencasino.server.network.pack.poker.showdown.PokerShowdownSidePot
 import com.opencasino.server.network.pack.poker.update.GameUpdatePack
 import com.opencasino.server.network.pack.shared.DealerUpdatePack
 import com.opencasino.server.network.shared.Message
@@ -111,14 +117,12 @@ open class PokerGameRoom(
     }
 
     private fun takeBlind(player: PokerPlayer, amount: Double) {
-        if (player.stack >= amount) {
-            player.stack -= amount
-            pot += amount
-        } else {
-            val stack = player.stack
-            player.stack = 0.00
-            pot += stack
-        }
+        val taken = if (player.stack >= amount) amount else player.stack
+        player.stack -= taken
+        player.totalContribution += taken
+        player.currentBet = (player.currentBet ?: 0.0) + taken
+        if (player.currentBet!! > lastMaxBet) lastMaxBet = player.currentBet!!
+        if (player.stack <= 0.0) player.allin = true
     }
 
     private fun initialTurn() {
@@ -251,7 +255,78 @@ open class PokerGameRoom(
     }
 
     private fun onDealerTurn() {
+        // Sweep the round's bets into the pot before the next street.
+        map.getPlayers().forEach {
+            val bet = it.currentBet ?: 0.0
+            if (bet > 0.0) {
+                pot += bet
+                it.currentBet = 0.0
+            }
+        }
+        lastMaxBet = 0.0
+
+        // Texas Hold'em: 5 community cards is the river — next dealer event is showdown.
+        if (dealerHand.getCards().size >= 5) {
+            triggerShowdown()
+            return
+        }
         deck.dealCard(dealerHand)
+    }
+
+    private fun triggerShowdown() {
+        if (roundEnd.get()) return
+        val nonFolded = map.getPlayers().filter { !it.folded }
+        val canEvaluate = (dealerHand.getCards().size + 2) >= 5
+        val contestants = map.getPlayers()
+            .filter { it.totalContribution > 0.0 }
+            .map { player ->
+                val hand = when {
+                    player.folded -> null
+                    nonFolded.size == 1 -> uncontestedHand
+                    canEvaluate -> evaluateBest(player)
+                    else -> uncontestedHand
+                }
+                PokerContestant(player.id, player.totalContribution, hand)
+            }
+        val distribution = PokerSidePotDistribution.distribute(contestants)
+        applyPayouts(distribution)
+        pot = 0.0
+        broadcastShowdown(distribution, canEvaluate && nonFolded.size > 1)
+        roundEnd.set(true)
+    }
+
+    private val uncontestedHand: PokerHand by lazy {
+        PokerHand.fromString("2H 3D 4S 5C 7H")
+    }
+
+    private fun evaluateBest(player: PokerPlayer): PokerHand {
+        val all = player.playerDeck.getCards() + dealerHand.getCards()
+        return PokerHand.bestOf(all)
+    }
+
+    private fun applyPayouts(distribution: PokerDistribution) {
+        distribution.payouts.forEach { (id, amount) ->
+            val player = map.getPlayerById(id) ?: return@forEach
+            player.stack += amount
+        }
+    }
+
+    private fun broadcastShowdown(distribution: PokerDistribution, revealHands: Boolean) {
+        val entries = map.getPlayers().map { player ->
+            val payout = distribution.payouts[player.id] ?: 0.0
+            val best = if (revealHands && !player.folded) evaluateBest(player) else null
+            PokerShowdownEntry(
+                id = player.id,
+                payout = payout,
+                handCategory = best?.getHighestRank(),
+                handCards = best?.cards,
+                holeCards = if (revealHands && !player.folded) player.playerDeck.getCards() else null,
+            )
+        }
+        val pots = distribution.pots.map {
+            PokerShowdownSidePot(it.amount, it.eligibleIds, it.winnerIds)
+        }
+        sendBroadcast(Message(SHOWDOWN_RESULT, PokerShowdownPack(entries, pots)))
     }
 
     override fun update() {
@@ -288,6 +363,13 @@ open class PokerGameRoom(
         if (!started.get()) return
         val player = userSession.player as PokerPlayer
         if (!player.isAlive) return
+
+        // Only one non-folded player left — they collect the whole pot without revealing cards.
+        val active = map.getPlayers().filter { !it.folded }
+        if (active.size <= 1) {
+            triggerShowdown()
+            return
+        }
 
         val playersCount = map.getPlayers().size
         val currentLastPlayer = if (currentStartPlayer != 0) currentStartPlayer - 1
@@ -384,6 +466,7 @@ open class PokerGameRoom(
             it.allin = false
             it.madeDecision = false
             it.lastDecision = PokerDecision.NONE
+            it.totalContribution = 0.0
         }
     }
 

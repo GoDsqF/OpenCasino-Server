@@ -30,6 +30,26 @@ class PokerHand private constructor(val cards: List<Card>) : Comparable<PokerHan
             }
             return fromList(cards)
         }
+
+        fun bestOf(cards: List<Card>): PokerHand {
+            require(cards.size in 5..7) { "bestOf requires 5–7 cards, got ${cards.size}" }
+            if (cards.size == 5) return fromList(cards)
+            var best: PokerHand? = null
+            val n = cards.size
+            for (i in 0 until n - 4) {
+                for (j in i + 1 until n - 3) {
+                    for (k in j + 1 until n - 2) {
+                        for (l in k + 1 until n - 1) {
+                            for (m in l + 1 until n) {
+                                val candidate = fromList(listOf(cards[i], cards[j], cards[k], cards[l], cards[m]))
+                                if (best == null || candidate > best) best = candidate
+                            }
+                        }
+                    }
+                }
+            }
+            return best!!
+        }
     }
 
     val isStraightFlush; get() = isStraight && isFlush

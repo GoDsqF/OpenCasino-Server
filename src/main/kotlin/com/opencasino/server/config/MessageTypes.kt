@@ -29,5 +29,6 @@ const val GAME_LIST_UPDATE = 51
 
 const val UPDATE = 100
 const val INFO = 101
+const val SHOWDOWN_RESULT = 102
 
 const val PLAYER_DECISION = 200
