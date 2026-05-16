@@ -11,4 +11,6 @@ data class JwtProperties(
     val keyId: String = "default",
     val privateKeyPem: String = "",
     val publicKeyPem: String = "",
+    val privateKeyPath: String = "",
+    val publicKeyPath: String = "",
 )

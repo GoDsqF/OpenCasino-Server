@@ -126,12 +126,22 @@ ENV SERVER_PORT=8080 \
 EXPOSE 8080 8443
 
 # ----------------------------------------------------------------------------
-# Mount points
-#   /certs  — TLS material (cert.pem, privkey.pem, chain.pem). Reference these
-#             paths from ssl.properties or via env (see `docker run` examples).
-#   /config — optional Spring config drop-in dir; Spring Boot auto-imports
-#             `application.properties` placed at /config/application.properties
-#             when launched with `--spring.config.additional-location=file:/config/`.
+# Mount points — both are optional. If you mount them, the app picks them up
+# automatically; if you don't, everything still works via env vars.
+#
+#   /certs  — TLS + JWT key material. Default file names referenced by the
+#             bundled ssl.properties.example / auth.properties.example:
+#               /certs/cert.pem        (TLS server certificate)
+#               /certs/privkey.pem     (TLS private key)
+#               /certs/chain.pem       (TLS trust chain — optional)
+#               /certs/jwt-private.pem (JWT signing key, RS256)
+#               /certs/jwt-public.pem  (JWT verification key, RS256)
+#             Override any path via env (SSL_CERTIFICATE=..., APP_JWT_PRIVATE_KEY_PATH=...).
+#
+#   /config — Spring property drop-in dir. application.properties imports
+#             `optional:file:/config/{application,database,auth,ssl}.properties`
+#             — drop your env-specific files here and they override classpath
+#             defaults. No --spring.config.additional-location flag needed.
 # ----------------------------------------------------------------------------
 VOLUME ["/certs", "/config"]
 
