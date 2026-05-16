@@ -13,6 +13,7 @@ import reactor.core.publisher.Mono
 class OAuth2LoginSuccessHandler(
     private val linkingService: OAuth2UserLinkingService,
     private val jwtIssuer: JwtIssuer,
+    private val refreshTokenService: RefreshTokenService,
     private val authProperties: AuthProperties,
 ) : ServerAuthenticationSuccessHandler {
 
@@ -62,7 +63,8 @@ class OAuth2LoginSuccessHandler(
             return errorRedirect(exchange, AuthFailureCode.OAUTH_PROVIDER_ERROR)
         }
         val issued = jwtIssuer.issueAccess(user)
-        return OAuth2RedirectWriter.successRedirect(exchange, target, issued)
+        return refreshTokenService.issue(user.id)
+            .flatMap { refresh -> OAuth2RedirectWriter.successRedirect(exchange, target, issued, refresh) }
     }
 
     private fun errorRedirect(exchange: org.springframework.web.server.ServerWebExchange, code: AuthFailureCode): Mono<Void> {

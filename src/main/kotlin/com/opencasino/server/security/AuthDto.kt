@@ -17,8 +17,12 @@ data class LoginResponse(
     val accessToken: String,
     val refreshToken: String,
     val expiresAt: Instant,
+    val refreshExpiresAt: Instant,
     val tokenType: String = "Bearer",
 )
+
+data class RefreshRequest(val refreshToken: String? = null)
+data class LogoutRequest(val refreshToken: String? = null)
 
 data class MeResponse(
     val userId: UUID,

@@ -14,6 +14,7 @@ class AuthService(
     private val users: UserRepository,
     private val passwordEncoder: PasswordEncoder,
     private val jwtIssuer: JwtIssuer,
+    private val refreshTokenService: RefreshTokenService,
     private val authProperties: AuthProperties,
 ) {
 
@@ -58,7 +59,7 @@ class AuthService(
                 Mono.fromCallable { passwordEncoder.matches(password, hash) }
                     .subscribeOn(Schedulers.boundedElastic())
                     .flatMap { ok ->
-                        if (ok) Mono.just(buildLoginResponse(user))
+                        if (ok) buildLoginResponse(user)
                         else Mono.error(AuthException(AuthFailureCode.INVALID_CREDENTIALS))
                     }
             }
@@ -70,13 +71,35 @@ class AuthService(
             .subscribeOn(Schedulers.boundedElastic())
             .flatMap { Mono.error(AuthException(AuthFailureCode.INVALID_CREDENTIALS)) }
 
-    private fun buildLoginResponse(user: User): LoginResponse {
+    fun refresh(request: RefreshRequest): Mono<LoginResponse> {
+        val plaintext = request.refreshToken
+            ?: return Mono.error(AuthException(AuthFailureCode.REFRESH_INVALID))
+        return refreshTokenService.rotate(plaintext)
+            .flatMap { rotated ->
+                users.findById(rotated.userId)
+                    .switchIfEmpty(Mono.error(AuthException(AuthFailureCode.REFRESH_INVALID)))
+                    .map { user -> assembleLoginResponse(user, rotated.refresh) }
+            }
+    }
+
+    fun logout(request: LogoutRequest): Mono<Void> {
+        val plaintext = request.refreshToken
+            ?: return Mono.error(AuthException(AuthFailureCode.REFRESH_INVALID))
+        return refreshTokenService.revoke(plaintext)
+    }
+
+    private fun buildLoginResponse(user: User): Mono<LoginResponse> =
+        refreshTokenService.issue(user.id)
+            .map { issuedRefresh -> assembleLoginResponse(user, issuedRefresh) }
+
+    private fun assembleLoginResponse(user: User, issuedRefresh: IssuedRefresh): LoginResponse {
         val issued = jwtIssuer.issueAccess(user)
         return LoginResponse(
             userId = user.id,
             accessToken = issued.token,
-            refreshToken = "stub-refresh-${user.id}",
+            refreshToken = issuedRefresh.plaintext,
             expiresAt = issued.expiresAt,
+            refreshExpiresAt = issuedRefresh.expiresAt,
         )
     }
 

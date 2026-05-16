@@ -26,6 +26,7 @@ class OAuth2LoginSuccessHandlerTest {
 
     private lateinit var linking: OAuth2UserLinkingService
     private lateinit var jwtIssuer: JwtIssuer
+    private lateinit var refreshTokenService: RefreshTokenService
     private lateinit var props: AuthProperties
     private lateinit var handler: OAuth2LoginSuccessHandler
 
@@ -33,13 +34,17 @@ class OAuth2LoginSuccessHandlerTest {
     fun setUp() {
         linking = mock()
         jwtIssuer = mock()
+        refreshTokenService = mock()
+        whenever(refreshTokenService.issue(any())).thenAnswer {
+            Mono.just(IssuedRefresh(plaintext = "refresh-plain", expiresAt = Instant.parse("2026-06-15T12:00:00Z")))
+        }
         props = AuthProperties(
             oauth2 = OAuth2RedirectProperties(
                 successRedirect = "https://app.example.com/oauth2/redirect",
                 failureRedirect = "https://app.example.com/oauth2/error",
             ),
         )
-        handler = OAuth2LoginSuccessHandler(linking, jwtIssuer, props)
+        handler = OAuth2LoginSuccessHandler(linking, jwtIssuer, refreshTokenService, props)
     }
 
     @Test
@@ -60,6 +65,8 @@ class OAuth2LoginSuccessHandlerTest {
         assertTrue(location.startsWith("https://app.example.com/oauth2/redirect"), "got $location")
         assertTrue(location.contains("token=jwt-access"), "got $location")
         assertTrue(location.contains("expiresAt="), "got $location")
+        assertTrue(location.contains("refresh=refresh-plain"), "got $location")
+        assertTrue(location.contains("refreshExpiresAt="), "got $location")
     }
 
     @Test
@@ -101,7 +108,7 @@ class OAuth2LoginSuccessHandlerTest {
                 failureRedirect = null,
             ),
         )
-        val handlerNoFallback = OAuth2LoginSuccessHandler(linking, jwtIssuer, noFailureProps)
+        val handlerNoFallback = OAuth2LoginSuccessHandler(linking, jwtIssuer, refreshTokenService, noFailureProps)
         whenever(linking.linkOrCreate(any()))
             .thenReturn(Mono.error(AuthException(AuthFailureCode.OAUTH_EMAIL_UNVERIFIED)))
 
