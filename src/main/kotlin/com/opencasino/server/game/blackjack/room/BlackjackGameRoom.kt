@@ -180,22 +180,6 @@ class BlackjackGameRoom(
         if (!gameStarted.get()) return
         if (condition == null) {
             for (currentPlayer in map.getPlayers()) {
-                /*if (currentPlayer.isAlive) currentPlayer.update()
-                val updatePack = currentPlayer.getPrivateUpdatePack()
-                val playerUpdatePackList = map.getPlayers()
-                    .map { it.getUpdatePack() }
-
-                val dealerCards = mutableListOf<Card?>()
-                dealerHand.getCards()
-                    .forEach {
-                        if (it.visible) {
-                            dealerCards.add(it)
-                        }
-                        else {
-                            dealerCards.add(null)
-                        }
-                    }
-                val dealerUpdatePack = DealerUpdatePack(dealerCards)*/
                 val newUpdate = collectUpdate(currentPlayer)
                 val sessionId = currentPlayer.userSession.id
                 val previous = lastUpdateBySession[sessionId]
@@ -206,10 +190,7 @@ class BlackjackGameRoom(
             }
         }
         else {
-            val dealerCards = dealerHand.getCards()
-            dealerCards.forEach {
-                it.visible = true
-            }
+            dealerHand.openCards()
             for (currentPlayer in map.getPlayers()) {
                 send(
                     currentPlayer.userSession,
@@ -320,28 +301,6 @@ class BlackjackGameRoom(
         player.balance -= bet
         initialDeal()
     }
-
-    /*private fun onTestingDeal() {
-        val players = map.getPlayers()
-        for (player in players) {
-            player.playerDeck.addCard(
-                Card(
-                    Rank.CA,
-                    Suit.Hearts
-                )
-            )
-            player.playerDeck.addCard(
-                Card(
-                    Rank.CA,
-                    Suit.Clubs
-                )
-            )
-        }
-        deck.dealCard(dealerHand, true)
-        deck.dealCard(dealerHand, false)
-        gameStarted.set(true)
-        initialCheck()
-    }*/
 
     private fun reset() {
         gameStarted.set(false)

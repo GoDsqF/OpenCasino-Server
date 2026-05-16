@@ -64,7 +64,7 @@ class CardDeckTest {
 
         source.dealCard(target, true)
 
-        assertTrue(target.getCards()[0].visible)
+        assertTrue(target.isVisible(0))
     }
 
     @Test
@@ -75,7 +75,7 @@ class CardDeckTest {
 
         source.dealCard(target, false)
 
-        assertFalse(target.getCards()[0].visible)
+        assertFalse(target.isVisible(0))
     }
 
     @Test
@@ -110,10 +110,10 @@ class CardDeckTest {
         val card = Card(Rank.CA, Suit.SPADES)
 
         deck.addCard(card, false)
-        assertFalse(deck.getCards()[0].visible)
+        assertFalse(deck.isVisible(0))
 
         deck.addCard(card, true)
-        assertTrue(deck.getCards()[1].visible)
+        assertTrue(deck.isVisible(1))
     }
 
     @Test
@@ -134,11 +134,11 @@ class CardDeckTest {
         deck.addCard(Card(Rank.CK, Suit.HEARTS), false)
         deck.addCard(Card(Rank.CQ, Suit.DIAMONDS), false)
 
-        deck.getCards().forEach { assertFalse(it.visible) }
+        deck.getCards().indices.forEach { assertFalse(deck.isVisible(it)) }
 
         deck.openCards()
 
-        deck.getCards().forEach { assertTrue(it.visible) }
+        deck.getCards().indices.forEach { assertTrue(deck.isVisible(it)) }
     }
 
     @RepeatedTest(5)
@@ -184,10 +184,8 @@ class CardDeckTest {
         assertNull(view[1], "face-down card MUST serialize as null (never Card{visible=false})")
         assertNotNull(view[2])
         assertNull(view[3], "face-down card MUST serialize as null (never Card{visible=false})")
-        // Defense in depth: any non-null entry must be visible.
-        view.filterNotNull().forEach {
-            assertTrue(it.visible, "PublicView leaked a non-visible card: $it")
-        }
+        // Defense in depth: visibility is no longer stored on Card; toPublicView is the only
+        // wire-facing projection, and a null in the list is the sole face-down representation.
     }
 
     @Test

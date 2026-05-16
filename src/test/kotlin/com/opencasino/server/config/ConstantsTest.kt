@@ -27,12 +27,12 @@ class ConstantsTest {
 
     @Test
     fun `max poker players greater than min`() {
-        assertTrue(MAX_POCKER_PLAYERS > MIN_POCKER_PLAYERS)
+        assertTrue(MAX_POKER_PLAYERS > MIN_POKER_PLAYERS)
     }
 
     @Test
     fun `min poker players at least 2`() {
-        assertTrue(MIN_POCKER_PLAYERS >= 2)
+        assertTrue(MIN_POKER_PLAYERS >= 2)
     }
 
     @Test

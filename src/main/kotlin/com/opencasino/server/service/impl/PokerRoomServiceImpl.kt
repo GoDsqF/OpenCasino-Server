@@ -117,37 +117,6 @@ class PokerRoomServiceImpl(
         launchRoom(room, sessions)
     }
 
-    /*override fun addPlayerToWait(userSession: PlayerSession, initialData: GameRoomJoinEvent) {
-        sessionQueue.add(WaitingPlayerSession(userSession, initialData))
-        webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))
-
-        if (sessionQueue.size < applicationProperties.pokerRoom.minPlayers) return
-
-        val gameTable = PokerMap()
-        val room = createRoom(gameTable)
-        val userSessions: MutableList<PlayerSession> = ArrayList()
-        // TODO("FIX THIS LATER(BETTER SOON)")
-        // This part supposed to let players join the room until max players count is reached or start command from room creator received\
-        //changed: room should exist on create call and players can join if room is not full
-        while (userSessions.size != applicationProperties.pokerRoom.minPlayers) {
-            val waitingPlayerSession = sessionQueue.remove()
-            val ps: PlayerSession = waitingPlayerSession.playerSession
-            val id: GameRoomJoinEvent = waitingPlayerSession.initialData
-            val player: PokerPlayer = playerFactory.create(gameTable.nextPlayerId(), id, room, ps)
-            userRepository.findPlayer(initialData.playerUUID).subscribe { user ->
-                if (user != null) {
-
-                    player.balance = user.balance
-                }
-                else player.balance = 0.00
-            }
-            ps.roomKey = room.key()
-            ps.player = player
-            userSessions.add(ps)
-        }
-        launchRoom(room, userSessions)
-    }*/
-
     override fun removePlayerFromWaitQueue(session: PlayerSession) {
         sessionQueue[session.roomKey]?.removeIf { waitingPlayerSession: WaitingPlayerSession -> waitingPlayerSession.playerSession == session }
     }

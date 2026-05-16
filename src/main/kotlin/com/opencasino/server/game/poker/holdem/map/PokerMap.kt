@@ -1,6 +1,6 @@
 package com.opencasino.server.game.poker.holdem.map
 
-import com.opencasino.server.config.MAX_POCKER_PLAYERS
+import com.opencasino.server.config.MAX_POKER_PLAYERS
 import com.opencasino.server.game.poker.holdem.model.PokerPlayer
 import java.util.concurrent.atomic.AtomicLong
 
@@ -18,7 +18,7 @@ class PokerMap {
     fun getPlayers(): Collection<PokerPlayer> = players.values
     fun getPlayerByPosition(pos: Int): PokerPlayer? = players.values.firstOrNull { it.position == pos }
     fun addPlayer(player: PokerPlayer) {
-        if (players.size < MAX_POCKER_PLAYERS) {
+        if (players.size < MAX_POKER_PLAYERS) {
             player.position = players.size
             players[player.id] = player
         }

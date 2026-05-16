@@ -12,8 +12,9 @@ const val MIN_BLACKJACK_BET = 20.00
 const val BLACKJACK_DECK_STACKS = 8
 const val BLACKJACK_RESHUFFLE_THRESHOLD = 64
 
-const val MAX_POCKER_PLAYERS = 6
-const val MIN_POCKER_PLAYERS = 2
+const val MAX_POKER_PLAYERS = 6
+const val MIN_POKER_PLAYERS = 2
 const val MIN_POKER_BET = 50.00
 const val MAX_POKER_BET = 100.00
 const val POKER_BUY_IN = 2000
+const val POKER_DECK_STACKS = 8
