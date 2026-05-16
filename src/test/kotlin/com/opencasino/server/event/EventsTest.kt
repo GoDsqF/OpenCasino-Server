@@ -9,13 +9,6 @@ import org.junit.jupiter.api.Test
 class EventsTest {
 
     @Test
-    fun `AuthEvent stores userID and email`() {
-        val event = AuthEvent("user123", "test@email.com")
-        assertEquals("user123", event.userID)
-        assertEquals("test@email.com", event.email)
-    }
-
-    @Test
     fun `BetEvent stores bet amount`() {
         val event = BetEvent(50.0)
         assertEquals(50.0, event.bet)
@@ -95,7 +88,6 @@ class EventsTest {
 
     @Test
     fun `all events extend AbstractEvent`() {
-        assertTrue(AuthEvent("", "") is AbstractEvent)
         assertTrue(BetEvent(0.0) is AbstractEvent)
         assertTrue(GameRoomJoinEvent(null, "") is AbstractEvent)
         assertTrue(BlackjackPlayerDecisionEvent("") is AbstractEvent)
@@ -107,7 +99,6 @@ class EventsTest {
 
     @Test
     fun `all events implement Event interface`() {
-        assertTrue(AuthEvent("", "") is Event)
         assertTrue(BetEvent(0.0) is Event)
         assertTrue(GameRoomJoinEvent(null, "") is Event)
     }

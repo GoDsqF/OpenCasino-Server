@@ -26,10 +26,5 @@ app.jwt.publicKeyPem=${APP_JWT_PUBLIC_KEY_PEM:}
 # (validated at /auth/register). Length is fixed at 3..32 chars matching [A-Za-z0-9_-]+.
 app.auth.displayNameBlocklist=${APP_AUTH_DISPLAY_NAME_BLOCKLIST:admin,root,system,support,moderator}
 
-# ---------------- OAuth2 client (phases 6+) ----------------
-app.oauth2.clientId=${APP_OAUTH2_CLIENTID:}
-app.oauth2.clientSecret=${APP_OAUTH2_CLIENTSECRET:}
-
-# Comma-separated list of allowed redirect URIs.
-# Authorize-code flow only accepts redirects whose target is in this allowlist.
-app.oauth2.redirectUri=${APP_OAUTH2_REDIRECTURI:http://localhost:3000/oauth2/redirect}
+# ---------------- OAuth2 client (Phase 6) ----------------
+# Added in Phase 6.

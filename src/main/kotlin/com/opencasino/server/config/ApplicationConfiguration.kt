@@ -1,15 +1,11 @@
 package com.opencasino.server.config
 
 import com.opencasino.server.network.websocket.MainWebSocketHandler
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.PropertySource
-import org.springframework.core.env.Environment
 import org.springframework.core.io.ClassPathResource
-import org.springframework.stereotype.Component
 import org.springframework.web.reactive.HandlerMapping
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.function.server.RouterFunction
@@ -49,32 +45,4 @@ class ApplicationConfiguration(
     @Bean
     fun staticRouter(): RouterFunction<ServerResponse> =
         RouterFunctions.resources("/**", ClassPathResource("static/"))
-}
-
-@Configuration
-// auth.properties is gitignored — only present in local-dev workspaces.
-// ignoreResourceNotFound lets Spring silently skip the file when missing
-// (CI, fresh clones, prod with env-only config). The bean below already
-// returns null-stringified placeholders when the keys are absent, so the
-// app starts; populate APP_OAUTH2_CLIENTID / APP_OAUTH2_CLIENTSECRET via
-// env to make OAuth actually work.
-@PropertySource(value = ["classpath:auth.properties"], ignoreResourceNotFound = true)
-@Component
-class OAuth2Config() {
-    @Autowired
-    var environment: Environment? = null
-
-    @Bean
-    fun oauth2Configuration(): OAuth2Properties {
-        val redirectUris = environment?.getProperty("app.oauth2.redirectUri")
-            ?.split(",")
-            ?.map { it.trim() }
-            ?.filter { it.isNotEmpty() }
-            ?: emptyList()
-        return OAuth2Properties(
-            environment?.getProperty("app.oauth2.clientId").toString(),
-            environment?.getProperty("app.oauth2.clientSecret").toString(),
-            redirectUris
-        )
-    }
 }
