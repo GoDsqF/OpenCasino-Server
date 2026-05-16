@@ -39,6 +39,7 @@ class SecurityConfig {
                         "/index.html",
                         "/favicon.ico",
                         "/static/**",
+                        "/ws/menu",
                         "/auth/register",
                         "/auth/login",
                         "/auth/refresh",

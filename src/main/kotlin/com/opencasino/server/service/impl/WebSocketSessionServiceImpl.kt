@@ -138,11 +138,11 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
             if (service != null) {
                 when (service) {
                     "Blackjack" -> {
-                        (blackjackRoomService.getRoomByKey(playerSession.roomKey!!) as Optional<*>)
+                        blackjackRoomService.getRoomByKey(playerSession.roomKey!!)
                             .ifPresent { (it as BlackjackGameRoom).onDisconnect(playerSession) }
                     }
                     "Poker" -> {
-                        (pokerRoomService.getRoomByKey(playerSession.roomKey!!) as Optional<*>)
+                        pokerRoomService.getRoomByKey(playerSession.roomKey!!)
                             .ifPresent { (it as PokerGameRoom).onDisconnect(playerSession) }
                     }
                 }

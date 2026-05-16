@@ -6,8 +6,10 @@ import org.springframework.data.r2dbc.core.insert
 import org.springframework.data.r2dbc.core.select
 import org.springframework.data.relational.core.query.Criteria
 import org.springframework.data.relational.core.query.Query
+import org.springframework.data.relational.core.query.Update
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Mono
+import java.time.Instant
 import java.util.UUID
 
 @Repository
@@ -38,4 +40,9 @@ class UserRepository(
         template.delete<User>()
             .matching(Query.query(Criteria.where("id").`is`(id)))
             .all()
+
+    fun updateLastLoginAt(id: UUID, at: Instant): Mono<Long> =
+        template.update(User::class.java)
+            .matching(Query.query(Criteria.where("id").`is`(id)))
+            .apply(Update.update("last_login_at", at))
 }

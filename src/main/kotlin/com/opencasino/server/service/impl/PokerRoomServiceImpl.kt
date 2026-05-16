@@ -19,7 +19,6 @@ import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.FailureCode
 import com.opencasino.server.service.shared.WaitingPlayerSession
 import com.opencasino.server.user.UserRepository
-import kotlinx.coroutines.NonCancellable.onJoin
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.springframework.beans.factory.annotation.Autowired
@@ -36,7 +35,6 @@ class PokerRoomServiceImpl(
     private val schedulerService: Scheduler
 ) : RoomService {
 
-    @Autowired
     private lateinit var userRepository: UserRepository
     private lateinit var webSocketSessionService: WebSocketSessionService
 
@@ -46,13 +44,13 @@ class PokerRoomServiceImpl(
 
     private val gameRoomMap: MutableMap<UUID, PokerGameRoom> = mutableMapOf()
     private val sessionQueue: MutableMap<UUID, Queue<WaitingPlayerSession>> = mutableMapOf()
-    override fun getRoomSessionIds(key: UUID?): Collection<String> = getRoomByKey(key).map { room ->
+    override fun getRoomSessionIds(key: UUID?): List<String>? = getRoomByKey(key).map { room ->
         room.sessions().map { it.id }
     }.orElse(emptyList())
 
     override fun getRoomIds(): Collection<String> = gameRoomMap.keys.map { it.toString() }
     override fun getRooms(): Collection<PokerGameRoom> = gameRoomMap.values.toList()
-    override fun getRoomByKey(key: UUID?): Optional<PokerGameRoom> =
+    override fun getRoomByKey(key: UUID?): Optional<GameRoom> =
         if (key != null) Optional.ofNullable(gameRoomMap[key]) else Optional.empty()
 
     override fun addPlayerToWait(userSession: PlayerSession, initialData: AbstractEvent) {
@@ -84,7 +82,7 @@ class PokerRoomServiceImpl(
             }
             is GameRoomJoinEvent -> {
                 webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))
-                val room = getRoomByKey(UUID.fromString(initialData.reconnectKey)).get()
+                val room = getRoomByKey(UUID.fromString(initialData.reconnectKey)).get() as PokerGameRoom
                 val queue = sessionQueue[room.key()]
                 if (queue != null) {
                     val gameTable = room.map
@@ -131,7 +129,7 @@ class PokerRoomServiceImpl(
     }
 
     private fun joinRoom(userSession: PlayerSession, initialData: GameRoomJoinEvent) {
-        val room = getRoomByKey(UUID.fromString(initialData.reconnectKey)).get()
+        val room = getRoomByKey(UUID.fromString(initialData.reconnectKey)).get() as PokerGameRoom
         val gameTable = room.map
         val player: PokerPlayer = playerFactory.create(gameTable.nextPlayerId(), initialData, room, userSession)
 
@@ -159,7 +157,7 @@ class PokerRoomServiceImpl(
     }
 
     fun updateSettings(userSession: PlayerSession, event: GameSettingsUpdateEvent) {
-        val room = getRoomByKey(userSession.roomKey).get()
+        val room = getRoomByKey(userSession.roomKey).get() as PokerGameRoom
         room.betType = event.betType?.let { PokerBetType.valueOf(it) }!!
         room.minLimit = event.minLimit
         room.maxLimit = event.maxLimit

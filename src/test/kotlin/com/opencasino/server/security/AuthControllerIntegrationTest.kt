@@ -203,7 +203,7 @@ class AuthControllerIntegrationTest {
         val secondRefresh = second["refreshToken"] as String
         val secondAccess = second["accessToken"] as String
         assertTrue(secondRefresh != firstRefresh, "refresh should rotate")
-        assertTrue(secondAccess != firstAccess || (secondAccess as String).split(".").size == 3)
+        assertTrue(secondAccess != firstAccess || (secondAccess).split(".").size == 3)
     }
 
     @Test

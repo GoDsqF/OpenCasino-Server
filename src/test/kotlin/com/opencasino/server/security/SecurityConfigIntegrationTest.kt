@@ -6,6 +6,7 @@ import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -170,6 +171,17 @@ class SecurityConfigIntegrationTest {
                 .header("Sec-WebSocket-Version", "13")
                 .exchange()
                 .expectStatus().isUnauthorized
+        }
+
+        @Test
+        fun `handshake on ws menu without auth is permitted`() {
+            webClient.get().uri("/ws/menu")
+                .header("Upgrade", "websocket")
+                .header("Connection", "Upgrade")
+                .header("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
+                .header("Sec-WebSocket-Version", "13")
+                .exchange()
+                .expectStatus().value { code -> assertNotEquals(401, code) }
         }
     }
 }

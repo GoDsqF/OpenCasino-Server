@@ -1,8 +1,14 @@
 package com.opencasino.server.network.pack.menu.update
 
-import com.opencasino.server.event.AbstractEvent
+import com.opencasino.server.network.pack.Pack
 
-class MenuUpdatePack(
-    val availableGames: List<String>,
+data class GameMetadata(
+    val name: String,
+    val activeRooms: Int,
+    val activePlayers: Int
+)
+
+data class MenuUpdatePack(
+    val games: List<GameMetadata>,
     val totalActivePlayers: Int
-) : AbstractEvent()
+) : Pack
