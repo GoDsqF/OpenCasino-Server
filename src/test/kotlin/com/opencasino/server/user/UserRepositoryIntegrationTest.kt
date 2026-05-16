@@ -111,6 +111,19 @@ class UserRepositoryIntegrationTest {
     }
 
     @Test
+    fun `updateLastLoginAt writes the timestamp`() {
+        val user = User(email = "henry-${UUID.randomUUID()}@example.com", displayName = "henry")
+        users.save(user).block()
+        assertNull(users.findById(user.id).block()!!.lastLoginAt)
+
+        val ts = Instant.parse("2026-04-01T10:00:00Z")
+        val rows = users.updateLastLoginAt(user.id, ts).block()
+        assertEquals(1L, rows)
+
+        assertEquals(ts, users.findById(user.id).block()!!.lastLoginAt)
+    }
+
+    @Test
     fun `lastLoginAt round-trips through repository`() {
         val ts = Instant.parse("2026-05-10T12:34:56Z")
         val user = User(

@@ -6,6 +6,7 @@ import com.opencasino.server.user.UserOAuthIdentityRepository
 import com.opencasino.server.user.UserRepository
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
+import java.time.Instant
 
 data class OAuth2UserPrincipal(
     val provider: String,
@@ -35,6 +36,7 @@ class OAuth2UserLinkingService(
         identities.findByProviderAndSubject(principal.provider, principal.subject)
             .flatMap { existing -> users.findById(existing.userId) }
             .switchIfEmpty(Mono.defer { linkOrCreateForFreshIdentity(principal) })
+            .flatMap { user -> users.updateLastLoginAt(user.id, Instant.now()).thenReturn(user) }
 
     private fun linkOrCreateForFreshIdentity(principal: OAuth2UserPrincipal): Mono<User> {
         if (!principal.emailVerified || principal.email.isNullOrBlank()) {

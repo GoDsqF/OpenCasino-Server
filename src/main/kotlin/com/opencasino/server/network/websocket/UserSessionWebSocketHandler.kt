@@ -48,24 +48,27 @@ class UserSessionWebSocketHandler(
                     }
 
                     INFO -> {
-                        val room = blackjackRoomService.getRoomByKey(userSession.roomKey) as BlackjackGameRoom
-                        room.onPlayerInfoRequest(userSession)
+                        blackjackRoomService.getRoomByKey(userSession.roomKey).ifPresent { room ->
+                            (room as BlackjackGameRoom).onPlayerInfoRequest(userSession)
+                        }
                     }
 
                     PLAYER_DECISION -> {
-                        val room = blackjackRoomService.getRoomByKey(userSession.roomKey) as BlackjackGameRoom
-                        room.onPlayerDecision(
-                            userSession,
-                            objectMapper.fromJson(messageData.toString(), BlackjackPlayerDecisionEvent::class.java)
-                        )
+                        blackjackRoomService.getRoomByKey(userSession.roomKey).ifPresent { room ->
+                            (room as BlackjackGameRoom).onPlayerDecision(
+                                userSession,
+                                objectMapper.fromJson(messageData.toString(), BlackjackPlayerDecisionEvent::class.java)
+                            )
+                        }
                     }
 
                     BET -> {
-                        val room = blackjackRoomService.getRoomByKey(userSession.roomKey) as BlackjackGameRoom
-                        room.onBet(
-                            userSession,
-                            objectMapper.fromJson(messageData.toString(), BetEvent::class.java)
-                        )
+                        blackjackRoomService.getRoomByKey(userSession.roomKey).ifPresent { room ->
+                            (room as BlackjackGameRoom).onBet(
+                                userSession,
+                                objectMapper.fromJson(messageData.toString(), BetEvent::class.java)
+                            )
+                        }
                     }
                 }
             }
@@ -90,24 +93,27 @@ class UserSessionWebSocketHandler(
                         )
                     }
                     INFO -> {
-                        val room = pokerRoomService.getRoomByKey(userSession.roomKey) as PokerGameRoom
-                        room.onPlayerInfoRequest(userSession)
+                        pokerRoomService.getRoomByKey(userSession.roomKey).ifPresent { room ->
+                            (room as PokerGameRoom).onPlayerInfoRequest(userSession)
+                        }
                     }
 
                     PLAYER_DECISION -> {
-                        val room = pokerRoomService.getRoomByKey(userSession.roomKey) as PokerGameRoom
-                        room.onPlayerDecision(
-                            userSession,
-                            objectMapper.fromJson(messageData.toString(), PokerPlayerDecisionEvent::class.java)
-                        )
+                        pokerRoomService.getRoomByKey(userSession.roomKey).ifPresent { room ->
+                            (room as PokerGameRoom).onPlayerDecision(
+                                userSession,
+                                objectMapper.fromJson(messageData.toString(), PokerPlayerDecisionEvent::class.java)
+                            )
+                        }
                     }
 
                     BET -> {
-                        val room = pokerRoomService.getRoomByKey(userSession.roomKey) as PokerGameRoom
-                        room.onBuyIn(
-                            userSession,
-                            objectMapper.fromJson(messageData.toString(), BetEvent::class.java)
-                        )
+                        pokerRoomService.getRoomByKey(userSession.roomKey).ifPresent { room ->
+                            (room as PokerGameRoom).onBuyIn(
+                                userSession,
+                                objectMapper.fromJson(messageData.toString(), BetEvent::class.java)
+                            )
+                        }
                     }
                 }
             }

@@ -1,0 +1,26 @@
+# Game / room properties — defaults match ApplicationProperties.kt.
+# Override these in application.properties (or via env vars / Spring profiles)
+# to retune room behavior without rebuilding the JAR.
+
+# Game threads
+application.game.game-threads=4
+
+# Blackjack room
+application.blackjack-room.loop-rate=300
+application.blackjack-room.init-delay=5000
+application.blackjack-room.start-delay=5000
+application.blackjack-room.end-delay=300000
+application.blackjack-room.max-players=1
+application.blackjack-room.min-bet=20.00
+application.blackjack-room.deck-stacks=8
+application.blackjack-room.reshuffle-threshold=64
+
+# Poker room (Hold'em)
+application.poker-room.loop-rate=300
+application.poker-room.init-delay=5000
+application.poker-room.start-delay=5000
+application.poker-room.end-delay=300000
+application.poker-room.max-players=6
+application.poker-room.min-players=2
+application.poker-room.buy-in=2000
+application.poker-room.deck-stacks=8

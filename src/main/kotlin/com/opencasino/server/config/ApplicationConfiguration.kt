@@ -1,6 +1,7 @@
 package com.opencasino.server.config
 
 import com.opencasino.server.network.websocket.MainWebSocketHandler
+import com.opencasino.server.network.websocket.MenuWebSocketHandler
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -18,13 +19,15 @@ import reactor.core.scheduler.Schedulers
 
 
 const val WEBSOCKET_PATH = "/ws"
+const val WEBSOCKET_MENU_PATH = "/ws/menu"
 
 @EnableWebFlux
 @Configuration
 @EnableConfigurationProperties(ApplicationProperties::class)
 class ApplicationConfiguration(
     private val serverProperties: ApplicationProperties,
-    private val handler: MainWebSocketHandler
+    private val handler: MainWebSocketHandler,
+    private val menuHandler: MenuWebSocketHandler,
 ) {
 
     @Bean
@@ -35,6 +38,7 @@ class ApplicationConfiguration(
     @Bean
     fun webSocketHandlerMapping(): HandlerMapping {
         val map: MutableMap<String, WebSocketHandler> = HashMap()
+        map[WEBSOCKET_MENU_PATH] = menuHandler
         map[WEBSOCKET_PATH] = handler
         val handlerMapping = SimpleUrlHandlerMapping()
         handlerMapping.order = 1

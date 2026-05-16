@@ -8,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
+import java.time.Instant
 
 @Service
 class AuthService(
@@ -89,7 +90,8 @@ class AuthService(
     }
 
     private fun buildLoginResponse(user: User): Mono<LoginResponse> =
-        refreshTokenService.issue(user.id)
+        users.updateLastLoginAt(user.id, Instant.now())
+            .then(refreshTokenService.issue(user.id))
             .map { issuedRefresh -> assembleLoginResponse(user, issuedRefresh) }
 
     private fun assembleLoginResponse(user: User, issuedRefresh: IssuedRefresh): LoginResponse {

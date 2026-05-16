@@ -1,7 +1,8 @@
 package com.opencasino.server.service
 
+import com.opencasino.server.network.pack.menu.update.MenuUpdatePack
+
 
 interface MenuService {
-    fun getAvailableGames(): List<String>
-    fun getTotalActivePlayers(): Int
+    fun getMenuSnapshot(): MenuUpdatePack
 }

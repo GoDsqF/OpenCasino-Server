@@ -36,6 +36,7 @@ class OAuth2UserLinkingServiceTest {
         whenever(users.findByEmail(any())).thenReturn(Mono.empty())
         whenever(users.findById(any())).thenReturn(Mono.empty())
         whenever(users.existsByDisplayName(any())).thenReturn(Mono.just(false))
+        whenever(users.updateLastLoginAt(any(), any())).thenReturn(Mono.just(1L))
     }
 
     @Test
