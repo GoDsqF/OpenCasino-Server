@@ -28,6 +28,7 @@ data class MeResponse(
     val userId: UUID,
     val email: String?,
     val roles: List<String>,
+    val balance: Double,
 )
 
 data class AuthFailureBody(

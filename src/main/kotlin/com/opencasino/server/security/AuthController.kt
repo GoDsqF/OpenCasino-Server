@@ -1,5 +1,6 @@
 package com.opencasino.server.security
 
+import com.opencasino.server.user.UserRepository
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -16,7 +17,10 @@ import java.util.UUID
 
 @RestController
 @RequestMapping("/auth")
-class AuthController(private val authService: AuthService) {
+class AuthController(
+    private val authService: AuthService,
+    private val users: UserRepository,
+) {
 
     @PostMapping("/register")
     fun register(@RequestBody request: RegisterRequest): Mono<ResponseEntity<Any>> =
@@ -39,14 +43,18 @@ class AuthController(private val authService: AuthService) {
             .then(Mono.fromCallable { ResponseEntity.noContent().build<Void>() })
 
     @GetMapping("/me")
-    fun me(@AuthenticationPrincipal jwt: Jwt): MeResponse {
+    fun me(@AuthenticationPrincipal jwt: Jwt): Mono<MeResponse> {
         @Suppress("UNCHECKED_CAST")
         val roles = (jwt.claims[JwtIssuer.CLAIM_ROLES] as? List<String>) ?: emptyList()
-        return MeResponse(
-            userId = UUID.fromString(jwt.subject),
-            email = jwt.getClaimAsString(JwtIssuer.CLAIM_EMAIL),
-            roles = roles,
-        )
+        val userId = UUID.fromString(jwt.subject)
+        val email = jwt.getClaimAsString(JwtIssuer.CLAIM_EMAIL)
+        // Balance is mutable and not encoded into the JWT, so it has to be loaded
+        // from the DB on every /me call. If the row is missing (test fixtures that
+        // sign a JWT without inserting a user), fall back to 0 — JWT-validation
+        // tests don't care about balance and shouldn't need a DB row.
+        return users.findById(userId)
+            .map { user -> MeResponse(userId, email, roles, user.balance) }
+            .defaultIfEmpty(MeResponse(userId, email, roles, 0.0))
     }
 
     @ExceptionHandler(AuthException::class)
