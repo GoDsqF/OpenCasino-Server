@@ -55,8 +55,22 @@ data class JwtKeyMaterial(
             if (inline.isNotBlank()) return inline
             if (path.isBlank()) return ""
             val file = Path.of(path)
+            require(Files.exists(file)) {
+                "${propertyName}Path points to '$path' but no such file exists from inside the container. " +
+                    "Check the volume mount: in docker-compose, ensure the host path is mounted at the same " +
+                    "container path (e.g. `- /host/certs:/certs:ro`), and that the file name matches exactly."
+            }
             require(Files.isRegularFile(file)) {
-                "${propertyName}Path points to '$path' but the file does not exist or is not readable."
+                "${propertyName}Path points to '$path' which exists but is not a regular file " +
+                    "(symlink target missing, directory, or special file)."
+            }
+            require(Files.isReadable(file)) {
+                val asUser = System.getProperty("user.name") ?: "?"
+                "${propertyName}Path points to '$path' but the file is not readable by the running process " +
+                    "(user '$asUser'). In Docker, bind-mounted files keep host permissions — `chown` in the " +
+                    "Dockerfile does not apply to mounts. Fix on the host: chown the file to the container's " +
+                    "APP_UID:APP_GID (10001:10001 by default) and chmod 0440, or run the container with " +
+                    "matching `user:` / `group_add:`."
             }
             return Files.readString(file)
         }
