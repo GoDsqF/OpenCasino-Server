@@ -208,10 +208,15 @@ app.jwt.keyId=default
 # Денилист сабстрок для displayName при регистрации (case-insensitive)
 app.auth.displayNameBlocklist=admin,root,system,support,moderator
 
-# OAuth2 client (понадобится в Phase 6)
-app.oauth2.clientId=
-app.oauth2.clientSecret=
+# OAuth2 client (Phase 6 — Google)
+spring.security.oauth2.client.registration.google.client-id=
+spring.security.oauth2.client.registration.google.client-secret=
+spring.security.oauth2.client.registration.google.scope=openid,email,profile
+app.auth.oauth2.success-redirect=https://<your-frontend>/auth/callback
+app.auth.oauth2.failure-redirect=https://<your-frontend>/auth/callback
 ```
+
+> **Короткие env-vars.** Файлы под `src/main/resources/` нужны только для локальной разработки. В контейнере приложение умеет стартовать без mounted `/config/*.properties`: `ShortEnvAliasPostProcessor` мапит `GOOGLE_OAUTH_CLIENT_ID/CLIENT_SECRET/SCOPE` → `spring.security.oauth2.client.registration.google.*` и `OAUTH_SUCCESS_REDIRECT`/`OAUTH_FAILURE_REDIRECT` → `app.auth.oauth2.*-redirect`, плюс закладывает дефолты для `app.jwt.*`, `server.ssl.enabled`, `app.auth.displayNameBlocklist`. Любой mounted property-файл или env с каноническим именем имеет приоритет (alias добавлен как `addLast`).
 
 Сгенерировать ключи:
 ```bash
@@ -292,14 +297,29 @@ Pre-build артефакты не нужны — стадия `builder` сама
 | `JAVA_OPTS` | пусто | Дополнительные JVM-флаги, добавляемые к команде запуска. |
 | `JAVA_TOOL_OPTIONS` | `-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom` | Подхватывается JVM автоматически — сайзинг по cgroup-лимитам и быстрый источник энтропии для TLS. |
 | `TZ` | `UTC` | Тайм-зона контейнера (важна для логов game loop). |
-| `DATABASE_HOST` / `_PORT` / `_USER` / `_PASSWORD` / `_DB` | — | Уже читаются из `database.properties`. |
-| `APP_AUTH_TOKENSECRET`, `APP_OAUTH2_CLIENTID`, `APP_OAUTH2_CLIENTSECRET` | — | OAuth2 / JWT секреты. Spring relaxed binding автоматически мапит их на `app.auth.tokenSecret` и т.п. |
-| `SERVER_SSL_ENABLED`, `SERVER_SSL_CERTIFICATE`, `SERVER_SSL_CERTIFICATE_PRIVATE_KEY`, `SERVER_SSL_TRUST_CERTIFICATE` | — | Включение TLS и пути к PEM-файлам внутри контейнера (обычно `/certs/...`). |
+| `DATABASE_HOST` / `_PORT` / `_USER` / `_PASSWORD` / `_DB` | — | R2DBC + Liquibase. Если `/config/database.properties` не смонтирован, эти env-vars достаточны. |
+| `APP_JWT_ISSUER`, `APP_JWT_ACCESS_TTL`, `APP_JWT_KEY_ID`, `APP_JWT_PRIVATE_KEY_PATH`, `APP_JWT_PUBLIC_KEY_PATH` | `opencasino`, `PT15M`, `default`, `/certs/jwt-private.pem`, `/certs/jwt-public.pem` | JWT RS256. Inline-варианты — `APP_JWT_PRIVATE_KEY_PEM` / `APP_JWT_PUBLIC_KEY_PEM`. |
+| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_SCOPE` | — / — / `openid,email,profile` | Phase 6. Мапятся на `spring.security.oauth2.client.registration.google.*` через `ShortEnvAliasPostProcessor`. Пустой `CLIENT_ID` или `CLIENT_SECRET` → флоу не регистрируется, `/oauth2/authorization/google` отдаёт 404. |
+| `OAUTH_SUCCESS_REDIRECT`, `OAUTH_FAILURE_REDIRECT` | — | URI редиректа после OAuth-login/failure. Должен указывать на существующий SPA-роут (текущий фронт — `/auth/callback`). |
+| `APP_AUTH_DISPLAY_NAME_BLOCKLIST` | `admin,root,system,support,moderator` | Денилист сабстрок для `displayName` при регистрации. |
+| `SERVER_SSL_ENABLED`, `SERVER_SSL_CERTIFICATE`, `SERVER_SSL_CERTIFICATE_PRIVATE_KEY`, `SERVER_SSL_TRUST_CERTIFICATE` | `false` / `/certs/cert.pem` / `/certs/privkey.pem` / `/certs/chain.pem` | Включение TLS и пути к PEM-файлам. С дефолтными путями достаточно одного `SERVER_SSL_ENABLED=true`. |
 
 ### Точки монтирования (Volumes)
 
-- **`/certs`** — TLS-материал (`cert.pem`, `privkey.pem`, `chain.pem`). Пути к ним передавайте через `SERVER_SSL_*` переменные или через `ssl.properties`.
-- **`/config`** — drop-in каталог для дополнительных Spring property-файлов. Активируется аргументом `--spring.config.additional-location=file:/config/`, который можно передать как `CMD`.
+- **`/certs`** — TLS + JWT-ключи (`cert.pem`, `privkey.pem`, `chain.pem`, `jwt-private.pem`, `jwt-public.pem`). С дефолтными путями достаточно `SERVER_SSL_ENABLED=true`.
+- **`/config`** — drop-in каталог. `application.properties` уже импортит `optional:file:/config/{application,database,auth,ssl}.properties` — никаких флагов вроде `--spring.config.additional-location` передавать не надо. **Опциональный**: для секретов и многострочных PEM удобнее, но при наличии env-vars и `/certs/*.pem` можно вообще не монтировать.
+
+### Reverse-proxy (nginx) и OAuth
+
+Backend должен получать три префикса напрямую:
+
+```nginx
+location /auth/                       { proxy_pass http://opencasino-server:8080; }
+location /oauth2/authorization/       { proxy_pass http://opencasino-server:8080; }   # OAuth start
+location /login/oauth2/               { proxy_pass http://opencasino-server:8080; }   # OAuth callback от провайдера (Spring зашивает /login/oauth2/code/{registration})
+```
+
+`OAUTH_SUCCESS_REDIRECT` (например `/auth/callback`) — это уже SPA-роут; оставьте его SPA-fallback'у (`try_files $uri /index.html`). Не используйте `location /oauth2/` целиком, иначе SPA-фолбэки под `/oauth2/*` начнут уходить на backend. В **Google Cloud Console** в Authorized redirect URIs указывайте *callback сервера* — `https://<host>/login/oauth2/code/google`, не SPA-success-redirect.
 
 ### Открытые порты
 
@@ -324,12 +344,15 @@ docker run --rm --name opencasino \
   -p 8080:8080 \
   -e DATABASE_HOST=db.internal -e DATABASE_PORT=5432 \
   -e DATABASE_USER=pgadmin -e DATABASE_PASSWORD='***' -e DATABASE_DB=casino \
-  -e APP_AUTH_TOKENSECRET='***' \
-  -e APP_OAUTH2_CLIENTID='***.apps.googleusercontent.com' \
-  -e APP_OAUTH2_CLIENTSECRET='***' \
+  -e GOOGLE_OAUTH_CLIENT_ID='***.apps.googleusercontent.com' \
+  -e GOOGLE_OAUTH_CLIENT_SECRET='***' \
+  -e OAUTH_SUCCESS_REDIRECT='https://opencasino.example.com/auth/callback' \
+  -e OAUTH_FAILURE_REDIRECT='https://opencasino.example.com/auth/callback' \
   -v "$PWD/certs:/certs:ro" \
   opencasino-server:1.0.1
 ```
+
+`ShortEnvAliasPostProcessor` (`src/main/kotlin/com/opencasino/server/config/ShortEnvAliasPostProcessor.kt`, регистрируется через `META-INF/spring.factories`) разворачивает `GOOGLE_OAUTH_*` в канонические `spring.security.oauth2.client.registration.google.*` и проставляет дефолты для `app.jwt.*` — поэтому `/config/auth.properties` монтировать не нужно. JWT-ключи всё равно нужны на `/certs/jwt-{private,public}.pem` либо inline через `APP_JWT_PRIVATE_KEY_PEM` / `APP_JWT_PUBLIC_KEY_PEM`.
 
 Включить TLS:
 
@@ -355,7 +378,7 @@ services:
     ports:
       - "8080:8080"
     env_file:
-      - .env.opencasino     # DATABASE_*, APP_AUTH_TOKENSECRET, APP_OAUTH2_*
+      - .env.opencasino     # DATABASE_*, GOOGLE_OAUTH_*, OAUTH_*_REDIRECT
     volumes:
       - ./certs:/certs:ro
     restart: unless-stopped
@@ -390,7 +413,7 @@ build_image:
     - docker push "$CI_REGISTRY_IMAGE:latest"
 ```
 
-Секреты (`DATABASE_PASSWORD`, `APP_AUTH_TOKENSECRET`, `APP_OAUTH2_CLIENTSECRET`) храните как **masked + protected** CI/CD variables. Сертификаты — как `File`-type variables, они монтируются в job рабочей директорией.
+Секреты (`DATABASE_PASSWORD`, `GOOGLE_OAUTH_CLIENT_SECRET`, JWT private key) храните как **masked + protected** CI/CD variables. PEM-ключи удобнее как `File`-type variables — runner разворачивает их в файл, который mount'ится как `/certs/jwt-private.pem`.
 
 ### Kubernetes
 
@@ -420,7 +443,7 @@ spec:
             - { name: https, containerPort: 8443 }
           envFrom:
             - secretRef: { name: opencasino-db }       # DATABASE_*
-            - secretRef: { name: opencasino-auth }     # APP_AUTH_*, APP_OAUTH2_*
+            - secretRef: { name: opencasino-auth }     # GOOGLE_OAUTH_*, OAUTH_*_REDIRECT
           env:
             - { name: SPRING_PROFILES_ACTIVE, value: "prod" }
           volumeMounts:
@@ -534,7 +557,7 @@ wss://<host>/ws               # TLS
 | Spring Security + RS256 JWT | готово (Phase 4 — `!8`) |
 | WebSocket handshake auth | готово (Phase 5 — `!9`) |
 | Player↔User merge (legacy `players` → `users`) | готово (Phase 5 — `!9`) |
-| Multi-provider OAuth (Google + Yandex + GitHub) | запланировано (Phase 6 — `#7`) |
+| Multi-provider OAuth | Google — готово (Phase 6 — `!7`); Yandex / GitHub отложены |
 | Refresh tokens + revocation | запланировано (Phase 7 — `#8`) |
 | CORS / rate-limit / audit log | запланировано (Phase 8 — `#9`) |
 
