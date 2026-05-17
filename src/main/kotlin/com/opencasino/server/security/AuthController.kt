@@ -19,7 +19,7 @@ import java.util.UUID
 @RequestMapping("/auth")
 class AuthController(
     private val authService: AuthService,
-    private val users: UserRepository,
+    private val userRepository: UserRepository,
 ) {
 
     @PostMapping("/register")
@@ -47,14 +47,15 @@ class AuthController(
         @Suppress("UNCHECKED_CAST")
         val roles = (jwt.claims[JwtIssuer.CLAIM_ROLES] as? List<String>) ?: emptyList()
         val userId = UUID.fromString(jwt.subject)
-        val email = jwt.getClaimAsString(JwtIssuer.CLAIM_EMAIL)
-        // Balance is mutable and not encoded into the JWT, so it has to be loaded
-        // from the DB on every /me call. If the row is missing (test fixtures that
-        // sign a JWT without inserting a user), fall back to 0 — JWT-validation
-        // tests don't care about balance and shouldn't need a DB row.
-        return users.findById(userId)
-            .map { user -> MeResponse(userId, email, roles, user.balance) }
-            .defaultIfEmpty(MeResponse(userId, email, roles, 0.0))
+        return userRepository.findById(userId).map { user ->
+            MeResponse(
+                userId = userId,
+                email = jwt.getClaimAsString(JwtIssuer.CLAIM_EMAIL) ?: user.email,
+                displayName = user.displayName,
+                roles = roles,
+                balance = user.balance,
+            )
+        }
     }
 
     @ExceptionHandler(AuthException::class)

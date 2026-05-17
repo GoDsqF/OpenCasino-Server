@@ -6,6 +6,8 @@ import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
+import com.opencasino.server.user.User
+import com.opencasino.server.user.UserRepository
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -48,6 +50,9 @@ class SecurityConfigIntegrationTest {
     @Autowired
     lateinit var webClient: WebTestClient
 
+    @Autowired
+    lateinit var users: UserRepository
+
     @Nested
     inner class HttpRequests {
 
@@ -61,6 +66,13 @@ class SecurityConfigIntegrationTest {
         @Test
         fun `auth me with valid jwt returns 200 and echoes claims`() {
             val userId = UUID.randomUUID()
+            users.save(
+                User(
+                    id = userId,
+                    email = "me-${userId}@example.com",
+                    displayName = "me-${userId.toString().take(8)}",
+                )
+            ).block()
             val token = signToken(
                 JWTClaimsSet.Builder()
                     .issuer(TEST_ISSUER)
@@ -81,6 +93,7 @@ class SecurityConfigIntegrationTest {
                 .expectBody()
                 .jsonPath("$.userId").isEqualTo(userId.toString())
                 .jsonPath("$.email").isEqualTo("me@example.com")
+                .jsonPath("$.displayName").isEqualTo("me-${userId.toString().take(8)}")
                 .jsonPath("$.roles[0]").isEqualTo("USER")
         }
 

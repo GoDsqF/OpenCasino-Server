@@ -27,6 +27,7 @@ data class LogoutRequest(val refreshToken: String? = null)
 data class MeResponse(
     val userId: UUID,
     val email: String?,
+    val displayName: String,
     val roles: List<String>,
     val balance: Double,
 )
