@@ -13,10 +13,14 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebInputException
 import reactor.core.publisher.Mono
 import java.util.UUID
+import com.opencasino.server.user.UserRepository
 
 @RestController
 @RequestMapping("/auth")
-class AuthController(private val authService: AuthService) {
+class AuthController(
+    private val authService: AuthService,
+    private val userRepository: UserRepository,
+) {
 
     @PostMapping("/register")
     fun register(@RequestBody request: RegisterRequest): Mono<ResponseEntity<Any>> =
@@ -39,14 +43,18 @@ class AuthController(private val authService: AuthService) {
             .then(Mono.fromCallable { ResponseEntity.noContent().build<Void>() })
 
     @GetMapping("/me")
-    fun me(@AuthenticationPrincipal jwt: Jwt): MeResponse {
+    fun me(@AuthenticationPrincipal jwt: Jwt): Mono<MeResponse> {
         @Suppress("UNCHECKED_CAST")
         val roles = (jwt.claims[JwtIssuer.CLAIM_ROLES] as? List<String>) ?: emptyList()
-        return MeResponse(
-            userId = UUID.fromString(jwt.subject),
-            email = jwt.getClaimAsString(JwtIssuer.CLAIM_EMAIL),
-            roles = roles,
-        )
+        val userId = UUID.fromString(jwt.subject)
+        return userRepository.findById(userId).map { user ->
+            MeResponse(
+                userId = userId,
+                email = jwt.getClaimAsString(JwtIssuer.CLAIM_EMAIL) ?: user.email,
+                displayName = user.displayName,
+                roles = roles,
+            )
+        }
     }
 
     @ExceptionHandler(AuthException::class)
