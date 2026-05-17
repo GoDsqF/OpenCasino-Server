@@ -20,6 +20,8 @@ import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.impl.BlackjackRoomServiceImpl
 import com.opencasino.server.service.shared.BlackjackDecision
 import com.opencasino.server.service.shared.FailureCode
+import com.opencasino.server.user.BalanceLedgerReason
+import com.opencasino.server.user.BalanceLedgerService
 import reactor.core.scheduler.Scheduler
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -34,7 +36,8 @@ class BlackjackGameRoom(
     webSocketSessionService: WebSocketSessionService,
     schedulerService: Scheduler,
     val gameProperties: GameProperties,
-    val roomProperties: BlackjackRoomProperties
+    val roomProperties: BlackjackRoomProperties,
+    private val ledgerService: BalanceLedgerService,
 ) : AbstractBlackjackGameRoom(gameRoomId, schedulerService, roomService, webSocketSessionService) {
     private val testing = AtomicBoolean(false)
 
@@ -64,7 +67,10 @@ class BlackjackGameRoom(
 
     var dealerHand = CardDeck()
 
+    private var currentRoundId: UUID = UUID.randomUUID()
+
     private fun initialDeal() {
+        currentRoundId = UUID.randomUUID()
         val players = map.getPlayers()
         for (player in players) {
             val hand = player.currentHand()
@@ -191,6 +197,7 @@ class BlackjackGameRoom(
         }
         else {
             dealerHand.openCards()
+            settleRound()
             val conditions = handConditions!!.map { it.name }
             for (currentPlayer in map.getPlayers()) {
                 send(
@@ -206,6 +213,26 @@ class BlackjackGameRoom(
                 )
             }
             reset()
+        }
+    }
+
+    private fun payoutFor(condition: BlackjackCondition, bet: Double): Double = when (condition) {
+        BlackjackCondition.PlayerWin -> bet * 2.0
+        BlackjackCondition.PlayerWinBlackjack -> bet * 2.5
+        BlackjackCondition.DealerWin, BlackjackCondition.DealerBlackjack -> 0.0
+        BlackjackCondition.Draw, BlackjackCondition.None -> bet
+    }
+
+    private fun settleRound() {
+        val conds = handConditions ?: return
+        for (player in map.getPlayers()) {
+            val totalBet = player.hands.sumOf { it.bet }
+            val totalPayout = player.hands.zip(conds).sumOf { (h, c) -> payoutFor(c, h.bet) }
+            player.balance += totalPayout
+            val delta = totalPayout - totalBet
+            val userId = player.userSession.userId ?: continue
+            ledgerService.applyDelta(userId, currentRoundId, delta, BalanceLedgerReason.BLACKJACK_ROUND)
+                .subscribe()
         }
     }
 
@@ -337,5 +364,17 @@ class BlackjackGameRoom(
     override fun onClose(userSession: PlayerSession) {
         send(userSession, Message(GAME_ROOM_CLOSE))
         super.onClose(userSession)
+    }
+
+    override fun onDisconnect(userSession: PlayerSession): PlayerSession {
+        if (gameStarted.get() && handConditions == null) {
+            val player = userSession.player as? BlackjackPlayer
+            if (player != null && player.hands.isNotEmpty()) {
+                player.hands.forEach { it.resolved = true }
+                playDealerAndResolve(player)
+                settleRound()
+            }
+        }
+        return super.onDisconnect(userSession)
     }
 }

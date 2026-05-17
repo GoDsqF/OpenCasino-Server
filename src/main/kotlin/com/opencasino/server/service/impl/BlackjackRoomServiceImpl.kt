@@ -14,6 +14,7 @@ import com.opencasino.server.network.shared.Message
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.WaitingPlayerSession
+import com.opencasino.server.user.BalanceLedgerService
 import com.opencasino.server.user.UserRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -29,7 +30,8 @@ import java.util.*
 class BlackjackRoomServiceImpl(
     private val playerFactory: BlackjackPlayerFactory,
     private val applicationProperties: ApplicationProperties,
-    private val schedulerService: Scheduler
+    private val schedulerService: Scheduler,
+    private val ledgerService: BalanceLedgerService,
 ) : RoomService {
 
     @Autowired
@@ -91,7 +93,8 @@ class BlackjackRoomServiceImpl(
     private fun createRoom(gameMap: BlackjackMap): BlackjackGameRoom {
         val room = BlackjackGameRoom(gameMap, UUID.randomUUID(), this, webSocketSessionService,
             schedulerService, applicationProperties.game,
-            applicationProperties.blackjackRoom
+            applicationProperties.blackjackRoom,
+            ledgerService
         )
         gameRoomMap[room.key()] = room
         return room

@@ -1,5 +1,6 @@
 package com.opencasino.server.security
 
+import com.opencasino.server.user.UserRepository
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
