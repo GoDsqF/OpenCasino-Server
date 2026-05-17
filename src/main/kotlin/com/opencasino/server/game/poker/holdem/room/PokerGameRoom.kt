@@ -26,6 +26,8 @@ import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.FailureCode
 import com.opencasino.server.service.shared.PokerDecision
 import com.opencasino.server.service.shared.PokerPhase
+import com.opencasino.server.user.BalanceLedgerReason
+import com.opencasino.server.user.BalanceLedgerService
 import reactor.core.scheduler.Scheduler
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -40,7 +42,8 @@ open class PokerGameRoom(
     webSocketSessionService: WebSocketSessionService,
     schedulerService: Scheduler,
     val gameProperties: GameProperties,
-    val roomProperties: PokerRoomProperties
+    val roomProperties: PokerRoomProperties,
+    private val ledgerService: BalanceLedgerService? = null,
 ) : AbstractPokerGameRoom(gameRoomId, schedulerService, roomService, webSocketSessionService) {
 
     //can i delete this later?
@@ -427,6 +430,10 @@ open class PokerGameRoom(
         player.balance -= buyIn
         player.stack = buyIn
         player.boughtIn = true
+        userSession.userId?.let { uid ->
+            ledgerService?.applyDelta(uid, UUID.randomUUID(), -buyIn, BalanceLedgerReason.POKER_BUY_IN)
+                ?.subscribe()
+        }
         map.getPlayers().forEach {
             if (!it.boughtIn) return
         }
@@ -495,5 +502,16 @@ open class PokerGameRoom(
     override fun onClose(userSession: PlayerSession) {
         send(userSession, Message(GAME_ROOM_CLOSE))
         super.onClose(userSession)
+    }
+
+    override fun onDisconnect(userSession: PlayerSession): PlayerSession {
+        if (gameStarted.get() && !roundEnd.get()) {
+            val player = userSession.player as? PokerPlayer
+            if (player != null && !player.folded) {
+                player.folded = true
+                nextMove(userSession)
+            }
+        }
+        return super.onDisconnect(userSession)
     }
 }

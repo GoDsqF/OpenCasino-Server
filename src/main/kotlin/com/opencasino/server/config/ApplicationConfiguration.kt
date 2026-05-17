@@ -14,6 +14,8 @@ import org.springframework.web.reactive.function.server.RouterFunctions
 import org.springframework.web.reactive.function.server.ServerResponse
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping
 import org.springframework.web.reactive.socket.WebSocketHandler
+import org.springframework.transaction.ReactiveTransactionManager
+import org.springframework.transaction.reactive.TransactionalOperator
 import reactor.core.scheduler.Scheduler
 import reactor.core.scheduler.Schedulers
 
@@ -49,4 +51,8 @@ class ApplicationConfiguration(
     @Bean
     fun staticRouter(): RouterFunction<ServerResponse> =
         RouterFunctions.resources("/**", ClassPathResource("static/"))
+
+    @Bean
+    fun transactionalOperator(tm: ReactiveTransactionManager): TransactionalOperator =
+        TransactionalOperator.create(tm)
 }

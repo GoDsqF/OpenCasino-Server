@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/004-email-verified-default-true.sql
   - include:
       file: db/changelog/changes/005-refresh-tokens.sql
+  - include:
+      file: db/changelog/changes/006-balance-ledger.sql
