@@ -18,6 +18,7 @@ import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.FailureCode
 import com.opencasino.server.service.shared.WaitingPlayerSession
+import com.opencasino.server.user.BalanceLedgerService
 import com.opencasino.server.user.UserRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -32,7 +33,8 @@ import java.util.*
 class PokerRoomServiceImpl(
     private val playerFactory: PokerPlayerFactory,
     private val applicationProperties: ApplicationProperties,
-    private val schedulerService: Scheduler
+    private val schedulerService: Scheduler,
+    private val ledgerService: BalanceLedgerService,
 ) : RoomService {
 
     private lateinit var userRepository: UserRepository
@@ -122,7 +124,8 @@ class PokerRoomServiceImpl(
     private fun createRoom(gameMap: PokerMap): PokerGameRoom {
         val room = PokerGameRoom(gameMap, UUID.randomUUID(), this, webSocketSessionService,
             schedulerService, applicationProperties.game,
-            applicationProperties.pokerRoom
+            applicationProperties.pokerRoom,
+            ledgerService
         )
         gameRoomMap[room.key()] = room
         return room
