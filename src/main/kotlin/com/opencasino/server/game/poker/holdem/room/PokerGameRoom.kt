@@ -505,13 +505,26 @@ open class PokerGameRoom(
     }
 
     override fun onDisconnect(userSession: PlayerSession): PlayerSession {
-        if (gameStarted.get() && !roundEnd.get()) {
-            val player = userSession.player as? PokerPlayer
-            if (player != null && !player.folded) {
+        val player = userSession.player as? PokerPlayer
+        if (player != null) {
+            if (gameStarted.get() && !roundEnd.get() && !player.folded) {
                 player.folded = true
                 nextMove(userSession)
             }
+            cashOutOnDisconnect(userSession, player)
         }
         return super.onDisconnect(userSession)
+    }
+
+    private fun cashOutOnDisconnect(userSession: PlayerSession, player: PokerPlayer) {
+        if (!player.boughtIn) return
+        val remaining = player.stack
+        player.stack = 0.0
+        player.boughtIn = false
+        if (remaining <= 0.0) return
+        player.balance += remaining
+        val uid = userSession.userId ?: return
+        ledgerService?.applyDelta(uid, UUID.randomUUID(), remaining, BalanceLedgerReason.POKER_CASH_OUT)
+            ?.subscribe()
     }
 }
