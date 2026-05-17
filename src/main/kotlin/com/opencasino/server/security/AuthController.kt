@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebInputException
 import reactor.core.publisher.Mono
 import java.util.UUID
-import com.opencasino.server.user.UserRepository
 
 @RestController
 @RequestMapping("/auth")
@@ -54,6 +53,7 @@ class AuthController(
                 email = jwt.getClaimAsString(JwtIssuer.CLAIM_EMAIL) ?: user.email,
                 displayName = user.displayName,
                 roles = roles,
+                balance = user.balance,
             )
         }
     }
