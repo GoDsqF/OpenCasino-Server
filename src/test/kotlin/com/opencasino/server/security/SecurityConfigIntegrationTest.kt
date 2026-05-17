@@ -27,9 +27,13 @@ private const val TEST_ISSUER = "opencasino-test"
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = [
-        "spring.r2dbc.url=r2dbc:h2:mem:///securityconfigtest;DB_CLOSE_DELAY=-1",
+        "spring.r2dbc.url=r2dbc:h2:mem:///securityconfigtest;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE",
         "spring.r2dbc.username=sa",
         "spring.r2dbc.password=",
+        "spring.liquibase.enabled=true",
+        "spring.liquibase.url=jdbc:h2:mem:securityconfigtest;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE",
+        "spring.liquibase.user=sa",
+        "spring.liquibase.password=",
         "app.jwt.issuer=$TEST_ISSUER",
     ]
 )
