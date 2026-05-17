@@ -104,6 +104,30 @@ class JwtKeyMaterialTest {
         assertEquals(true, ex.message!!.contains("missing.pem"))
     }
 
+    @Test
+    fun `fromProperties fails clearly when keyPath points to unreadable file`(@TempDir tmp: Path) {
+        val unreadable = tmp.resolve("locked.pem")
+        Files.writeString(unreadable, "irrelevant")
+        val perms = java.nio.file.attribute.PosixFilePermissions.fromString("---------")
+        try {
+            Files.setPosixFilePermissions(unreadable, perms)
+        } catch (_: UnsupportedOperationException) {
+            return
+        }
+        if (Files.isReadable(unreadable)) return
+
+        val ex = assertThrows<IllegalArgumentException> {
+            JwtKeyMaterial.fromProperties(
+                JwtProperties(
+                    privateKeyPath = unreadable.toString(),
+                    publicKeyPath = unreadable.toString(),
+                )
+            )
+        }
+        assertEquals(true, ex.message!!.contains("not readable"))
+        assertEquals(true, ex.message!!.contains("APP_UID"))
+    }
+
     private fun toPem(label: String, encoded: ByteArray): String {
         val body = Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(encoded)
         return "-----BEGIN $label-----\n$body\n-----END $label-----\n"
