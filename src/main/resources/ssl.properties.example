@@ -7,9 +7,9 @@
 # Inside /certs put: cert.pem, privkey.pem, chain.pem (chain.pem optional).
 # Override any path via env or by editing this file.
 
-server.ssl.enabled=${SSL_ENABLED:false}
-server.ssl.certificate=${SSL_CERTIFICATE:/certs/cert.pem}
-server.ssl.certificate-private-key=${SSL_CERTIFICATE_PRIVATE_KEY:/certs/privkey.pem}
-server.ssl.trust-certificate=${SSL_TRUST_CERTIFICATE:/certs/chain.pem}
-server.ssl.protocol=${SSL_PROTOCOL:TLS}
-server.ssl.enabled-protocols=${SSL_ENABLED_PROTOCOLS:TLSv1.3}
+server.ssl.enabled=${SERVER_SSL_ENABLED:false}
+server.ssl.certificate=${SERVER_SSL_CERTIFICATE:/certs/cert.pem}
+server.ssl.certificate-private-key=${SERVER_SSL_CERTIFICATE_PRIVATE_KEY:/certs/privkey.pem}
+server.ssl.trust-certificate=${SERVER_SSL_TRUST_CERTIFICATE:/certs/chain.pem}
+server.ssl.protocol=${SERVER_SSL_PROTOCOL:TLS}
+server.ssl.enabled-protocols=${SERVER_SSL_ENABLED_PROTOCOLS:TLSv1.3}

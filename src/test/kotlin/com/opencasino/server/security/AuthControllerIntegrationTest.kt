@@ -168,6 +168,20 @@ class AuthControllerIntegrationTest {
             .jsonPath("$.userId").exists()
     }
 
+    @Test
+    fun `auth me returns user balance from DB`() {
+        val pair = registerAndLogin("mebalance")
+        val access = pair["accessToken"] as String
+
+        webClient.get().uri("/auth/me")
+            .header("Authorization", "Bearer $access")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.userId").exists()
+            .jsonPath("$.balance").isEqualTo(0.0)
+    }
+
     private fun registerAndLogin(prefix: String): Map<String, Any> {
         val email = freshEmail(prefix)
         val password = "correct-horse-battery"
