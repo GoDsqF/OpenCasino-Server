@@ -10,5 +10,6 @@ data class GameMetadata(
 
 data class MenuUpdatePack(
     val games: List<GameMetadata>,
-    val totalActivePlayers: Int
+    val totalActivePlayers: Int,
+    val pokerRooms: List<PokerRoomSummary> = emptyList(),
 ) : Pack
