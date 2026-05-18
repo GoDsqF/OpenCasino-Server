@@ -13,6 +13,8 @@ interface GameRoom: Runnable, Updatable, WebSocketMessagePublisher {
     fun onGameStarted()
     fun onDestroy(userSessions: List<PlayerSession>)
     fun onDisconnect(userSession: PlayerSession): PlayerSession
+    fun onGraceStart(userSession: PlayerSession) {}
+    fun onReattach(oldSession: PlayerSession, newSession: PlayerSession) {}
     fun sessions(): Collection<PlayerSession>
     fun currentPlayersCount(): Int
     fun getPlayerSessionBySessionId(userSession: PlayerSession): Optional<PlayerSession>

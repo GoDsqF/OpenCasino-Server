@@ -502,6 +502,8 @@ open class PokerGameRoom(
         }
         // Late-joiners without buy-in stay seated but cannot play until they fund.
         map.getPlayers().filter { !it.boughtIn }.forEach { it.folded = true }
+        // Players in grace-period keep their seat+stack but sit out future rounds until reattach.
+        map.getPlayers().filter { it.disconnected }.forEach { it.folded = true }
     }
 
     override fun onPlayerInfoRequest(userSession: PlayerSession) {
@@ -529,6 +531,23 @@ open class PokerGameRoom(
     override fun onClose(userSession: PlayerSession) {
         send(userSession, Message(GAME_ROOM_CLOSE))
         super.onClose(userSession)
+    }
+
+    override fun onGraceStart(userSession: PlayerSession) {
+        val player = userSession.player as? PokerPlayer ?: return
+        player.disconnected = true
+        if (gameStarted.get() && !roundEnd.get() && !player.folded) {
+            player.folded = true
+            nextMove(userSession)
+        }
+    }
+
+    override fun onReattach(oldSession: PlayerSession, newSession: PlayerSession) {
+        super.onReattach(oldSession, newSession)
+        val player = newSession.player as? PokerPlayer ?: return
+        player.userSession = newSession
+        player.disconnected = false
+        lastUpdateBySession.remove(oldSession.id)
     }
 
     override fun onDisconnect(userSession: PlayerSession): PlayerSession {

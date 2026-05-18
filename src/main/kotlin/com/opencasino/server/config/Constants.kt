@@ -18,3 +18,5 @@ const val MIN_POKER_BET = 50.00
 const val MAX_POKER_BET = 100.00
 const val POKER_BUY_IN = 2000
 const val POKER_DECK_STACKS = 8
+
+const val DISCONNECT_GRACE_MS = 60_000L

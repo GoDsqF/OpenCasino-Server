@@ -30,6 +30,8 @@ abstract class PokerBasePlayer<GR, IP : InitPack, UP : UpdatePack, PUP : Private
 
     var allin: Boolean = false
 
+    var disconnected: Boolean = false
+
     var stack by Delegates.notNull<Double>()
 
     var totalContribution: Double = 0.0

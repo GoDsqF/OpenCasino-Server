@@ -366,6 +366,13 @@ class BlackjackGameRoom(
         super.onClose(userSession)
     }
 
+    override fun onReattach(oldSession: PlayerSession, newSession: PlayerSession) {
+        super.onReattach(oldSession, newSession)
+        val player = newSession.player as? BlackjackPlayer ?: return
+        player.userSession = newSession
+        lastUpdateBySession.remove(oldSession.id)
+    }
+
     override fun onDisconnect(userSession: PlayerSession): PlayerSession {
         if (gameStarted.get() && handConditions == null) {
             val player = userSession.player as? BlackjackPlayer
