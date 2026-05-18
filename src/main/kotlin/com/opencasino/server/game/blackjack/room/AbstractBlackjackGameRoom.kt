@@ -39,14 +39,14 @@ abstract class AbstractBlackjackGameRoom protected constructor(
     override fun onRoomCreated(userSessions: List<PlayerSession>) {
         for (playerSession in userSessions) {
             this.sessions[playerSession.id] = playerSession
-            sendBroadcast(Message(MESSAGE, playerSession.player!!.id.toString() + " successfully joined"))
+            sendBroadcast(MessageType.ROOM, playerSession.player!!.id.toString() + " successfully joined")
         }
     }
 
     override fun onDestroy(userSessions: List<PlayerSession>) {
         for (playerSession in userSessions) {
             this.sessions.remove(playerSession.id)
-            sendBroadcast(Message(MESSAGE, playerSession.player!!.id.toString() + " left"))
+            sendBroadcast(MessageType.ROOM, playerSession.player!!.id.toString() + " left")
         }
     }
 
