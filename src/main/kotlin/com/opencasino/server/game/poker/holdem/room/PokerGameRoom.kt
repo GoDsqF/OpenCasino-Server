@@ -133,6 +133,20 @@ open class PokerGameRoom(
         initialDeal()
     }
 
+    fun addLatePlayer(userSession: PlayerSession) {
+        val player = userSession.player as PokerPlayer
+        map.addPlayer(player)
+        super.onRoomCreated(listOf(userSession))
+        send(
+            userSession,
+            Message(
+                GAME_ROOM_JOIN_SUCCESS,
+                GameSettingsPack(gameRoomId.toString(), roomProperties.loopRate)
+            )
+        )
+        log.trace("Late join player {} on room {}", player.id, key())
+    }
+
     override fun onRoomCreated(userSessions: List<PlayerSession>) {
         //assign sessions to players
         if (userSessions.isNotEmpty()) {
@@ -226,6 +240,8 @@ open class PokerGameRoom(
     }
 
     fun actorPosition(): Int? = if (roundEnd.get()) null else currentPosition
+
+    fun isGameStarted(): Boolean = gameStarted.get()
 
     private fun currentPhase(): PokerPhase {
         if (roundEnd.get()) return PokerPhase.SHOWDOWN
@@ -411,8 +427,11 @@ open class PokerGameRoom(
     }
 
     fun onBuyIn(userSession: PlayerSession, event: BetEvent) {
-        if (gameStarted.get()) return
         val player = userSession.player as PokerPlayer
+        if (player.boughtIn) {
+            sendBetFailure(userSession, FailureCode.INVALID_BET, "Already bought in")
+            return
+        }
         val buyIn = event.bet
         if (buyIn <= 0.0) {
             sendBetFailure(userSession, FailureCode.INVALID_BET, "Buy-in must be positive")
@@ -433,6 +452,12 @@ open class PokerGameRoom(
         userSession.userId?.let { uid ->
             ledgerService?.applyDelta(uid, UUID.randomUUID(), -buyIn, BalanceLedgerReason.POKER_BUY_IN)
                 ?.subscribe()
+        }
+        if (gameStarted.get()) {
+            // Late buy-in: seat is funded, but the player sits out the in-progress
+            // round. resetTable() unfolds them at round end so they play next hand.
+            player.folded = true
+            return
         }
         map.getPlayers().forEach {
             if (!it.boughtIn) return
@@ -475,6 +500,8 @@ open class PokerGameRoom(
             it.lastDecision = PokerDecision.NONE
             it.totalContribution = 0.0
         }
+        // Late-joiners without buy-in stay seated but cannot play until they fund.
+        map.getPlayers().filter { !it.boughtIn }.forEach { it.folded = true }
     }
 
     override fun onPlayerInfoRequest(userSession: PlayerSession) {

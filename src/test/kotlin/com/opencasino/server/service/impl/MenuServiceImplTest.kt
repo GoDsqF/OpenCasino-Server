@@ -3,6 +3,8 @@ package com.opencasino.server.service.impl
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
 import com.opencasino.server.game.room.GameRoom
+import com.opencasino.server.network.pack.menu.update.PokerRoomSummary
+import com.opencasino.server.service.PokerLobbyService
 import com.opencasino.server.service.RoomService
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -13,7 +15,8 @@ class MenuServiceImplTest {
 
     private val blackjackRoomService: RoomService = mock()
     private val pokerRoomService: RoomService = mock()
-    private val service = MenuServiceImpl(blackjackRoomService, pokerRoomService)
+    private val pokerLobbyService: PokerLobbyService = mock()
+    private val service = MenuServiceImpl(blackjackRoomService, pokerRoomService, pokerLobbyService)
 
     @Test
     fun `snapshot lists both games`() {
@@ -51,5 +54,26 @@ class MenuServiceImplTest {
         val snap = service.getMenuSnapshot()
         assertEquals(0, snap.totalActivePlayers)
         assertTrue(snap.games.all { it.activeRooms == 0 && it.activePlayers == 0 })
+        assertTrue(snap.pokerRooms.isEmpty())
+    }
+
+    @Test
+    fun `snapshot exposes joinable poker rooms from lobby service`() {
+        whenever(blackjackRoomService.getRooms()).thenReturn(emptyList())
+        whenever(pokerRoomService.getRooms()).thenReturn(emptyList())
+        val summary = PokerRoomSummary(
+            roomId = "abc",
+            betType = "PotLimit",
+            bet = 100.0,
+            smallBlind = 50.0,
+            bigBlind = 100.0,
+            currentPlayers = 1,
+            maxPlayers = 6,
+            phase = "WAITING",
+        )
+        whenever(pokerLobbyService.listJoinableRooms()).thenReturn(listOf(summary))
+
+        val snap = service.getMenuSnapshot()
+        assertEquals(listOf(summary), snap.pokerRooms)
     }
 }
