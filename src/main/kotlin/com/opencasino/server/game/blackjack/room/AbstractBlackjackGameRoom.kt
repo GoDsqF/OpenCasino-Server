@@ -64,6 +64,11 @@ abstract class AbstractBlackjackGameRoom protected constructor(
         return removed
     }
 
+    override fun onReattach(oldSession: PlayerSession, newSession: PlayerSession) {
+        if (sessions.remove(oldSession.id) == null) return
+        sessions[newSession.id] = newSession
+    }
+
     override fun send(userSession: PlayerSession, message: Any) =
         webSocketSessionService.send(userSession, message)
 
