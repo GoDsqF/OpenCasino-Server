@@ -108,8 +108,16 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
 
     override fun send(userSession: PlayerSession, message: Any) {
         val webSocketSessionId = userSession.id
-        if (sessionPublishers.containsKey(webSocketSessionId)) sessionPublishers[webSocketSessionId]!!
-            .tryEmitNext(message)
+        if (sessionPublishers.containsKey(webSocketSessionId)) {
+            stampServiceId(userSession, message)
+            sessionPublishers[webSocketSessionId]!!.tryEmitNext(message)
+        }
+    }
+
+    private fun stampServiceId(session: PlayerSession, message: Any) {
+        if (message is Message && message.serviceId == null) {
+            message.serviceId = session.serviceId
+        }
     }
 
     override fun sendFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) =

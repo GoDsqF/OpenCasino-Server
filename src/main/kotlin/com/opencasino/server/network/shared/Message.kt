@@ -2,7 +2,7 @@ package com.opencasino.server.network.shared
 
 class Message {
     var type = 0
-    val serviceId: String? = null
+    var serviceId: String? = null
     var data: Any? = null
 
     constructor(type: Int) : this(type, null)
@@ -11,5 +11,5 @@ class Message {
         this.data = data
     }
 
-    override fun toString(): String = "Message [type=$type, source=${data.toString()}]"
+    override fun toString(): String = "Message [type=$type, serviceId=$serviceId, source=${data.toString()}]"
 }

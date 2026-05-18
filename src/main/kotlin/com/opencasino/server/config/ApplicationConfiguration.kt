@@ -6,12 +6,8 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.core.io.ClassPathResource
 import org.springframework.web.reactive.HandlerMapping
 import org.springframework.web.reactive.config.EnableWebFlux
-import org.springframework.web.reactive.function.server.RouterFunction
-import org.springframework.web.reactive.function.server.RouterFunctions
-import org.springframework.web.reactive.function.server.ServerResponse
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping
 import org.springframework.web.reactive.socket.WebSocketHandler
 import org.springframework.transaction.ReactiveTransactionManager
@@ -47,10 +43,6 @@ class ApplicationConfiguration(
         handlerMapping.urlMap = map
         return handlerMapping
     }
-
-    @Bean
-    fun staticRouter(): RouterFunction<ServerResponse> =
-        RouterFunctions.resources("/**", ClassPathResource("static/"))
 
     @Bean
     fun transactionalOperator(tm: ReactiveTransactionManager): TransactionalOperator =
