@@ -6,7 +6,12 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@EnableConfigurationProperties(JwtProperties::class, AuthProperties::class)
+@EnableConfigurationProperties(
+    JwtProperties::class,
+    AuthProperties::class,
+    SecurityNetworkProperties::class,
+    RateLimitProperties::class,
+)
 class JwtKeyConfiguration {
 
     @Bean

@@ -15,6 +15,8 @@ import reactor.test.StepVerifier
 class OAuth2LoginFailureHandlerTest {
 
     private val noopChain = WebFilterChain { Mono.empty() }
+    private val auditLogger = SecurityAuditLogger()
+    private val ipResolver = ClientIpResolver(SecurityNetworkProperties())
 
     @Test
     fun `redirects to failureRedirect with OAUTH_PROVIDER_ERROR`() {
@@ -25,6 +27,8 @@ class OAuth2LoginFailureHandlerTest {
                     failureRedirect = "https://app.example.com/oauth2/error",
                 ),
             ),
+            auditLogger,
+            ipResolver,
         )
         val exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/login/oauth2/code/google").build())
 
@@ -41,7 +45,9 @@ class OAuth2LoginFailureHandlerTest {
     @Test
     fun `falls back to successRedirect when failureRedirect unset`() {
         val handler = OAuth2LoginFailureHandler(
-            AuthProperties(oauth2 = OAuth2RedirectProperties(successRedirect = "https://app/redir", failureRedirect = null))
+            AuthProperties(oauth2 = OAuth2RedirectProperties(successRedirect = "https://app/redir", failureRedirect = null)),
+            auditLogger,
+            ipResolver,
         )
         val exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/").build())
 
@@ -56,7 +62,7 @@ class OAuth2LoginFailureHandlerTest {
 
     @Test
     fun `returns 500 when no redirect is configured`() {
-        val handler = OAuth2LoginFailureHandler(AuthProperties())
+        val handler = OAuth2LoginFailureHandler(AuthProperties(), auditLogger, ipResolver)
         val exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/").build())
 
         StepVerifier.create(

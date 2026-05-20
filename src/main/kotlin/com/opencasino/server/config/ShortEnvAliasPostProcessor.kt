@@ -80,6 +80,16 @@ class ShortEnvAliasPostProcessor : EnvironmentPostProcessor {
             "app.jwt.publicKeyPath" to "/certs/jwt-public.pem",
             "app.auth.displayNameBlocklist" to "admin,root,system,support,moderator",
             "server.ssl.enabled" to "false",
+            // Phase 8 — cross-cutting. All defaults are safe-by-default:
+            //  * trusted-proxies empty => XFF is ignored, client IP = TCP peer.
+            //  * cors allowed-origins empty => no cross-origin browser access (server-to-server
+            //    and same-origin still work). Operators opt-in by listing origins.
+            //  * rate-limit enabled — short env APP_RATELIMIT_ENABLED=false to disable globally.
+            "app.security.trusted-proxies" to "",
+            "app.cors.allowed-origins" to "",
+            "app.cors.allow-credentials" to "true",
+            "app.cors.max-age" to "PT1H",
+            "app.ratelimit.enabled" to "true",
         )
     }
 }

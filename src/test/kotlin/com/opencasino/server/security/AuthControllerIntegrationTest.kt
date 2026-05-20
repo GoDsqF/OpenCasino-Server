@@ -11,9 +11,11 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
+import java.security.MessageDigest
 import java.util.UUID
 
 @SpringBootTest(
@@ -28,6 +30,11 @@ import java.util.UUID
         "spring.liquibase.password=",
         "app.jwt.issuer=opencasino-test",
         "app.auth.displayNameBlocklist=admin,root,moderator",
+        "app.ratelimit.enabled=false",
+        // Trust loopback only — WebTestClient either connects from 127.0.0.1 or is
+        // in-process (null remoteAddress, which the resolver also treats as trusted).
+        // The real client IP (set via XFF below) is NOT trusted, so the walk surfaces it.
+        "app.security.trusted-proxies=127.0.0.0/8,::1/128",
         "spring.test.webtestclient.timeout=30s",
     ]
 )
@@ -37,6 +44,7 @@ class AuthControllerIntegrationTest {
 
     @Autowired lateinit var webClient: WebTestClient
     @Autowired lateinit var users: UserRepository
+    @Autowired lateinit var refreshTokens: RefreshTokenRepository
 
     private fun freshEmail(prefix: String) = "$prefix-${UUID.randomUUID()}@example.com"
     private fun freshName(prefix: String) = "$prefix${UUID.randomUUID().toString().take(8).replace("-", "")}"
@@ -344,6 +352,36 @@ class AuthControllerIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("email" to mixedCase, "password" to "correct-horse-battery"))
             .exchange().expectStatus().isOk
+    }
+
+    @Test
+    fun `login persists user_agent and ip on the refresh_tokens row`() {
+        val email = freshEmail("uatrack")
+        val password = "correct-horse-battery"
+        webClient.post().uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(email, password))
+            .exchange().expectStatus().isCreated
+
+        @Suppress("UNCHECKED_CAST")
+        val loginResponse = webClient.post().uri("/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .header(HttpHeaders.USER_AGENT, "phase8-test-agent/1.0")
+            .header("X-Forwarded-For", "203.0.113.7")
+            .bodyValue(mapOf("email" to email, "password" to password))
+            .exchange().expectStatus().isOk
+            .returnResult(Map::class.java).responseBody.blockFirst() as Map<String, Any>
+
+        val plaintext = loginResponse["refreshToken"] as String
+        val token = refreshTokens.findByTokenHash(sha256Hex(plaintext)).block()
+        assertNotNull(token)
+        assertEquals("phase8-test-agent/1.0", token!!.userAgent)
+        assertEquals("203.0.113.7", token.ip)
+    }
+
+    private fun sha256Hex(plaintext: String): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(plaintext.toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it) }
     }
 
     @Test

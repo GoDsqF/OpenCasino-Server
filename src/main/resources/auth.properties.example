@@ -49,3 +49,47 @@ app.auth.oauth2.success-redirect=${APP_AUTH_OAUTH2_SUCCESS:http://localhost:3000
 # Where the server 302-redirects on OAuth failure with ?error=<code>.
 # When unset, falls back to success-redirect.
 app.auth.oauth2.failure-redirect=${APP_AUTH_OAUTH2_FAILURE:}
+
+# ---------------- Cross-cutting (Phase 8) ----------------
+
+# CORS allowlist for browser clients. Comma-separated list of origins; empty =
+# no cross-origin access. Use allowed-origin-patterns for wildcards (e.g.
+# https://*.example.com). Spring will refuse credentials + wildcard origins
+# together, so either be explicit or set app.cors.allow-credentials=false.
+app.cors.allowed-origins=${APP_CORS_ALLOWED_ORIGINS:}
+app.cors.allowed-origin-patterns=${APP_CORS_ALLOWED_ORIGIN_PATTERNS:}
+app.cors.allow-credentials=${APP_CORS_ALLOW_CREDENTIALS:true}
+app.cors.max-age=${APP_CORS_MAX_AGE:PT1H}
+
+# Trusted reverse-proxy networks. Comma-separated IPs or CIDR blocks. Empty =
+# X-Forwarded-For is ignored and the TCP peer address is used as client IP.
+# When the app sits behind nginx/CDN, list the proxy's address (or CIDR of the
+# proxy network) so the resolver walks XFF right-to-left, skipping trusted
+# hops, and uses the first untrusted IP as the real client. This protects
+# against clients spoofing XFF — they cannot pretend to be the proxy.
+#
+# Typical values:
+#   APP_SECURITY_TRUSTED_PROXIES=127.0.0.1          # nginx on host
+#   APP_SECURITY_TRUSTED_PROXIES=172.16.0.0/12      # docker bridge subnet
+#   APP_SECURITY_TRUSTED_PROXIES=10.0.0.0/8,::1     # internal LB cluster
+app.security.trusted-proxies=${APP_SECURITY_TRUSTED_PROXIES:}
+
+# Rate limiting (bucket4j, in-memory). Set enabled=false to bypass entirely
+# (useful in tests). Defaults match production-safe values; tune per-route.
+# Period is ISO-8601 duration (PT1M = 1 minute, PT1H = 1 hour).
+app.ratelimit.enabled=${APP_RATELIMIT_ENABLED:true}
+app.ratelimit.login.capacity=${APP_RATELIMIT_LOGIN_CAPACITY:20}
+app.ratelimit.login.refill=${APP_RATELIMIT_LOGIN_REFILL:20}
+app.ratelimit.login.period=${APP_RATELIMIT_LOGIN_PERIOD:PT1M}
+app.ratelimit.register.capacity=${APP_RATELIMIT_REGISTER_CAPACITY:5}
+app.ratelimit.register.refill=${APP_RATELIMIT_REGISTER_REFILL:5}
+app.ratelimit.register.period=${APP_RATELIMIT_REGISTER_PERIOD:PT1H}
+app.ratelimit.refresh.capacity=${APP_RATELIMIT_REFRESH_CAPACITY:60}
+app.ratelimit.refresh.refill=${APP_RATELIMIT_REFRESH_REFILL:60}
+app.ratelimit.refresh.period=${APP_RATELIMIT_REFRESH_PERIOD:PT1M}
+app.ratelimit.ws-handshake.capacity=${APP_RATELIMIT_WS_HANDSHAKE_CAPACITY:30}
+app.ratelimit.ws-handshake.refill=${APP_RATELIMIT_WS_HANDSHAKE_REFILL:30}
+app.ratelimit.ws-handshake.period=${APP_RATELIMIT_WS_HANDSHAKE_PERIOD:PT1M}
+app.ratelimit.authenticated.capacity=${APP_RATELIMIT_AUTHENTICATED_CAPACITY:600}
+app.ratelimit.authenticated.refill=${APP_RATELIMIT_AUTHENTICATED_REFILL:600}
+app.ratelimit.authenticated.period=${APP_RATELIMIT_AUTHENTICATED_PERIOD:PT1M}

@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.openCasino"
-version = "1.1.0"
+version = "1.1.1"
 
 java {
     toolchain {
@@ -43,6 +43,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
+    implementation("com.bucket4j:bucket4j-core:8.10.1")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 }

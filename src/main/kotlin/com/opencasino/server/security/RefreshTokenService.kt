@@ -16,12 +16,13 @@ class RefreshTokenService(
     private val props: JwtProperties,
     private val clock: Clock = Clock.systemUTC(),
     private val random: SecureRandom = SecureRandom(),
+    private val auditLogger: SecurityAuditLogger? = null,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
     private val encoder = Base64.getUrlEncoder().withoutPadding()
 
-    fun issue(userId: UUID): Mono<IssuedRefresh> {
+    fun issue(userId: UUID, userAgent: String? = null, ip: String? = null): Mono<IssuedRefresh> {
         val plaintext = generatePlaintext()
         val now = clock.instant()
         val expiresAt = now.plus(props.refreshTtl)
@@ -30,12 +31,14 @@ class RefreshTokenService(
             tokenHash = hash(plaintext),
             createdAt = now,
             expiresAt = expiresAt,
+            userAgent = userAgent?.take(MAX_USER_AGENT_LENGTH),
+            ip = ip?.take(MAX_IP_LENGTH),
         )
         return repository.save(token)
             .map { IssuedRefresh(plaintext = plaintext, expiresAt = expiresAt) }
     }
 
-    fun rotate(plaintext: String): Mono<RotatedRefresh> =
+    fun rotate(plaintext: String, userAgent: String? = null, ip: String? = null): Mono<RotatedRefresh> =
         lookup(plaintext)
             .flatMap { existing ->
                 val now = clock.instant()
@@ -45,7 +48,7 @@ class RefreshTokenService(
                         Mono.error(AuthException(AuthFailureCode.REFRESH_EXPIRED))
                     else ->
                         repository.markRevoked(existing.id, now)
-                            .then(issue(existing.userId))
+                            .then(issue(existing.userId, userAgent, ip))
                             .map { issued -> RotatedRefresh(userId = existing.userId, refresh = issued) }
                 }
             }
@@ -72,6 +75,7 @@ class RefreshTokenService(
                         "Refresh token replay detected for userId={} tokenId={}; revoked {} active sessions",
                         existing.userId, existing.id, revoked,
                     )
+                    auditLogger?.refreshReplay(existing.userId, ip = null)
                     Mono.error(AuthException(AuthFailureCode.REFRESH_REPLAY_DETECTED))
                 } else {
                     Mono.error(AuthException(AuthFailureCode.REFRESH_REVOKED))
@@ -97,6 +101,9 @@ class RefreshTokenService(
     companion object {
         private const val TOKEN_BYTES = 32
         private val HEX_CHARS = "0123456789abcdef".toCharArray()
+        // Match refresh_tokens.user_agent VARCHAR(512) / ip VARCHAR(64) to avoid DB-side truncation errors.
+        private const val MAX_USER_AGENT_LENGTH = 512
+        private const val MAX_IP_LENGTH = 64
     }
 }
 

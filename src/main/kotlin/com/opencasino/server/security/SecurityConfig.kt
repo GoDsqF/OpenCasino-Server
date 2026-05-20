@@ -11,7 +11,9 @@ import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder
+import org.springframework.http.HttpMethod
 import org.springframework.security.web.server.SecurityWebFilterChain
+import org.springframework.web.cors.reactive.CorsConfigurationSource
 import reactor.core.publisher.Mono
 
 @Configuration
@@ -27,13 +29,20 @@ class SecurityConfig {
         clientRegistrations: ObjectProvider<ReactiveClientRegistrationRepository>,
         oauth2SuccessHandler: OAuth2LoginSuccessHandler,
         oauth2FailureHandler: OAuth2LoginFailureHandler,
+        corsConfigurationSource: CorsConfigurationSource,
     ): SecurityWebFilterChain {
         http
+            .cors { it.configurationSource(corsConfigurationSource) }
             .csrf { it.disable() }
             .httpBasic { it.disable() }
             .formLogin { it.disable() }
             .authorizeExchange {
                 it
+                    // Browser CORS preflight is method=OPTIONS with Origin + AC-Request-Method.
+                    // Spring Security's CorsWebFilter handles it ahead of authorization, but
+                    // permit it explicitly so misconfigured CorsConfigurationSource never
+                    // surfaces as 403 (it should fail loud at the CORS layer instead).
+                    .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     .pathMatchers(
                         "/",
                         "/index.html",
