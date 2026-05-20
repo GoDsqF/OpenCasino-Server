@@ -6,9 +6,11 @@ import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 import java.time.Instant
+import java.util.UUID
 
 @Service
 class AuthService(
@@ -124,6 +126,34 @@ class AuthService(
         return refreshTokenService.revoke(plaintext)
             .doOnSuccess { auditLogger.logout(context.ip) }
     }
+
+    fun logoutAll(request: LogoutRequest, context: ClientContext = ClientContext.EMPTY): Mono<Void> {
+        val plaintext = request.refreshToken
+            ?: return failWith(AuthFailureCode.REFRESH_INVALID) {
+                auditLogger.refreshFailure(AuthFailureCode.REFRESH_INVALID, context.ip)
+            }
+        return refreshTokenService.revokeAllForUser(plaintext)
+            .doOnNext { result -> auditLogger.logoutAll(result.userId, result.count, context.ip) }
+            .then()
+    }
+
+    fun listSessions(userId: UUID): Flux<SessionView> =
+        refreshTokenService.listActiveForUser(userId)
+            .map { row ->
+                SessionView(
+                    id = row.id,
+                    createdAt = row.createdAt,
+                    expiresAt = row.expiresAt,
+                    userAgent = row.userAgent,
+                    ip = row.ip,
+                )
+            }
+
+    fun revokeSession(userId: UUID, sessionId: UUID, context: ClientContext = ClientContext.EMPTY): Mono<Boolean> =
+        refreshTokenService.revokeByIdForUser(sessionId, userId)
+            .doOnNext { revoked ->
+                if (revoked) auditLogger.sessionRevoked(userId, sessionId, context.ip)
+            }
 
     private fun buildLoginResponse(user: User, context: ClientContext): Mono<LoginResponse> =
         users.updateLastLoginAt(user.id, Instant.now())

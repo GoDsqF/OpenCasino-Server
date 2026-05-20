@@ -34,6 +34,12 @@ class SecurityAuditLogger {
     fun logout(ip: String?) =
         emit("auth.logout", mapOf("ip" to ip))
 
+    fun logoutAll(userId: UUID, count: Long, ip: String?) =
+        emit("auth.logout_all", mapOf("userId" to userId, "count" to count, "ip" to ip))
+
+    fun sessionRevoked(userId: UUID, sessionId: UUID, ip: String?) =
+        emit("auth.session.revoked", mapOf("userId" to userId, "sessionId" to sessionId, "ip" to ip))
+
     fun oauthLoginSuccess(provider: String, userId: UUID, ip: String?) =
         emit("oauth.login.success", mapOf("provider" to provider, "userId" to userId, "ip" to ip))
 

@@ -2,6 +2,7 @@ package com.opencasino.server.security
 
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -61,6 +62,23 @@ class RefreshTokenService(
             }
             .then()
 
+    fun revokeAllForUser(plaintext: String): Mono<RevokedAll> =
+        lookup(plaintext)
+            .flatMap { existing ->
+                repository.revokeAllForUser(existing.userId, clock.instant())
+                    .map { count -> RevokedAll(userId = existing.userId, count = count) }
+            }
+
+    fun revokeAllForUserId(userId: UUID): Mono<Long> =
+        repository.revokeAllForUser(userId, clock.instant())
+
+    fun listActiveForUser(userId: UUID): Flux<RefreshToken> =
+        repository.findActiveByUser(userId, clock.instant())
+
+    fun revokeByIdForUser(id: UUID, userId: UUID): Mono<Boolean> =
+        repository.revokeByIdForUser(id, userId, clock.instant())
+            .map { it > 0L }
+
     private fun lookup(plaintext: String): Mono<RefreshToken> {
         if (plaintext.isBlank()) return Mono.error(AuthException(AuthFailureCode.REFRESH_INVALID))
         return repository.findByTokenHash(hash(plaintext))
@@ -109,3 +127,4 @@ class RefreshTokenService(
 
 data class IssuedRefresh(val plaintext: String, val expiresAt: Instant)
 data class RotatedRefresh(val userId: UUID, val refresh: IssuedRefresh)
+data class RevokedAll(val userId: UUID, val count: Long)

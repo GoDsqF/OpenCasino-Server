@@ -11,6 +11,7 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.security.MessageDigest
@@ -169,6 +170,64 @@ class RefreshTokenServiceTest {
         whenever(repository.findByTokenHash(sha256Hex("revoked-already"))).thenReturn(Mono.just(already))
 
         StepVerifier.create(service.revoke("revoked-already")).verifyComplete()
+    }
+
+    @Test
+    fun `revokeAllForUser looks up token, revokes all and returns userId and count`() {
+        val userId = UUID.randomUUID()
+        val plaintext = "active-pivot"
+        val existing = RefreshToken(
+            userId = userId,
+            tokenHash = sha256Hex(plaintext),
+            createdAt = now.minus(Duration.ofMinutes(1)),
+            expiresAt = now.plus(Duration.ofDays(30)),
+        )
+        whenever(repository.findByTokenHash(sha256Hex(plaintext))).thenReturn(Mono.just(existing))
+        whenever(repository.revokeAllForUser(eq(userId), eq(now))).thenReturn(Mono.just(3L))
+
+        val result = service.revokeAllForUser(plaintext).block()!!
+        assertEquals(userId, result.userId)
+        assertEquals(3L, result.count)
+        verify(repository).revokeAllForUser(eq(userId), eq(now))
+    }
+
+    @Test
+    fun `revokeAllForUser rejects unknown plaintext`() {
+        whenever(repository.findByTokenHash(any())).thenReturn(Mono.empty())
+        StepVerifier.create(service.revokeAllForUser("nope"))
+            .verifyErrorMatches { it is AuthException && it.failure == AuthFailureCode.REFRESH_INVALID }
+    }
+
+    @Test
+    fun `listActiveForUser delegates to repository with current instant`() {
+        val userId = UUID.randomUUID()
+        val row = RefreshToken(
+            userId = userId,
+            tokenHash = "h",
+            createdAt = now.minus(Duration.ofMinutes(5)),
+            expiresAt = now.plus(Duration.ofDays(30)),
+        )
+        whenever(repository.findActiveByUser(eq(userId), eq(now))).thenReturn(Flux.just(row))
+
+        StepVerifier.create(service.listActiveForUser(userId))
+            .expectNext(row)
+            .verifyComplete()
+    }
+
+    @Test
+    fun `revokeByIdForUser returns true on revoke, false on miss`() {
+        val userId = UUID.randomUUID()
+        val sessionId = UUID.randomUUID()
+        whenever(repository.revokeByIdForUser(eq(sessionId), eq(userId), eq(now))).thenReturn(Mono.just(1L))
+        StepVerifier.create(service.revokeByIdForUser(sessionId, userId))
+            .expectNext(true)
+            .verifyComplete()
+
+        val other = UUID.randomUUID()
+        whenever(repository.revokeByIdForUser(eq(other), eq(userId), eq(now))).thenReturn(Mono.just(0L))
+        StepVerifier.create(service.revokeByIdForUser(other, userId))
+            .expectNext(false)
+            .verifyComplete()
     }
 
     private fun sha256Hex(plaintext: String): String {

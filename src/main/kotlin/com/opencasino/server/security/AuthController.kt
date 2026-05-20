@@ -5,14 +5,18 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.jwt.Jwt
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.server.ServerWebInputException
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.UUID
 
@@ -40,9 +44,36 @@ class AuthController(
             .map { body -> ResponseEntity.ok(body as Any) }
 
     @PostMapping("/logout")
-    fun logout(@RequestBody request: LogoutRequest, exchange: ServerWebExchange): Mono<ResponseEntity<Void>> =
-        authService.logout(request, ClientContext.from(exchange, clientIpResolver))
-            .then(Mono.fromCallable { ResponseEntity.noContent().build<Void>() })
+    fun logout(
+        @RequestBody request: LogoutRequest,
+        @RequestParam(name = "all", required = false, defaultValue = "false") all: Boolean,
+        exchange: ServerWebExchange,
+    ): Mono<ResponseEntity<Void>> {
+        val context = ClientContext.from(exchange, clientIpResolver)
+        val action = if (all) authService.logoutAll(request, context) else authService.logout(request, context)
+        return action.then(Mono.fromCallable { ResponseEntity.noContent().build<Void>() })
+    }
+
+    @GetMapping("/sessions")
+    fun sessions(@AuthenticationPrincipal jwt: Jwt): Flux<SessionView> {
+        val userId = UUID.fromString(jwt.subject)
+        return authService.listSessions(userId)
+    }
+
+    @DeleteMapping("/sessions/{id}")
+    fun deleteSession(
+        @AuthenticationPrincipal jwt: Jwt,
+        @PathVariable id: UUID,
+        exchange: ServerWebExchange,
+    ): Mono<ResponseEntity<Void>> {
+        val userId = UUID.fromString(jwt.subject)
+        val context = ClientContext.from(exchange, clientIpResolver)
+        return authService.revokeSession(userId, id, context)
+            .map { revoked ->
+                if (revoked) ResponseEntity.noContent().build<Void>()
+                else ResponseEntity.notFound().build()
+            }
+    }
 
     @GetMapping("/me")
     fun me(@AuthenticationPrincipal jwt: Jwt): Mono<MeResponse> {

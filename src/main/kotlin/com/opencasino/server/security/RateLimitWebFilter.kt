@@ -60,6 +60,8 @@ class RateLimitWebFilter(
             method == HttpMethod.GET && path.startsWith("/ws/") -> Route.WS_HANDSHAKE
             method == HttpMethod.POST && path == "/auth/logout" -> Route.AUTHENTICATED
             method == HttpMethod.GET && path == "/auth/me" -> Route.AUTHENTICATED
+            method == HttpMethod.GET && path == "/auth/sessions" -> Route.AUTHENTICATED
+            method == HttpMethod.DELETE && path.startsWith("/auth/sessions/") -> Route.AUTHENTICATED
             else -> null
         }
     }
