@@ -385,6 +385,205 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
+    fun `logout all revokes every active refresh token for the user`() {
+        val email = freshEmail("logoutall")
+        val password = "correct-horse-battery"
+        webClient.post().uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(email, password))
+            .exchange().expectStatus().isCreated
+
+        val session1 = login(email, password)
+        val session2 = login(email, password)
+
+        webClient.post().uri("/auth/logout?all=true")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("refreshToken" to (session1["refreshToken"] as String)))
+            .exchange()
+            .expectStatus().isNoContent
+
+        webClient.post().uri("/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("refreshToken" to (session1["refreshToken"] as String)))
+            .exchange()
+            .expectStatus().isUnauthorized
+            .expectBody()
+            .jsonPath("$.code").isEqualTo("REFRESH_REVOKED")
+
+        webClient.post().uri("/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("refreshToken" to (session2["refreshToken"] as String)))
+            .exchange()
+            .expectStatus().isUnauthorized
+            .expectBody()
+            .jsonPath("$.code").isEqualTo("REFRESH_REVOKED")
+    }
+
+    @Test
+    fun `logout all without refresh token returns 401 REFRESH_INVALID`() {
+        webClient.post().uri("/auth/logout?all=true")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf<String, Any>())
+            .exchange()
+            .expectStatus().isUnauthorized
+            .expectBody()
+            .jsonPath("$.code").isEqualTo("REFRESH_INVALID")
+    }
+
+    @Test
+    fun `GET sessions lists active sessions for the authenticated user only`() {
+        val emailA = freshEmail("sessA")
+        val emailB = freshEmail("sessB")
+        val password = "correct-horse-battery"
+
+        webClient.post().uri("/auth/register").contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(emailA, password)).exchange().expectStatus().isCreated
+        webClient.post().uri("/auth/register").contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(emailB, password)).exchange().expectStatus().isCreated
+
+        val a1 = login(emailA, password, userAgent = "UA-A1", xff = "203.0.113.10")
+        login(emailA, password, userAgent = "UA-A2", xff = "203.0.113.11")
+        login(emailB, password, userAgent = "UA-B1", xff = "203.0.113.20")
+
+        @Suppress("UNCHECKED_CAST")
+        val rows = webClient.get().uri("/auth/sessions")
+            .header("Authorization", "Bearer ${a1["accessToken"]}")
+            .exchange()
+            .expectStatus().isOk
+            .returnResult(List::class.java)
+            .responseBody.blockFirst() as List<Map<String, Any>>
+
+        assertEquals(2, rows.size, "user A should see exactly its two active sessions")
+        val agents = rows.mapNotNull { it["userAgent"] as String? }.toSet()
+        assertEquals(setOf("UA-A1", "UA-A2"), agents)
+        rows.forEach {
+            assertNotNull(it["id"])
+            assertNotNull(it["createdAt"])
+            assertNotNull(it["expiresAt"])
+        }
+    }
+
+    @Test
+    fun `GET sessions hides revoked rows`() {
+        val email = freshEmail("seshrev")
+        val password = "correct-horse-battery"
+        webClient.post().uri("/auth/register").contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(email, password)).exchange().expectStatus().isCreated
+
+        val active = login(email, password, userAgent = "still-here")
+        val toRevoke = login(email, password, userAgent = "going-away")
+
+        webClient.post().uri("/auth/logout")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("refreshToken" to (toRevoke["refreshToken"] as String)))
+            .exchange().expectStatus().isNoContent
+
+        @Suppress("UNCHECKED_CAST")
+        val rows = webClient.get().uri("/auth/sessions")
+            .header("Authorization", "Bearer ${active["accessToken"]}")
+            .exchange()
+            .expectStatus().isOk
+            .returnResult(List::class.java)
+            .responseBody.blockFirst() as List<Map<String, Any>>
+
+        assertEquals(1, rows.size)
+        assertEquals("still-here", rows.single()["userAgent"])
+    }
+
+    @Test
+    fun `GET sessions without auth returns 401`() {
+        webClient.get().uri("/auth/sessions")
+            .exchange()
+            .expectStatus().isUnauthorized
+    }
+
+    @Test
+    fun `DELETE sessions revokes own row and 404 for other users`() {
+        val emailA = freshEmail("delA")
+        val emailB = freshEmail("delB")
+        val password = "correct-horse-battery"
+        webClient.post().uri("/auth/register").contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(emailA, password)).exchange().expectStatus().isCreated
+        webClient.post().uri("/auth/register").contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(emailB, password)).exchange().expectStatus().isCreated
+
+        val a1 = login(emailA, password)
+        val a2 = login(emailA, password)
+        val b1 = login(emailB, password)
+
+        @Suppress("UNCHECKED_CAST")
+        val sessions = webClient.get().uri("/auth/sessions")
+            .header("Authorization", "Bearer ${a1["accessToken"]}")
+            .exchange().expectStatus().isOk
+            .returnResult(List::class.java)
+            .responseBody.blockFirst() as List<Map<String, Any>>
+
+        val targetId = sessions.first()["id"] as String
+
+        // User A can revoke own session.
+        webClient.delete().uri("/auth/sessions/$targetId")
+            .header("Authorization", "Bearer ${a1["accessToken"]}")
+            .exchange().expectStatus().isNoContent
+
+        // After revoke, list shows only the other session.
+        @Suppress("UNCHECKED_CAST")
+        val remaining = webClient.get().uri("/auth/sessions")
+            .header("Authorization", "Bearer ${a2["accessToken"]}")
+            .exchange().expectStatus().isOk
+            .returnResult(List::class.java)
+            .responseBody.blockFirst() as List<Map<String, Any>>
+        assertEquals(1, remaining.size)
+        assertTrue(remaining.none { (it["id"] as String) == targetId })
+
+        // Second revoke on the same id (already revoked) returns 404.
+        webClient.delete().uri("/auth/sessions/$targetId")
+            .header("Authorization", "Bearer ${a1["accessToken"]}")
+            .exchange().expectStatus().isNotFound
+
+        // User B cannot revoke A's session (even one that was active for A).
+        @Suppress("UNCHECKED_CAST")
+        val aRows = webClient.get().uri("/auth/sessions")
+            .header("Authorization", "Bearer ${a2["accessToken"]}")
+            .exchange().expectStatus().isOk
+            .returnResult(List::class.java)
+            .responseBody.blockFirst() as List<Map<String, Any>>
+        val aSessionId = aRows.single()["id"] as String
+
+        webClient.delete().uri("/auth/sessions/$aSessionId")
+            .header("Authorization", "Bearer ${b1["accessToken"]}")
+            .exchange().expectStatus().isNotFound
+
+        // A's session is still alive — B's attempt did not affect it.
+        @Suppress("UNCHECKED_CAST")
+        val aStill = webClient.get().uri("/auth/sessions")
+            .header("Authorization", "Bearer ${a2["accessToken"]}")
+            .exchange().expectStatus().isOk
+            .returnResult(List::class.java)
+            .responseBody.blockFirst() as List<Map<String, Any>>
+        assertEquals(1, aStill.size)
+    }
+
+    private fun login(
+        email: String,
+        password: String,
+        userAgent: String? = null,
+        xff: String? = null,
+    ): Map<String, Any> {
+        @Suppress("UNCHECKED_CAST")
+        return webClient.post().uri("/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .apply {
+                userAgent?.let { header(HttpHeaders.USER_AGENT, it) }
+                xff?.let { header("X-Forwarded-For", it) }
+            }
+            .bodyValue(mapOf("email" to email, "password" to password))
+            .exchange()
+            .expectStatus().isOk
+            .returnResult(Map::class.java)
+            .responseBody.blockFirst() as Map<String, Any>
+    }
+
+    @Test
     fun `malformed JSON body returns 400`() {
         webClient.post().uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
