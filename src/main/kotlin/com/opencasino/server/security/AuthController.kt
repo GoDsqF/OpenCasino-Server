@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.server.ServerWebInputException
 import reactor.core.publisher.Mono
 import java.util.UUID
@@ -20,26 +21,27 @@ import java.util.UUID
 class AuthController(
     private val authService: AuthService,
     private val userRepository: UserRepository,
+    private val clientIpResolver: ClientIpResolver,
 ) {
 
     @PostMapping("/register")
-    fun register(@RequestBody request: RegisterRequest): Mono<ResponseEntity<Any>> =
-        authService.register(request)
+    fun register(@RequestBody request: RegisterRequest, exchange: ServerWebExchange): Mono<ResponseEntity<Any>> =
+        authService.register(request, ClientContext.from(exchange, clientIpResolver))
             .map { body -> ResponseEntity.status(HttpStatus.CREATED).body(body as Any) }
 
     @PostMapping("/login")
-    fun login(@RequestBody request: LoginRequest): Mono<ResponseEntity<Any>> =
-        authService.login(request)
+    fun login(@RequestBody request: LoginRequest, exchange: ServerWebExchange): Mono<ResponseEntity<Any>> =
+        authService.login(request, ClientContext.from(exchange, clientIpResolver))
             .map { body -> ResponseEntity.ok(body as Any) }
 
     @PostMapping("/refresh")
-    fun refresh(@RequestBody request: RefreshRequest): Mono<ResponseEntity<Any>> =
-        authService.refresh(request)
+    fun refresh(@RequestBody request: RefreshRequest, exchange: ServerWebExchange): Mono<ResponseEntity<Any>> =
+        authService.refresh(request, ClientContext.from(exchange, clientIpResolver))
             .map { body -> ResponseEntity.ok(body as Any) }
 
     @PostMapping("/logout")
-    fun logout(@RequestBody request: LogoutRequest): Mono<ResponseEntity<Void>> =
-        authService.logout(request)
+    fun logout(@RequestBody request: LogoutRequest, exchange: ServerWebExchange): Mono<ResponseEntity<Void>> =
+        authService.logout(request, ClientContext.from(exchange, clientIpResolver))
             .then(Mono.fromCallable { ResponseEntity.noContent().build<Void>() })
 
     @GetMapping("/me")

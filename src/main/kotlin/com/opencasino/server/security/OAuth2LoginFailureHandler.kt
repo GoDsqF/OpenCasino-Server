@@ -11,6 +11,8 @@ import reactor.core.publisher.Mono
 @Component
 class OAuth2LoginFailureHandler(
     private val authProperties: AuthProperties,
+    private val auditLogger: SecurityAuditLogger,
+    private val clientIpResolver: ClientIpResolver,
 ) : ServerAuthenticationFailureHandler {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -20,6 +22,12 @@ class OAuth2LoginFailureHandler(
         exception: AuthenticationException,
     ): Mono<Void> {
         log.warn("OAuth login failed at provider/state stage: {}", exception.message)
+        auditLogger.oauthLoginFailure(
+            provider = null,
+            subject = null,
+            code = AuthFailureCode.OAUTH_PROVIDER_ERROR,
+            ip = clientIpResolver.resolve(webFilterExchange.exchange),
+        )
         val target = authProperties.oauth2.failureRedirect?.takeIf { it.isNotBlank() }
             ?: authProperties.oauth2.successRedirect.takeIf { it.isNotBlank() }
             ?: return Mono.fromRunnable {

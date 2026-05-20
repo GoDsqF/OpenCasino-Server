@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpStatus
@@ -28,6 +29,8 @@ class OAuth2LoginSuccessHandlerTest {
     private lateinit var jwtIssuer: JwtIssuer
     private lateinit var refreshTokenService: RefreshTokenService
     private lateinit var props: AuthProperties
+    private lateinit var clientIpResolver: ClientIpResolver
+    private lateinit var auditLogger: SecurityAuditLogger
     private lateinit var handler: OAuth2LoginSuccessHandler
 
     @BeforeEach
@@ -35,7 +38,9 @@ class OAuth2LoginSuccessHandlerTest {
         linking = mock()
         jwtIssuer = mock()
         refreshTokenService = mock()
-        whenever(refreshTokenService.issue(any())).thenAnswer {
+        clientIpResolver = ClientIpResolver(SecurityNetworkProperties())
+        auditLogger = SecurityAuditLogger()
+        whenever(refreshTokenService.issue(any(), anyOrNull(), anyOrNull())).thenAnswer {
             Mono.just(IssuedRefresh(plaintext = "refresh-plain", expiresAt = Instant.parse("2026-06-15T12:00:00Z")))
         }
         props = AuthProperties(
@@ -44,7 +49,7 @@ class OAuth2LoginSuccessHandlerTest {
                 failureRedirect = "https://app.example.com/oauth2/error",
             ),
         )
-        handler = OAuth2LoginSuccessHandler(linking, jwtIssuer, refreshTokenService, props)
+        handler = OAuth2LoginSuccessHandler(linking, jwtIssuer, refreshTokenService, props, clientIpResolver, auditLogger)
     }
 
     @Test
@@ -108,7 +113,7 @@ class OAuth2LoginSuccessHandlerTest {
                 failureRedirect = null,
             ),
         )
-        val handlerNoFallback = OAuth2LoginSuccessHandler(linking, jwtIssuer, refreshTokenService, noFailureProps)
+        val handlerNoFallback = OAuth2LoginSuccessHandler(linking, jwtIssuer, refreshTokenService, noFailureProps, clientIpResolver, auditLogger)
         whenever(linking.linkOrCreate(any()))
             .thenReturn(Mono.error(AuthException(AuthFailureCode.OAUTH_EMAIL_UNVERIFIED)))
 

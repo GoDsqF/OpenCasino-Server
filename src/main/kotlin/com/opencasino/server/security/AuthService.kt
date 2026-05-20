@@ -17,20 +17,29 @@ class AuthService(
     private val jwtIssuer: JwtIssuer,
     private val refreshTokenService: RefreshTokenService,
     private val authProperties: AuthProperties,
+    private val auditLogger: SecurityAuditLogger,
 ) {
 
     private val dummyHash: String by lazy { passwordEncoder.encode("never-matches-anything") }
 
-    fun register(request: RegisterRequest): Mono<RegisterResponse> {
+    fun register(request: RegisterRequest, context: ClientContext = ClientContext.EMPTY): Mono<RegisterResponse> {
         val email = normalizeEmail(request.email)
-            ?: return Mono.error(AuthException(AuthFailureCode.INVALID_EMAIL))
+            ?: return failWith(AuthFailureCode.INVALID_EMAIL) {
+                auditLogger.registerFailure(request.email, AuthFailureCode.INVALID_EMAIL, context.ip)
+            }
         val password = request.password
-            ?: return Mono.error(AuthException(AuthFailureCode.WEAK_PASSWORD))
+            ?: return failWith(AuthFailureCode.WEAK_PASSWORD) {
+                auditLogger.registerFailure(email, AuthFailureCode.WEAK_PASSWORD, context.ip)
+            }
         if (!isAcceptablePassword(password)) {
-            return Mono.error(AuthException(AuthFailureCode.WEAK_PASSWORD))
+            return failWith(AuthFailureCode.WEAK_PASSWORD) {
+                auditLogger.registerFailure(email, AuthFailureCode.WEAK_PASSWORD, context.ip)
+            }
         }
         val displayName = normalizeDisplayName(request.displayName)
-            ?: return Mono.error(AuthException(AuthFailureCode.INVALID_DISPLAY_NAME))
+            ?: return failWith(AuthFailureCode.INVALID_DISPLAY_NAME) {
+                auditLogger.registerFailure(email, AuthFailureCode.INVALID_DISPLAY_NAME, context.ip)
+            }
 
         return users.findByEmail(email)
             .flatMap<User> { Mono.error(AuthException(AuthFailureCode.EMAIL_TAKEN)) }
@@ -44,54 +53,81 @@ class AuthService(
                     .onErrorMap(DataIntegrityViolationException::class.java) { AuthException(AuthFailureCode.EMAIL_TAKEN) }
             )
             .map { user -> RegisterResponse(userId = user.id, email = user.email, displayName = user.displayName) }
+            .doOnNext { response -> auditLogger.registerSuccess(response.userId, response.email, context.ip, context.userAgent) }
+            .doOnError(AuthException::class.java) { ex -> auditLogger.registerFailure(email, ex.failure, context.ip) }
     }
 
-    fun login(request: LoginRequest): Mono<LoginResponse> {
+    private fun <T> failWith(code: AuthFailureCode, audit: () -> Unit): Mono<T> {
+        audit()
+        return Mono.error(AuthException(code))
+    }
+
+    fun login(request: LoginRequest, context: ClientContext = ClientContext.EMPTY): Mono<LoginResponse> {
         val email = normalizeEmail(request.email)
         val password = request.password
         if (email == null || password.isNullOrEmpty()) {
-            return rejectAfterEqualizingTiming(password.orEmpty())
+            return rejectAfterEqualizingTiming(password.orEmpty(), email, context)
         }
 
         return users.findByEmail(email)
             .flatMap { user ->
                 val hash = user.passwordHash
-                    ?: return@flatMap rejectAfterEqualizingTiming(password)
+                    ?: return@flatMap rejectAfterEqualizingTiming(password, email, context)
                 Mono.fromCallable { passwordEncoder.matches(password, hash) }
                     .subscribeOn(Schedulers.boundedElastic())
                     .flatMap { ok ->
-                        if (ok) buildLoginResponse(user)
-                        else Mono.error(AuthException(AuthFailureCode.INVALID_CREDENTIALS))
+                        if (ok) {
+                            buildLoginResponse(user, context)
+                                .doOnNext { auditLogger.loginSuccess(user.id, user.email, context.ip, context.userAgent) }
+                        } else {
+                            auditLogger.loginFailure(email, AuthFailureCode.INVALID_CREDENTIALS, context.ip)
+                            Mono.error(AuthException(AuthFailureCode.INVALID_CREDENTIALS))
+                        }
                     }
             }
-            .switchIfEmpty(rejectAfterEqualizingTiming(password))
+            .switchIfEmpty(rejectAfterEqualizingTiming(password, email, context))
     }
 
-    private fun rejectAfterEqualizingTiming(password: String): Mono<LoginResponse> =
+    private fun rejectAfterEqualizingTiming(password: String, email: String?, context: ClientContext): Mono<LoginResponse> =
         Mono.fromCallable { passwordEncoder.matches(password, dummyHash) }
             .subscribeOn(Schedulers.boundedElastic())
-            .flatMap { Mono.error(AuthException(AuthFailureCode.INVALID_CREDENTIALS)) }
+            .flatMap {
+                auditLogger.loginFailure(email, AuthFailureCode.INVALID_CREDENTIALS, context.ip)
+                Mono.error(AuthException(AuthFailureCode.INVALID_CREDENTIALS))
+            }
 
-    fun refresh(request: RefreshRequest): Mono<LoginResponse> {
+    fun refresh(request: RefreshRequest, context: ClientContext = ClientContext.EMPTY): Mono<LoginResponse> {
         val plaintext = request.refreshToken
-            ?: return Mono.error(AuthException(AuthFailureCode.REFRESH_INVALID))
-        return refreshTokenService.rotate(plaintext)
+            ?: return failWith(AuthFailureCode.REFRESH_INVALID) {
+                auditLogger.refreshFailure(AuthFailureCode.REFRESH_INVALID, context.ip)
+            }
+        return refreshTokenService.rotate(plaintext, context.userAgent, context.ip)
             .flatMap { rotated ->
                 users.findById(rotated.userId)
                     .switchIfEmpty(Mono.error(AuthException(AuthFailureCode.REFRESH_INVALID)))
                     .map { user -> assembleLoginResponse(user, rotated.refresh) }
+                    .doOnNext { auditLogger.refreshSuccess(rotated.userId, context.ip, context.userAgent) }
+            }
+            .doOnError(AuthException::class.java) { ex ->
+                if (ex.failure != AuthFailureCode.REFRESH_REPLAY_DETECTED) {
+                    auditLogger.refreshFailure(ex.failure, context.ip)
+                }
+                // REFRESH_REPLAY_DETECTED is logged from RefreshTokenService where the userId is known.
             }
     }
 
-    fun logout(request: LogoutRequest): Mono<Void> {
+    fun logout(request: LogoutRequest, context: ClientContext = ClientContext.EMPTY): Mono<Void> {
         val plaintext = request.refreshToken
-            ?: return Mono.error(AuthException(AuthFailureCode.REFRESH_INVALID))
+            ?: return failWith(AuthFailureCode.REFRESH_INVALID) {
+                auditLogger.refreshFailure(AuthFailureCode.REFRESH_INVALID, context.ip)
+            }
         return refreshTokenService.revoke(plaintext)
+            .doOnSuccess { auditLogger.logout(context.ip) }
     }
 
-    private fun buildLoginResponse(user: User): Mono<LoginResponse> =
+    private fun buildLoginResponse(user: User, context: ClientContext): Mono<LoginResponse> =
         users.updateLastLoginAt(user.id, Instant.now())
-            .then(refreshTokenService.issue(user.id))
+            .then(refreshTokenService.issue(user.id, context.userAgent, context.ip))
             .map { issuedRefresh -> assembleLoginResponse(user, issuedRefresh) }
 
     private fun assembleLoginResponse(user: User, issuedRefresh: IssuedRefresh): LoginResponse {

@@ -15,6 +15,8 @@ class OAuth2LoginSuccessHandler(
     private val jwtIssuer: JwtIssuer,
     private val refreshTokenService: RefreshTokenService,
     private val authProperties: AuthProperties,
+    private val clientIpResolver: ClientIpResolver,
+    private val auditLogger: SecurityAuditLogger,
 ) : ServerAuthenticationSuccessHandler {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -30,13 +32,18 @@ class OAuth2LoginSuccessHandler(
             ?: return errorRedirect(exchange, AuthFailureCode.OAUTH_PROVIDER_ERROR)
 
         return linkingService.linkOrCreate(principal)
-            .flatMap { user -> successRedirect(exchange, user) }
+            .flatMap { user ->
+                auditLogger.oauthLoginSuccess(principal.provider, user.id, clientIpResolver.resolve(exchange))
+                successRedirect(exchange, user)
+            }
             .onErrorResume(AuthException::class.java) { ex ->
                 log.warn("OAuth login rejected for {}/{}: {}", principal.provider, principal.subject, ex.failure)
+                auditLogger.oauthLoginFailure(principal.provider, principal.subject, ex.failure, clientIpResolver.resolve(exchange))
                 errorRedirect(exchange, ex.failure)
             }
             .onErrorResume(Throwable::class.java) { ex ->
                 log.error("OAuth login failed unexpectedly for {}/{}", principal.provider, principal.subject, ex)
+                auditLogger.oauthLoginFailure(principal.provider, principal.subject, AuthFailureCode.OAUTH_PROVIDER_ERROR, clientIpResolver.resolve(exchange))
                 errorRedirect(exchange, AuthFailureCode.OAUTH_PROVIDER_ERROR)
             }
     }
@@ -62,8 +69,9 @@ class OAuth2LoginSuccessHandler(
             log.error("app.auth.oauth2.success-redirect is unset; cannot complete OAuth login")
             return errorRedirect(exchange, AuthFailureCode.OAUTH_PROVIDER_ERROR)
         }
+        val context = ClientContext.from(exchange, clientIpResolver)
         val issued = jwtIssuer.issueAccess(user)
-        return refreshTokenService.issue(user.id)
+        return refreshTokenService.issue(user.id, context.userAgent, context.ip)
             .flatMap { refresh -> OAuth2RedirectWriter.successRedirect(exchange, target, issued, refresh) }
     }
 
