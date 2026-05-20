@@ -24,3 +24,8 @@ application.poker-room.max-players=6
 application.poker-room.min-players=2
 application.poker-room.buy-in=2000
 application.poker-room.deck-stacks=8
+
+# WebSocket heartbeat (server-initiated PING / required PONG)
+application.heartbeat.enabled=true
+application.heartbeat.interval=30s
+application.heartbeat.pong-timeout=10s

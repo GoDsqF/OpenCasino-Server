@@ -30,6 +30,7 @@ class UserSessionWebSocketHandler(
     }
 
     fun onNext(message: Message) {
+        if (message.type == PONG) return
         if (userSession.userId == null) {
             log.warn("Dropping {} from unauthenticated session {}", message.type, userSession.id)
             return

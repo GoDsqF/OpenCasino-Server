@@ -1,10 +1,17 @@
 package com.opencasino.server.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import java.time.Duration
 
 
 data class GameProperties(
     val gameThreads: Int = 4
+)
+
+data class HeartbeatProperties(
+    val enabled: Boolean = true,
+    val interval: Duration = Duration.ofSeconds(30),
+    val pongTimeout: Duration = Duration.ofSeconds(10),
 )
 
 enum class AvailableGames {
@@ -48,4 +55,5 @@ data class ApplicationProperties(
     val blackjackRoom: BlackjackRoomProperties = BlackjackRoomProperties(),
     val pokerRoom: PokerRoomProperties = PokerRoomProperties(),
     val game: GameProperties = GameProperties(),
+    val heartbeat: HeartbeatProperties = HeartbeatProperties(),
 )

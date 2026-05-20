@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Primary
 import org.springframework.web.reactive.HandlerMapping
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping
@@ -18,6 +19,7 @@ import reactor.core.scheduler.Schedulers
 
 const val WEBSOCKET_PATH = "/ws"
 const val WEBSOCKET_MENU_PATH = "/ws/menu"
+const val HEARTBEAT_SCHEDULER = "heartbeatScheduler"
 
 @EnableWebFlux
 @Configuration
@@ -29,9 +31,15 @@ class ApplicationConfiguration(
 ) {
 
     @Bean
+    @Primary
     @Qualifier(GAME_TASK_MANAGER)
     fun taskManagerService(): Scheduler =
         Schedulers.newParallel(serverProperties.game.gameThreads, Thread.ofVirtual().factory())
+
+    @Bean(destroyMethod = "dispose")
+    @Qualifier(HEARTBEAT_SCHEDULER)
+    fun heartbeatScheduler(): Scheduler =
+        Schedulers.newParallel("ws-heartbeat", 2, true)
 
     @Bean
     fun webSocketHandlerMapping(): HandlerMapping {
