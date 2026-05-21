@@ -127,6 +127,12 @@ liquibase-pg:
     POSTGRES_DB: casino
     POSTGRES_USER: ci
     POSTGRES_PASSWORD: ci
+  before_script:
+    # Liquibase 5.x dropped bundled JDBC drivers from the base image. Install
+    # the PG driver via Liquibase Package Manager so `update` can resolve
+    # org.postgresql.Driver. `--global` drops it into /liquibase/lib/ which is
+    # already on the classpath.
+    - lpm add postgresql --global
   script:
     # The master changelog lives at src/main/resources/db/changelog/, and its
     # include: file: paths are relative to that root. Point --search-path so
