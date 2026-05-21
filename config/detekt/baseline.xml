@@ -1,0 +1,257 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ClassNaming:DealerUpdatePack.kt:deprecatedDealerUpdatePack</ID>
+    <ID>ClassNaming:PlayerHandUpdatePack.kt:deprecatedPlayerHandUpdatePack : UpdatePack</ID>
+    <ID>CyclomaticComplexMethod:PokerHand.kt:PokerHand$override fun compareTo: Int</ID>
+    <ID>CyclomaticComplexMethod:RateLimitWebFilter.kt:RateLimitWebFilter$private fun classify: Route?</ID>
+    <ID>CyclomaticComplexMethod:UserSessionWebSocketHandler.kt:UserSessionWebSocketHandler$fun onNext</ID>
+    <ID>EmptyClassBlock:BlackjackDealer.kt:BlackjackDealer${ }</ID>
+    <ID>EmptyClassBlock:PokerDealer.kt:PokerDealer${ }</ID>
+    <ID>EmptyDefaultConstructor:BlackjackDealer.kt:BlackjackDealer</ID>
+    <ID>EmptyDefaultConstructor:PokerDealer.kt:PokerDealer</ID>
+    <ID>EmptyFunctionBlock:AbstractBlackjackGameRoom.kt:AbstractBlackjackGameRoom${}</ID>
+    <ID>EmptyFunctionBlock:AbstractPokerGameRoom.kt:AbstractPokerGameRoom${}</ID>
+    <ID>IteratorNotThrowingNoSuchElementException:Rank.kt:Rank : Iterator</ID>
+    <ID>LongMethod:UserSessionWebSocketHandler.kt:UserSessionWebSocketHandler$fun onNext</ID>
+    <ID>LoopWithTooManyJumpStatements:PokerSidePotDistribution.kt:PokerSidePotDistribution$while</ID>
+    <ID>MatchingDeclarationName:DealerUpdatePack.kt:deprecatedDealerUpdatePack</ID>
+    <ID>MatchingDeclarationName:PlayerHandUpdatePack.kt:BlackjackPlayerHandUpdatePack : UpdatePack</ID>
+    <ID>MatchingDeclarationName:PlayerHandUpdatePack.kt:deprecatedPlayerHandUpdatePack : UpdatePack</ID>
+    <ID>MaxLineLength:AuthControllerIntegrationTest.kt:AuthControllerIntegrationTest$assertTrue(it.isNotBlank() &amp;&amp; it.length &gt;= 32, "refreshToken should look like a high-entropy random: got $it")</ID>
+    <ID>MaxLineLength:AuthControllerIntegrationTest.kt:AuthControllerIntegrationTest$private</ID>
+    <ID>MaxLineLength:AuthService.kt:AuthService$.</ID>
+    <ID>MaxLineLength:AuthService.kt:AuthService$private</ID>
+    <ID>MaxLineLength:AuthService.kt:AuthService$private fun normalizeDisplayName: String?</ID>
+    <ID>MaxLineLength:BalanceLedgerService.kt:BalanceLedgerService$.</ID>
+    <ID>MaxLineLength:BlackjackPlayerTest.kt:BlackjackPlayerTest.Update$verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "Decision NONE is not supported", null)</ID>
+    <ID>MaxLineLength:CorsConfig.kt:CorsConfig$allowCredentials = props.allowCredentials &amp;&amp; (allowedOrigins?.isNotEmpty() == true || allowedOriginPatterns?.isNotEmpty() == true)</ID>
+    <ID>MaxLineLength:MainWebSocketHandler.kt:MainWebSocketHandler$val message = objectMapper.fromJson(InputStreamReader(webSocketMessage.payload.asInputStream()), Message::class.java)</ID>
+    <ID>MaxLineLength:OAuth2LoginFailureHandlerTest.kt:OAuth2LoginFailureHandlerTest$AuthProperties(oauth2 = OAuth2RedirectProperties(successRedirect = "https://app/redir", failureRedirect = null))</ID>
+    <ID>MaxLineLength:OAuth2LoginSuccessHandler.kt:OAuth2LoginSuccessHandler$auditLogger.oauthLoginFailure(principal.provider, principal.subject, AuthFailureCode.OAUTH_PROVIDER_ERROR, clientIpResolver.resolve(exchange))</ID>
+    <ID>MaxLineLength:OAuth2LoginSuccessHandler.kt:OAuth2LoginSuccessHandler$auditLogger.oauthLoginFailure(principal.provider, principal.subject, ex.failure, clientIpResolver.resolve(exchange))</ID>
+    <ID>MaxLineLength:OAuth2LoginSuccessHandler.kt:OAuth2LoginSuccessHandler$private</ID>
+    <ID>MaxLineLength:OAuth2LoginSuccessHandlerTest.kt:OAuth2LoginSuccessHandlerTest$handler = OAuth2LoginSuccessHandler(linking, jwtIssuer, refreshTokenService, props, clientIpResolver, auditLogger)</ID>
+    <ID>MaxLineLength:OAuth2LoginSuccessHandlerTest.kt:OAuth2LoginSuccessHandlerTest$val handlerNoFallback = OAuth2LoginSuccessHandler(linking, jwtIssuer, refreshTokenService, noFailureProps, clientIpResolver, auditLogger)</ID>
+    <ID>MaxLineLength:PokerRoomServiceImpl.kt:PokerRoomServiceImpl$sessionQueue[session.roomKey]?.removeIf { waitingPlayerSession: WaitingPlayerSession -&gt; waitingPlayerSession.playerSession == session }</ID>
+    <ID>MaxLineLength:PokerRoomServiceImpl.kt:PokerRoomServiceImpl$val player: PokerPlayer = playerFactory.create(gameTable.nextPlayerId(), initialData, room, userSession)</ID>
+    <ID>MaxLineLength:RateLimitWebFilter.kt:RateLimitWebFilter$log.debug("Rate-limit exceeded for route={} identity={} retryAfter={}s", route.name, identity, retryAfterSec)</ID>
+    <ID>NestedBlockDepth:PokerHand.kt:PokerHand.Companion$fun bestOf: PokerHand</ID>
+    <ID>NewLineAtEndOfFile:AbstractBlackjackGameRoom.kt:com.opencasino.server.game.blackjack.room.AbstractBlackjackGameRoom.kt</ID>
+    <ID>NewLineAtEndOfFile:AbstractEntity.kt:com.opencasino.server.game.model.AbstractEntity.kt</ID>
+    <ID>NewLineAtEndOfFile:AbstractEntityTest.kt:com.opencasino.server.game.model.AbstractEntityTest.kt</ID>
+    <ID>NewLineAtEndOfFile:AbstractEvent.kt:com.opencasino.server.event.AbstractEvent.kt</ID>
+    <ID>NewLineAtEndOfFile:AbstractPokerGameRoom.kt:com.opencasino.server.game.poker.holdem.room.AbstractPokerGameRoom.kt</ID>
+    <ID>NewLineAtEndOfFile:ApplicationProperties.kt:com.opencasino.server.config.ApplicationProperties.kt</ID>
+    <ID>NewLineAtEndOfFile:AuthException.kt:com.opencasino.server.security.AuthException.kt</ID>
+    <ID>NewLineAtEndOfFile:AuthProperties.kt:com.opencasino.server.security.AuthProperties.kt</ID>
+    <ID>NewLineAtEndOfFile:BalanceLedgerEntry.kt:com.opencasino.server.user.BalanceLedgerEntry.kt</ID>
+    <ID>NewLineAtEndOfFile:BalanceLedgerReason.kt:com.opencasino.server.user.BalanceLedgerReason.kt</ID>
+    <ID>NewLineAtEndOfFile:BalanceLedgerRepository.kt:com.opencasino.server.user.BalanceLedgerRepository.kt</ID>
+    <ID>NewLineAtEndOfFile:BalanceLedgerService.kt:com.opencasino.server.user.BalanceLedgerService.kt</ID>
+    <ID>NewLineAtEndOfFile:BalanceLedgerServiceIntegrationTest.kt:com.opencasino.server.user.BalanceLedgerServiceIntegrationTest.kt</ID>
+    <ID>NewLineAtEndOfFile:BetEvent.kt:com.opencasino.server.event.BetEvent.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackCondition.kt:com.opencasino.server.game.blackjack.model.BlackjackCondition.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackConditionTest.kt:com.opencasino.server.game.blackjack.model.BlackjackConditionTest.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackDealer.kt:com.opencasino.server.game.blackjack.model.BlackjackDealer.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackDealerLogicTest.kt:com.opencasino.server.game.blackjack.BlackjackDealerLogicTest.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackDecision.kt:com.opencasino.server.service.shared.BlackjackDecision.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackDecisionTest.kt:com.opencasino.server.service.shared.BlackjackDecisionTest.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackGameRoomReattachTest.kt:com.opencasino.server.game.blackjack.room.BlackjackGameRoomReattachTest.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackInfoPack.kt:com.opencasino.server.network.pack.blackjack.info.BlackjackInfoPack.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackMap.kt:com.opencasino.server.game.blackjack.map.BlackjackMap.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackMapTest.kt:com.opencasino.server.game.blackjack.map.BlackjackMapTest.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackPlayerDecisionEvent.kt:com.opencasino.server.event.BlackjackPlayerDecisionEvent.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackPlayerFactory.kt:com.opencasino.server.game.blackjack.factory.BlackjackPlayerFactory.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackPlayerInfoPack.kt:com.opencasino.server.network.pack.blackjack.info.BlackjackPlayerInfoPack.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackPlayerTest.kt:com.opencasino.server.game.blackjack.model.BlackjackPlayerTest.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackPrivatePlayerUpdatePack.kt:com.opencasino.server.network.pack.update.BlackjackPrivatePlayerUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackRoomPack.kt:com.opencasino.server.network.pack.blackjack.shared.BlackjackRoomPack.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackRoomServiceImpl.kt:com.opencasino.server.service.impl.BlackjackRoomServiceImpl.kt</ID>
+    <ID>NewLineAtEndOfFile:BlackjackScoreCalculationTest.kt:com.opencasino.server.game.blackjack.model.BlackjackScoreCalculationTest.kt</ID>
+    <ID>NewLineAtEndOfFile:Card.kt:com.opencasino.server.game.model.Card.kt</ID>
+    <ID>NewLineAtEndOfFile:CardDeck.kt:com.opencasino.server.game.model.CardDeck.kt</ID>
+    <ID>NewLineAtEndOfFile:CardDeckTest.kt:com.opencasino.server.game.model.CardDeckTest.kt</ID>
+    <ID>NewLineAtEndOfFile:ClientContext.kt:com.opencasino.server.security.ClientContext.kt</ID>
+    <ID>NewLineAtEndOfFile:ClientIpResolver.kt:com.opencasino.server.security.ClientIpResolver.kt</ID>
+    <ID>NewLineAtEndOfFile:ClientIpResolverTest.kt:com.opencasino.server.security.ClientIpResolverTest.kt</ID>
+    <ID>NewLineAtEndOfFile:Constants.kt:com.opencasino.server.config.Constants.kt</ID>
+    <ID>NewLineAtEndOfFile:ConstantsTest.kt:com.opencasino.server.config.ConstantsTest.kt</ID>
+    <ID>NewLineAtEndOfFile:Dealer.kt:com.opencasino.server.game.model.Dealer.kt</ID>
+    <ID>NewLineAtEndOfFile:DealerUpdatePack.kt:com.opencasino.server.network.pack.blackjack.shared.DealerUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:DealerUpdatePack.kt:com.opencasino.server.network.pack.poker.shared.DealerUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:DealerUpdatePack.kt:com.opencasino.server.network.pack.shared.DealerUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:Entity.kt:com.opencasino.server.game.model.Entity.kt</ID>
+    <ID>NewLineAtEndOfFile:Event.kt:com.opencasino.server.event.Event.kt</ID>
+    <ID>NewLineAtEndOfFile:EventsTest.kt:com.opencasino.server.event.EventsTest.kt</ID>
+    <ID>NewLineAtEndOfFile:ExceptionPack.kt:com.opencasino.server.network.pack.shared.ExceptionPack.kt</ID>
+    <ID>NewLineAtEndOfFile:FailureCode.kt:com.opencasino.server.service.shared.FailureCode.kt</ID>
+    <ID>NewLineAtEndOfFile:FailurePack.kt:com.opencasino.server.network.pack.shared.FailurePack.kt</ID>
+    <ID>NewLineAtEndOfFile:GameMessagePack.kt:com.opencasino.server.network.pack.shared.GameMessagePack.kt</ID>
+    <ID>NewLineAtEndOfFile:GameRoom.kt:com.opencasino.server.game.room.GameRoom.kt</ID>
+    <ID>NewLineAtEndOfFile:GameRoomJoinEvent.kt:com.opencasino.server.event.GameRoomJoinEvent.kt</ID>
+    <ID>NewLineAtEndOfFile:GameSettingsPack.kt:com.opencasino.server.network.pack.blackjack.shared.GameSettingsPack.kt</ID>
+    <ID>NewLineAtEndOfFile:GameSettingsPack.kt:com.opencasino.server.network.pack.poker.shared.GameSettingsPack.kt</ID>
+    <ID>NewLineAtEndOfFile:GameSettingsUpdateEvent.kt:com.opencasino.server.event.poker.GameSettingsUpdateEvent.kt</ID>
+    <ID>NewLineAtEndOfFile:GameUpdatePack.kt:com.opencasino.server.network.pack.blackjack.update.GameUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:GameUpdatePack.kt:com.opencasino.server.network.pack.poker.update.GameUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:GameUpdatePack.kt:com.opencasino.server.network.pack.update.GameUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:IInitPackProvider.kt:com.opencasino.server.network.pack.IInitPackProvider.kt</ID>
+    <ID>NewLineAtEndOfFile:IPrivateUpdatePackProvider.kt:com.opencasino.server.network.pack.update.IPrivateUpdatePackProvider.kt</ID>
+    <ID>NewLineAtEndOfFile:IUpdatePackProvider.kt:com.opencasino.server.network.pack.update.IUpdatePackProvider.kt</ID>
+    <ID>NewLineAtEndOfFile:InfoPack.kt:com.opencasino.server.network.pack.blackjack.info.InfoPack.kt</ID>
+    <ID>NewLineAtEndOfFile:InfoPack.kt:com.opencasino.server.network.pack.poker.info.InfoPack.kt</ID>
+    <ID>NewLineAtEndOfFile:InitPack.kt:com.opencasino.server.network.pack.InitPack.kt</ID>
+    <ID>NewLineAtEndOfFile:Initializable.kt:com.opencasino.server.game.Initializable.kt</ID>
+    <ID>NewLineAtEndOfFile:JwtAuthenticationConfiguration.kt:com.opencasino.server.security.JwtAuthenticationConfiguration.kt</ID>
+    <ID>NewLineAtEndOfFile:JwtIssuer.kt:com.opencasino.server.security.JwtIssuer.kt</ID>
+    <ID>NewLineAtEndOfFile:JwtIssuerTest.kt:com.opencasino.server.security.JwtIssuerTest.kt</ID>
+    <ID>NewLineAtEndOfFile:JwtKeyConfiguration.kt:com.opencasino.server.security.JwtKeyConfiguration.kt</ID>
+    <ID>NewLineAtEndOfFile:JwtKeyMaterialTest.kt:com.opencasino.server.security.JwtKeyMaterialTest.kt</ID>
+    <ID>NewLineAtEndOfFile:MenuService.kt:com.opencasino.server.service.MenuService.kt</ID>
+    <ID>NewLineAtEndOfFile:MenuServiceImpl.kt:com.opencasino.server.service.impl.MenuServiceImpl.kt</ID>
+    <ID>NewLineAtEndOfFile:MenuServiceImplTest.kt:com.opencasino.server.service.impl.MenuServiceImplTest.kt</ID>
+    <ID>NewLineAtEndOfFile:MenuUpdatePack.kt:com.opencasino.server.network.pack.menu.update.MenuUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:MenuWebSocketHandler.kt:com.opencasino.server.network.websocket.MenuWebSocketHandler.kt</ID>
+    <ID>NewLineAtEndOfFile:Message.kt:com.opencasino.server.network.shared.Message.kt</ID>
+    <ID>NewLineAtEndOfFile:MessageTest.kt:com.opencasino.server.network.shared.MessageTest.kt</ID>
+    <ID>NewLineAtEndOfFile:MessageType.kt:com.opencasino.server.service.shared.MessageType.kt</ID>
+    <ID>NewLineAtEndOfFile:MessageTypes.kt:com.opencasino.server.config.MessageTypes.kt</ID>
+    <ID>NewLineAtEndOfFile:MessageTypesTest.kt:com.opencasino.server.config.MessageTypesTest.kt</ID>
+    <ID>NewLineAtEndOfFile:OpenCasino.kt:com.opencasino.server.OpenCasino.kt</ID>
+    <ID>NewLineAtEndOfFile:Pack.kt:com.opencasino.server.network.pack.Pack.kt</ID>
+    <ID>NewLineAtEndOfFile:PacksTest.kt:com.opencasino.server.network.pack.PacksTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PasswordEncoderConfig.kt:com.opencasino.server.security.PasswordEncoderConfig.kt</ID>
+    <ID>NewLineAtEndOfFile:Player.kt:com.opencasino.server.game.model.Player.kt</ID>
+    <ID>NewLineAtEndOfFile:PlayerDecisionEvent.kt:com.opencasino.server.event.PlayerDecisionEvent.kt</ID>
+    <ID>NewLineAtEndOfFile:PlayerEntity.kt:com.opencasino.server.game.model.PlayerEntity.kt</ID>
+    <ID>NewLineAtEndOfFile:PlayerFactory.kt:com.opencasino.server.game.factory.PlayerFactory.kt</ID>
+    <ID>NewLineAtEndOfFile:PlayerInfoPack.kt:com.opencasino.server.network.pack.blackjack.info.PlayerInfoPack.kt</ID>
+    <ID>NewLineAtEndOfFile:PlayerInfoPack.kt:com.opencasino.server.network.pack.poker.info.PlayerInfoPack.kt</ID>
+    <ID>NewLineAtEndOfFile:PlayerSessionTest.kt:com.opencasino.server.network.shared.PlayerSessionTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerBasePlayer.kt:com.opencasino.server.game.poker.holdem.model.PokerBasePlayer.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerBetType.kt:com.opencasino.server.game.poker.holdem.model.PokerBetType.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerBetTypeTest.kt:com.opencasino.server.game.poker.holdem.model.PokerBetTypeTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerBetValidationTest.kt:com.opencasino.server.game.poker.holdem.PokerBetValidationTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerBlindLogicTest.kt:com.opencasino.server.game.poker.holdem.PokerBlindLogicTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerCondition.kt:com.opencasino.server.game.poker.holdem.model.PokerCondition.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerConditionPack.kt:com.opencasino.server.network.pack.poker.shared.PokerConditionPack.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerConditionTest.kt:com.opencasino.server.game.poker.holdem.model.PokerConditionTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerDealer.kt:com.opencasino.server.game.poker.holdem.model.PokerDealer.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerDecision.kt:com.opencasino.server.service.shared.PokerDecision.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerDecisionTest.kt:com.opencasino.server.service.shared.PokerDecisionTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerGameRoom.kt:com.opencasino.server.game.poker.holdem.room.PokerGameRoom.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerGameRoomReattachTest.kt:com.opencasino.server.game.poker.holdem.room.PokerGameRoomReattachTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerHand.kt:com.opencasino.server.game.poker.holdem.model.PokerHand.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerHandTest.kt:com.opencasino.server.game.poker.holdem.model.PokerHandTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerLateEntryTest.kt:com.opencasino.server.game.poker.holdem.room.PokerLateEntryTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerLobbyService.kt:com.opencasino.server.service.PokerLobbyService.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerMap.kt:com.opencasino.server.game.poker.holdem.map.PokerMap.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerMapTest.kt:com.opencasino.server.game.poker.holdem.map.PokerMapTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerMoveRotationTest.kt:com.opencasino.server.game.poker.holdem.PokerMoveRotationTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerPhase.kt:com.opencasino.server.service.shared.PokerPhase.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerPlayer.kt:com.opencasino.server.game.poker.holdem.model.PokerPlayer.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerPlayerDecisionEvent.kt:com.opencasino.server.event.poker.PokerPlayerDecisionEvent.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerPlayerFactory.kt:com.opencasino.server.game.poker.holdem.factory.PokerPlayerFactory.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerPlayerTest.kt:com.opencasino.server.game.poker.holdem.model.PokerPlayerTest.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerRoomServiceImpl.kt:com.opencasino.server.service.impl.PokerRoomServiceImpl.kt</ID>
+    <ID>NewLineAtEndOfFile:PokerRoomSummary.kt:com.opencasino.server.network.pack.menu.update.PokerRoomSummary.kt</ID>
+    <ID>NewLineAtEndOfFile:PrivateInitPack.kt:com.opencasino.server.network.pack.PrivateInitPack.kt</ID>
+    <ID>NewLineAtEndOfFile:PrivatePlayerUpdatePack.kt:com.opencasino.server.network.pack.poker.update.PrivatePlayerUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:PrivateRemovePack.kt:com.opencasino.server.network.pack.PrivateRemovePack.kt</ID>
+    <ID>NewLineAtEndOfFile:PrivateUpdatePack.kt:com.opencasino.server.network.pack.PrivateUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:PublicPlayerUpdatePack.kt:com.opencasino.server.network.pack.blackjack.update.PublicPlayerUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:PublicPlayerUpdatePack.kt:com.opencasino.server.network.pack.poker.update.PublicPlayerUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:PublicUpdatePack.kt:com.opencasino.server.network.pack.PublicUpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:Rank.kt:com.opencasino.server.game.model.Rank.kt</ID>
+    <ID>NewLineAtEndOfFile:RankTest.kt:com.opencasino.server.game.model.RankTest.kt</ID>
+    <ID>NewLineAtEndOfFile:RefreshToken.kt:com.opencasino.server.security.RefreshToken.kt</ID>
+    <ID>NewLineAtEndOfFile:RefreshTokenRepository.kt:com.opencasino.server.security.RefreshTokenRepository.kt</ID>
+    <ID>NewLineAtEndOfFile:RefreshTokenService.kt:com.opencasino.server.security.RefreshTokenService.kt</ID>
+    <ID>NewLineAtEndOfFile:RefreshTokenServiceTest.kt:com.opencasino.server.security.RefreshTokenServiceTest.kt</ID>
+    <ID>NewLineAtEndOfFile:RemovePack.kt:com.opencasino.server.network.pack.RemovePack.kt</ID>
+    <ID>NewLineAtEndOfFile:RoomPack.kt:com.opencasino.server.network.pack.blackjack.shared.RoomPack.kt</ID>
+    <ID>NewLineAtEndOfFile:RoomPack.kt:com.opencasino.server.network.pack.poker.shared.RoomPack.kt</ID>
+    <ID>NewLineAtEndOfFile:RoomService.kt:com.opencasino.server.service.RoomService.kt</ID>
+    <ID>NewLineAtEndOfFile:SecurityConfig.kt:com.opencasino.server.security.SecurityConfig.kt</ID>
+    <ID>NewLineAtEndOfFile:SecurityNetworkProperties.kt:com.opencasino.server.security.SecurityNetworkProperties.kt</ID>
+    <ID>NewLineAtEndOfFile:ShortEnvAliasPostProcessor.kt:com.opencasino.server.config.ShortEnvAliasPostProcessor.kt</ID>
+    <ID>NewLineAtEndOfFile:ShortEnvAliasPostProcessorTest.kt:com.opencasino.server.config.ShortEnvAliasPostProcessorTest.kt</ID>
+    <ID>NewLineAtEndOfFile:Suit.kt:com.opencasino.server.game.model.Suit.kt</ID>
+    <ID>NewLineAtEndOfFile:SuitTest.kt:com.opencasino.server.game.model.SuitTest.kt</ID>
+    <ID>NewLineAtEndOfFile:Updatable.kt:com.opencasino.server.game.Updatable.kt</ID>
+    <ID>NewLineAtEndOfFile:UpdatableWithPack.kt:com.opencasino.server.game.UpdatableWithPack.kt</ID>
+    <ID>NewLineAtEndOfFile:UpdatePack.kt:com.opencasino.server.network.pack.UpdatePack.kt</ID>
+    <ID>NewLineAtEndOfFile:UserData.kt:com.opencasino.server.game.model.UserData.kt</ID>
+    <ID>NewLineAtEndOfFile:UserDataTest.kt:com.opencasino.server.game.model.UserDataTest.kt</ID>
+    <ID>NewLineAtEndOfFile:UserSessionWebSocketHandler.kt:com.opencasino.server.network.websocket.UserSessionWebSocketHandler.kt</ID>
+    <ID>NewLineAtEndOfFile:Utils.kt:com.opencasino.server.math.Utils.kt</ID>
+    <ID>NewLineAtEndOfFile:UtilsTest.kt:com.opencasino.server.math.UtilsTest.kt</ID>
+    <ID>NewLineAtEndOfFile:WaitingPlayerSession.kt:com.opencasino.server.service.shared.WaitingPlayerSession.kt</ID>
+    <ID>NewLineAtEndOfFile:WebSocketMessagePublisher.kt:com.opencasino.server.network.websocket.WebSocketMessagePublisher.kt</ID>
+    <ID>NewLineAtEndOfFile:WebSocketSessionService.kt:com.opencasino.server.service.WebSocketSessionService.kt</ID>
+    <ID>NewLineAtEndOfFile:WebSocketSessionServiceImpl.kt:com.opencasino.server.service.impl.WebSocketSessionServiceImpl.kt</ID>
+    <ID>NewLineAtEndOfFile:WebSocketSessionServiceReattachTest.kt:com.opencasino.server.service.impl.WebSocketSessionServiceReattachTest.kt</ID>
+    <ID>NewLineAtEndOfFile:WebSocketSessionServiceStampTest.kt:com.opencasino.server.service.impl.WebSocketSessionServiceStampTest.kt</ID>
+    <ID>ReturnCount:PokerGameRoom.kt:PokerGameRoom$fun onBuyIn</ID>
+    <ID>TooGenericExceptionCaught:AbstractBlackjackGameRoom.kt:AbstractBlackjackGameRoom$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AbstractPokerGameRoom.kt:AbstractPokerGameRoom$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:WebSocketSessionServiceImpl.kt:WebSocketSessionServiceImpl$e: Exception</ID>
+    <ID>TooGenericExceptionThrown:PokerHand.kt:PokerHand.Companion$throw RuntimeException("A card code must be two characters")</ID>
+    <ID>TooGenericExceptionThrown:PokerHand.kt:PokerHand.Companion$throw RuntimeException("There must be five cards in a hand")</ID>
+    <ID>TooGenericExceptionThrown:Rank.kt:Rank.Companion$throw RuntimeException("No value for code: $code")</ID>
+    <ID>TooGenericExceptionThrown:Suit.kt:Suit.Companion$throw RuntimeException("No Suit for code: $code")</ID>
+    <ID>TooManyFunctions:AbstractBlackjackGameRoom.kt:AbstractBlackjackGameRoom : GameRoom</ID>
+    <ID>TooManyFunctions:AbstractPokerGameRoom.kt:AbstractPokerGameRoom : GameRoom</ID>
+    <ID>TooManyFunctions:BlackjackGameRoom.kt:BlackjackGameRoom : AbstractBlackjackGameRoom</ID>
+    <ID>TooManyFunctions:GameRoom.kt:GameRoom : RunnableUpdatableWebSocketMessagePublisher</ID>
+    <ID>TooManyFunctions:PokerGameRoom.kt:PokerGameRoom : AbstractPokerGameRoom</ID>
+    <ID>TooManyFunctions:WebSocketSessionServiceImpl.kt:WebSocketSessionServiceImpl : WebSocketSessionService</ID>
+    <ID>UnusedParameter:AuthController.kt:AuthController$ex: ServerWebInputException</ID>
+    <ID>WildcardImport:AbstractEntityTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:BalanceLedgerServiceIntegrationTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:BlackjackConditionTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:BlackjackDealerLogicTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:BlackjackGameRoom.kt:import com.opencasino.server.config.*</ID>
+    <ID>WildcardImport:BlackjackGameRoomReattachTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:BlackjackMapTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:BlackjackPlayerTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:BlackjackPlayerTest.kt:import org.mockito.Mockito.*</ID>
+    <ID>WildcardImport:BlackjackScoreCalculationTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:CardDeckTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:ConstantsTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:EventsTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:MenuServiceImplTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:MessageTest.kt:import com.opencasino.server.config.*</ID>
+    <ID>WildcardImport:MessageTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:MessageTypeTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:MessageTypesTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PacksTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PlayerSessionTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PokerBetTypeTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PokerBetValidationTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PokerBlindLogicTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PokerConditionTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PokerDecisionTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PokerGameRoom.kt:import com.opencasino.server.config.*</ID>
+    <ID>WildcardImport:PokerGameRoomReattachTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PokerHandTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PokerLateEntryTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PokerMapTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PokerMoveRotationTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PokerPlayerTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:PokerPlayerTest.kt:import org.mockito.Mockito.*</ID>
+    <ID>WildcardImport:PokerSidePotDistributionTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:RankTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:RoleTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:SuitTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:UserDataTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:UserEntityTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:UserOAuthIdentityEntityTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:UserRepositoryIntegrationTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:UserSessionWebSocketHandler.kt:import com.opencasino.server.config.*</ID>
+    <ID>WildcardImport:UtilsTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+    <ID>WildcardImport:WebSocketSessionServiceReattachTest.kt:import org.junit.jupiter.api.Assertions.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

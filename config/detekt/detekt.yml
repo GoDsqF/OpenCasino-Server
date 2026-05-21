@@ -1,0 +1,42 @@
+# detekt configuration for openCasino_server (MR-10).
+#
+# Strategy: `buildUponDefaultConfig = true` inherits the full default ruleset.
+# This file overrides only the handful of rules that don't fit a Spring Boot
+# WebFlux + Kotlin coroutines codebase well — everything else stays at the
+# upstream defaults so future detekt upgrades pick up new rules automatically.
+#
+# Existing violations are pinned in config/detekt/baseline.xml; new code is
+# held to the full ruleset.
+
+complexity:
+  # Spring controllers / WS handlers naturally take many constructor deps.
+  # Default = 7 is too tight.
+  LongParameterList:
+    allowedFunctionParameters: 8
+    allowedConstructorParameters: 12
+  # Game-room state machines have long when-branches; default = 60 is tight.
+  LongMethod:
+    allowedLines: 80
+  TooManyFunctions:
+    allowedFunctionsPerClass: 20
+    allowedFunctionsPerInterface: 15
+    allowedFunctionsPerObject: 15
+
+style:
+  # Magic numbers are pervasive in card game logic (21, 52, ranks). Suppress
+  # at call-site is fine but blanket-flagging would mean hundreds of pins.
+  MagicNumber:
+    active: false
+  # Reactor / Kotlin coroutines exception types extend RuntimeException;
+  # rethrowing is normal in WebFlux pipelines.
+  ReturnCount:
+    max: 5
+
+naming:
+  # Top-level vals in MessageTypes.kt are intentionally not enum-wrapped to
+  # stay back-compat with the wire protocol (numeric codes).
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][_A-Z0-9]*'
+  # Test method names with backticks are conventional in JUnit5/Kotlin.
+  FunctionNaming:
+    excludes: ['**/test/**', '**/*Test.kt', '**/*IntegrationTest.kt']
