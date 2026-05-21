@@ -1,13 +1,5 @@
 databaseChangeLog:
   - include:
-      file: db/changelog/changes/001-baseline-players.sql
+      file: db/changelog/changes/001-baseline.sql
   - include:
-      file: db/changelog/changes/002-users-and-oauth-identities.sql
-  - include:
-      file: db/changelog/changes/003-merge-players-into-users.sql
-  - include:
-      file: db/changelog/changes/004-email-verified-default-true.sql
-  - include:
-      file: db/changelog/changes/005-refresh-tokens.sql
-  - include:
-      file: db/changelog/changes/006-balance-ledger.sql
+      file: db/changelog/changes/999-temp-default-balance-50000.sql
