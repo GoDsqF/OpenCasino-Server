@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.core.convert.converter.Converter
 import org.springframework.security.authentication.AbstractAuthenticationToken
-import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.core.OAuth2TokenValidator
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.JwtClaimNames
@@ -35,10 +34,8 @@ class JwtAuthenticationConfiguration {
             setAuthorityPrefix("ROLE_")
         }
         return Converter { jwt ->
-            val authorities = authoritiesConverter.convert(jwt)
-                ?.map { SimpleGrantedAuthority(it.authority) }
-                ?: emptyList()
-            Mono.just(JwtAuthenticationToken(jwt, authorities, jwt.subject))
+            val authorities = authoritiesConverter.convert(jwt) ?: emptyList()
+            Mono.just(JwtAuthenticationToken(jwt, authorities, jwt.subject!!))
         }
     }
 

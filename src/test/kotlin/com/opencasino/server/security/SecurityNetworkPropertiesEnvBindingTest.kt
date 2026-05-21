@@ -41,7 +41,7 @@ class SecurityNetworkPropertiesEnvBindingTest {
         )
 
         val bound = Binder.get(env).bind("app.security", SecurityNetworkProperties::class.java)
-            .orElse(SecurityNetworkProperties())
+            .orElse(SecurityNetworkProperties())!!
         assertEquals(emptyList<String>(), bound.trustedProxies)
     }
 

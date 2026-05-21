@@ -22,7 +22,7 @@ class AuthService(
     private val auditLogger: SecurityAuditLogger,
 ) {
 
-    private val dummyHash: String by lazy { passwordEncoder.encode("never-matches-anything") }
+    private val dummyHash: String by lazy { passwordEncoder.encode("never-matches-anything")!! }
 
     fun register(request: RegisterRequest, context: ClientContext = ClientContext.EMPTY): Mono<RegisterResponse> {
         val email = normalizeEmail(request.email)
@@ -59,7 +59,7 @@ class AuthService(
             .doOnError(AuthException::class.java) { ex -> auditLogger.registerFailure(email, ex.failure, context.ip) }
     }
 
-    private fun <T> failWith(code: AuthFailureCode, audit: () -> Unit): Mono<T> {
+    private fun <T : Any> failWith(code: AuthFailureCode, audit: () -> Unit): Mono<T> {
         audit()
         return Mono.error(AuthException(code))
     }
