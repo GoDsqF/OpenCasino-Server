@@ -26,10 +26,17 @@ repositories {
     mavenCentral()
 }
 
+// Spring Boot 4 / reactor-netty 4.2 pulls HTTP/3 QUIC native libs for five
+// OS/arch combos (~12 MB total). The server speaks WebSocket over TCP and has
+// no QUIC code path, so the binaries are dead weight in the fat jar / image.
+configurations.all {
+    exclude(group = "io.netty", module = "netty-codec-native-quic")
+    exclude(group = "io.netty", module = "netty-codec-classes-quic")
+}
+
 dependencies {
     implementation("com.google.code.gson:gson:2.14.0")
     implementation("org.apache.commons:commons-lang3:3.20.0")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.21.3")
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions:1.3.0")
     implementation("org.jetbrains.kotlin:kotlin-reflect:2.3.21")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.11.0")
@@ -47,7 +54,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test:4.0.6")
     testImplementation("org.springframework.boot:spring-boot-webtestclient:4.0.6")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:2.3.21")
-    runtimeOnly("io.r2dbc:r2dbc-h2:1.1.0.RELEASE")
+    testRuntimeOnly("io.r2dbc:r2dbc-h2:1.1.0.RELEASE")
     testRuntimeOnly("com.h2database:h2:2.4.240")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.0.3")
     implementation("org.springframework.boot:spring-boot-starter-security:4.0.6")
