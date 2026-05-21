@@ -13,9 +13,9 @@ import com.opencasino.server.user.BalanceLedgerService
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.springframework.web.reactive.socket.HandshakeInfo
 import reactor.test.scheduler.VirtualTimeScheduler
@@ -99,15 +99,19 @@ class PokerLateEntryTest {
     }
 
     @Test
-    fun `double buy-in is rejected`() {
+    fun `double buy-in is idempotent`() {
         val room = newRoom()
         val (s1, p1) = seatInitial(room, 1L)
         room.onBuyIn(s1, BetEvent(pokerProps.buyIn.toDouble()))
         val stackAfterFirst = p1.stack
+        val balanceAfterFirst = p1.balance
+        assertTrue(p1.boughtIn)
 
         room.onBuyIn(s1, BetEvent(pokerProps.buyIn.toDouble()))
 
         assertEquals(stackAfterFirst, p1.stack)
-        verify(webSocketSessionService).sendBetFailure(eq(s1), any(), any(), anyOrNull())
+        assertEquals(balanceAfterFirst, p1.balance)
+        assertTrue(p1.boughtIn)
+        verify(webSocketSessionService, never()).sendBetFailure(eq(s1), any(), any(), any())
     }
 }
