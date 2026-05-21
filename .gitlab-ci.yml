@@ -66,6 +66,7 @@ variables:
   paths:
     - .gradle/caches
     - .gradle/wrapper
+    - .gradle/configuration-cache
 
 # Base for any job that runs Gradle. JDK 21 is mandatory (toolchain in
 # build.gradle.kts: JavaLanguageVersion.of(21)).
