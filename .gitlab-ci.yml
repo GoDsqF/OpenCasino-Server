@@ -447,10 +447,9 @@ sync-docs:
       echo "MessageType block changed; committing to docs main."
       git diff -- "$DOCS_TYPES_PATH"
       git add "$DOCS_TYPES_PATH"
-      git commit -m "api(types): sync MessageType enum from server@${CI_COMMIT_SHORT_SHA}
-
-Auto-generated from openCasino_server/src/main/kotlin/com/opencasino/server/config/MessageTypes.kt
-Triggered by ${CI_PROJECT_URL}/-/commit/${CI_COMMIT_SHA}"
+      git commit -m "api(types): sync MessageType enum from server@${CI_COMMIT_SHORT_SHA} \
+      Auto-generated from openCasino_server/src/main/kotlin/com/opencasino/server/config/MessageTypes.kt \
+      Triggered by ${CI_PROJECT_URL}/-/commit/${CI_COMMIT_SHA}"
       git push origin HEAD:main
 
 # -----------------------------------------------------------------------------
