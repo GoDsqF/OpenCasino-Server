@@ -205,10 +205,12 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
         // Cancel any earlier pending for the same user (rapid reconnect-then-disconnect).
         pendingDisconnects.remove(userId)?.task?.dispose()
 
-        val task = schedulerService.schedule(
-            { expireDisconnect(playerSession, userId) },
-            disconnectGraceMs, TimeUnit.MILLISECONDS,
-        )
+        val task =
+            schedulerService.schedule(
+                { expireDisconnect(playerSession, userId) },
+                disconnectGraceMs,
+                TimeUnit.MILLISECONDS,
+            )
         pendingDisconnects[userId] = PendingDisconnect(playerSession, task)
         try {
             room.onGraceStart(playerSession)
@@ -217,7 +219,10 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
         }
     }
 
-    private fun expireDisconnect(oldSession: PlayerSession, userId: UUID) {
+    private fun expireDisconnect(
+        oldSession: PlayerSession,
+        userId: UUID,
+    ) {
         val pending = pendingDisconnects[userId] ?: return
         if (pending.oldSession.id != oldSession.id) return
         pendingDisconnects.remove(userId)
@@ -227,32 +232,43 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
         lookupRoom(service, roomKey)?.onDisconnect(oldSession)
     }
 
-    private fun lookupRoom(service: String, roomKey: UUID): GameRoom? = when (service) {
-        "Blackjack" -> blackjackRoomService.getRoomByKey(roomKey).orElse(null)
-        "Poker" -> pokerRoomService.getRoomByKey(roomKey).orElse(null)
-        else -> null
-    }
+    private fun lookupRoom(
+        service: String,
+        roomKey: UUID,
+    ): GameRoom? =
+        when (service) {
+            "Blackjack" -> blackjackRoomService.getRoomByKey(roomKey).orElse(null)
+            "Poker" -> pokerRoomService.getRoomByKey(roomKey).orElse(null)
+            else -> null
+        }
 
-    private fun roomServiceFor(service: String): RoomService? = when (service) {
-        "Blackjack" -> blackjackRoomService
-        "Poker" -> pokerRoomService
-        else -> null
-    }
+    private fun roomServiceFor(service: String): RoomService? =
+        when (service) {
+            "Blackjack" -> blackjackRoomService
+            "Poker" -> pokerRoomService
+            else -> null
+        }
 
     @Autowired
     @Qualifier("blackjackRoomServiceImpl")
-    fun setBlackjackGameRoomManagementService(@Lazy roomService: RoomService) {
+    fun setBlackjackGameRoomManagementService(
+        @Lazy roomService: RoomService,
+    ) {
         this.blackjackRoomService = roomService
     }
 
     @Autowired
     @Qualifier("pokerRoomServiceImpl")
-    fun setPokerGameRoomManagementService( @Lazy roomService: RoomService) {
+    fun setPokerGameRoomManagementService(
+        @Lazy roomService: RoomService,
+    ) {
         this.pokerRoomService = roomService
     }
 
     @Autowired
-    fun setScheduler(@Lazy scheduler: Scheduler) {
+    fun setScheduler(
+        @Lazy scheduler: Scheduler,
+    ) {
         this.schedulerService = scheduler
     }
 }

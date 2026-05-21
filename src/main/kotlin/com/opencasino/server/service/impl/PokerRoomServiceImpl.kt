@@ -152,22 +152,31 @@ class PokerRoomServiceImpl(
     }
 
     private fun createRoom(gameMap: PokerMap): PokerGameRoom {
-        val room = PokerGameRoom(gameMap, UUID.randomUUID(), this, webSocketSessionService,
-            schedulerService, applicationProperties.game,
-            applicationProperties.pokerRoom,
-            ledgerService
-        )
+        val room =
+            PokerGameRoom(
+                gameMap,
+                UUID.randomUUID(),
+                this,
+                webSocketSessionService,
+                schedulerService,
+                applicationProperties.game,
+                applicationProperties.pokerRoom,
+                ledgerService,
+            )
         gameRoomMap[room.key()] = room
         return room
     }
 
-    private fun joinRoom(userSession: PlayerSession, initialData: GameRoomJoinEvent) {
+    private fun joinRoom(
+        userSession: PlayerSession,
+        initialData: GameRoomJoinEvent,
+    ) {
         val room = getRoomByKey(UUID.fromString(initialData.reconnectKey)).get() as PokerGameRoom
         if (room.currentPlayersCount() >= applicationProperties.pokerRoom.maxPlayers) {
             webSocketSessionService.sendJoinFailure(
                 userSession,
                 FailureCode.INVALID_DECISION,
-                "Room is full"
+                "Room is full",
             )
             return
         }
@@ -179,25 +188,40 @@ class PokerRoomServiceImpl(
         userSession.serviceId = "Poker"
 
         val userId = userSession.userId
-        val balance = if (userId == null) Mono.just(0.00)
-        else userRepository.findById(userId).map { it.balance }.defaultIfEmpty(0.00)
+        val balance =
+            if (userId == null) {
+                Mono.just(0.00)
+            } else {
+                userRepository.findById(userId).map { it.balance }.defaultIfEmpty(0.00)
+            }
         balance
             .doOnNext { player.balance = it }
             .doOnSuccess { room.addLatePlayer(userSession) }
             .subscribe()
     }
 
-    private fun loadBalanceAndLaunch(ps: PlayerSession, player: PokerPlayer, room: PokerGameRoom) {
+    private fun loadBalanceAndLaunch(
+        ps: PlayerSession,
+        player: PokerPlayer,
+        room: PokerGameRoom,
+    ) {
         val userId = ps.userId
-        val balance = if (userId == null) Mono.just(0.00)
-        else userRepository.findById(userId).map { it.balance }.defaultIfEmpty(0.00)
+        val balance =
+            if (userId == null) {
+                Mono.just(0.00)
+            } else {
+                userRepository.findById(userId).map { it.balance }.defaultIfEmpty(0.00)
+            }
         balance
             .doOnNext { player.balance = it }
             .doOnSuccess { tryLaunchWaitingRoom(room) }
             .subscribe()
     }
 
-    fun updateSettings(userSession: PlayerSession, event: GameSettingsUpdateEvent) {
+    fun updateSettings(
+        userSession: PlayerSession,
+        event: GameSettingsUpdateEvent,
+    ) {
         val room = getRoomByKey(userSession.roomKey).get() as PokerGameRoom
         room.betType = event.betType?.let { PokerBetType.valueOf(it) }!!
         room.minLimit = event.minLimit
@@ -205,7 +229,10 @@ class PokerRoomServiceImpl(
         room.bet = event.bet
     }
 
-    fun launchRoom(room: GameRoom, userSessions: List<PlayerSession>) {
+    fun launchRoom(
+        room: GameRoom,
+        userSessions: List<PlayerSession>,
+    ) {
         room.onRoomCreated(userSessions)
         room.onRoomStarted()
         room.onGameStarted()
@@ -224,7 +251,9 @@ class PokerRoomServiceImpl(
     }
 
     @Autowired
-    fun setGameManager(@Lazy webSocketSessionService: WebSocketSessionService) {
+    fun setGameManager(
+        @Lazy webSocketSessionService: WebSocketSessionService,
+    ) {
         this.webSocketSessionService = webSocketSessionService
     }
 }
