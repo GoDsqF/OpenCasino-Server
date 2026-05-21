@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class MessageTest {
-
     @Test
     fun `constructor with type only`() {
         val msg = Message(UPDATE)

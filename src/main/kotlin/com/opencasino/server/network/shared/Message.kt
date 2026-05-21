@@ -11,5 +11,5 @@ class Message {
         this.data = data
     }
 
-    override fun toString(): String = "Message [type=$type, serviceId=$serviceId, source=${data.toString()}]"
+    override fun toString(): String = "Message [type=$type, serviceId=$serviceId, source=$data]"
 }

@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class BlackjackConditionTest {
-
     @Test
     fun `six conditions exist`() {
         assertEquals(6, BlackjackCondition.entries.size)
@@ -12,14 +11,15 @@ class BlackjackConditionTest {
 
     @Test
     fun `all conditions are present`() {
-        val expected = setOf(
-            BlackjackCondition.PlayerWin,
-            BlackjackCondition.PlayerWinBlackjack,
-            BlackjackCondition.DealerBlackjack,
-            BlackjackCondition.DealerWin,
-            BlackjackCondition.Draw,
-            BlackjackCondition.None
-        )
+        val expected =
+            setOf(
+                BlackjackCondition.PlayerWin,
+                BlackjackCondition.PlayerWinBlackjack,
+                BlackjackCondition.DealerBlackjack,
+                BlackjackCondition.DealerWin,
+                BlackjackCondition.Draw,
+                BlackjackCondition.None,
+            )
         assertEquals(expected, BlackjackCondition.entries.toSet())
     }
 

@@ -7,7 +7,6 @@ import org.springframework.web.reactive.socket.HandshakeInfo
 import java.util.*
 
 class PlayerSessionTest {
-
     private val mockHandshake = mock(HandshakeInfo::class.java)
 
     @Test

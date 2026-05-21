@@ -29,7 +29,6 @@ data class PokerDistribution(
 )
 
 object PokerSidePotDistribution {
-
     fun distribute(contestants: List<PokerContestant>): PokerDistribution {
         if (contestants.isEmpty()) {
             return PokerDistribution(emptyMap(), emptyList())
@@ -53,9 +52,10 @@ object PokerSidePotDistribution {
             val potAmount = layer * contributors.size
             contributors.forEach { id -> remaining[id] = (remaining[id] ?: 0.0) - layer }
 
-            val eligibleContestants = contributors
-                .mapNotNull { id -> contestants.firstOrNull { it.id == id } }
-                .filter { it.hand != null }
+            val eligibleContestants =
+                contributors
+                    .mapNotNull { id -> contestants.firstOrNull { it.id == id } }
+                    .filter { it.hand != null }
 
             if (eligibleContestants.isEmpty()) {
                 // Everyone in this layer folded — bonus to next layer; merge by adding to
@@ -66,7 +66,7 @@ object PokerSidePotDistribution {
                         amount = potAmount,
                         eligibleIds = contributors,
                         winnerIds = emptyList(),
-                    )
+                    ),
                 )
                 continue
             }
@@ -89,7 +89,7 @@ object PokerSidePotDistribution {
                     amount = potAmount,
                     eligibleIds = contributors,
                     winnerIds = winners,
-                )
+                ),
             )
         }
 
@@ -97,5 +97,6 @@ object PokerSidePotDistribution {
     }
 
     private fun floorTo2dp(value: Double): Double = kotlin.math.floor(value * 100.0) / 100.0
+
     private fun round2dp(value: Double): Double = kotlin.math.round(value * 100.0) / 100.0
 }

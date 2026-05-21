@@ -6,5 +6,5 @@ enum class BlackjackCondition {
     DealerBlackjack,
     DealerWin,
     Draw,
-    None
+    None,
 }

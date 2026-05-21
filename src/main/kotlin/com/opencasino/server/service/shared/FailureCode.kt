@@ -10,5 +10,5 @@ enum class FailureCode {
     INSUFFICIENT_FUNDS,
     NOT_YOUR_TURN,
     GAME_ALREADY_STARTED,
-    INTERNAL
+    INTERNAL,
 }

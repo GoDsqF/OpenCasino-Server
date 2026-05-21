@@ -14,7 +14,6 @@ class OAuth2LoginFailureHandler(
     private val auditLogger: SecurityAuditLogger,
     private val clientIpResolver: ClientIpResolver,
 ) : ServerAuthenticationFailureHandler {
-
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun onAuthenticationFailure(
@@ -28,11 +27,12 @@ class OAuth2LoginFailureHandler(
             code = AuthFailureCode.OAUTH_PROVIDER_ERROR,
             ip = clientIpResolver.resolve(webFilterExchange.exchange),
         )
-        val target = authProperties.oauth2.failureRedirect?.takeIf { it.isNotBlank() }
-            ?: authProperties.oauth2.successRedirect.takeIf { it.isNotBlank() }
-            ?: return Mono.fromRunnable {
-                webFilterExchange.exchange.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR
-            }
+        val target =
+            authProperties.oauth2.failureRedirect?.takeIf { it.isNotBlank() }
+                ?: authProperties.oauth2.successRedirect.takeIf { it.isNotBlank() }
+                ?: return Mono.fromRunnable {
+                    webFilterExchange.exchange.response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR
+                }
         return OAuth2RedirectWriter.errorRedirect(
             webFilterExchange.exchange,
             target,

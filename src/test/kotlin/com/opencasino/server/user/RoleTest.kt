@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class RoleTest {
-
     @Test
     fun `enum exposes USER and ADMIN`() {
         assertEquals(setOf("USER", "ADMIN"), Role.entries.map { it.name }.toSet())

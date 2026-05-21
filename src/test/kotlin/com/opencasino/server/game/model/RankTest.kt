@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class RankTest {
-
     @Test
     fun `forCode returns correct rank for valid codes`() {
         assertEquals(Rank.C2, Rank.forCode("2"))

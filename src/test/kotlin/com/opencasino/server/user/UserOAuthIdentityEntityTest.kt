@@ -5,15 +5,15 @@ import org.junit.jupiter.api.Test
 import java.util.UUID
 
 class UserOAuthIdentityEntityTest {
-
     @Test
     fun `fields are preserved`() {
         val userId = UUID.randomUUID()
-        val identity = UserOAuthIdentity(
-            userId = userId,
-            provider = "google",
-            subject = "1234567890",
-        )
+        val identity =
+            UserOAuthIdentity(
+                userId = userId,
+                provider = "google",
+                subject = "1234567890",
+            )
         assertEquals(userId, identity.userId)
         assertEquals("google", identity.provider)
         assertEquals("1234567890", identity.subject)

@@ -27,20 +27,31 @@ class AuthController(
     private val userRepository: UserRepository,
     private val clientIpResolver: ClientIpResolver,
 ) {
-
     @PostMapping("/register")
-    fun register(@RequestBody request: RegisterRequest, exchange: ServerWebExchange): Mono<ResponseEntity<Any>> =
-        authService.register(request, ClientContext.from(exchange, clientIpResolver))
+    fun register(
+        @RequestBody request: RegisterRequest,
+        exchange: ServerWebExchange,
+    ): Mono<ResponseEntity<Any>> =
+        authService
+            .register(request, ClientContext.from(exchange, clientIpResolver))
             .map { body -> ResponseEntity.status(HttpStatus.CREATED).body(body as Any) }
 
     @PostMapping("/login")
-    fun login(@RequestBody request: LoginRequest, exchange: ServerWebExchange): Mono<ResponseEntity<Any>> =
-        authService.login(request, ClientContext.from(exchange, clientIpResolver))
+    fun login(
+        @RequestBody request: LoginRequest,
+        exchange: ServerWebExchange,
+    ): Mono<ResponseEntity<Any>> =
+        authService
+            .login(request, ClientContext.from(exchange, clientIpResolver))
             .map { body -> ResponseEntity.ok(body as Any) }
 
     @PostMapping("/refresh")
-    fun refresh(@RequestBody request: RefreshRequest, exchange: ServerWebExchange): Mono<ResponseEntity<Any>> =
-        authService.refresh(request, ClientContext.from(exchange, clientIpResolver))
+    fun refresh(
+        @RequestBody request: RefreshRequest,
+        exchange: ServerWebExchange,
+    ): Mono<ResponseEntity<Any>> =
+        authService
+            .refresh(request, ClientContext.from(exchange, clientIpResolver))
             .map { body -> ResponseEntity.ok(body as Any) }
 
     @PostMapping("/logout")
@@ -55,7 +66,9 @@ class AuthController(
     }
 
     @GetMapping("/sessions")
-    fun sessions(@AuthenticationPrincipal jwt: Jwt): Flux<SessionView> {
+    fun sessions(
+        @AuthenticationPrincipal jwt: Jwt,
+    ): Flux<SessionView> {
         val userId = UUID.fromString(jwt.subject)
         return authService.listSessions(userId)
     }
@@ -68,15 +81,21 @@ class AuthController(
     ): Mono<ResponseEntity<Void>> {
         val userId = UUID.fromString(jwt.subject)
         val context = ClientContext.from(exchange, clientIpResolver)
-        return authService.revokeSession(userId, id, context)
+        return authService
+            .revokeSession(userId, id, context)
             .map { revoked ->
-                if (revoked) ResponseEntity.noContent().build<Void>()
-                else ResponseEntity.notFound().build()
+                if (revoked) {
+                    ResponseEntity.noContent().build<Void>()
+                } else {
+                    ResponseEntity.notFound().build()
+                }
             }
     }
 
     @GetMapping("/me")
-    fun me(@AuthenticationPrincipal jwt: Jwt): Mono<MeResponse> {
+    fun me(
+        @AuthenticationPrincipal jwt: Jwt,
+    ): Mono<MeResponse> {
         @Suppress("UNCHECKED_CAST")
         val roles = (jwt.claims[JwtIssuer.CLAIM_ROLES] as? List<String>) ?: emptyList()
         val userId = UUID.fromString(jwt.subject)
@@ -93,22 +112,25 @@ class AuthController(
 
     @ExceptionHandler(AuthException::class)
     fun handleAuthFailure(ex: AuthException): ResponseEntity<AuthFailureBody> {
-        val status = when (ex.failure) {
-            AuthFailureCode.INVALID_EMAIL,
-            AuthFailureCode.WEAK_PASSWORD,
-            AuthFailureCode.INVALID_DISPLAY_NAME,
-            AuthFailureCode.MALFORMED_REQUEST -> HttpStatus.BAD_REQUEST
-            AuthFailureCode.EMAIL_TAKEN -> HttpStatus.CONFLICT
-            AuthFailureCode.INVALID_CREDENTIALS,
-            AuthFailureCode.OAUTH_EMAIL_UNVERIFIED,
-            AuthFailureCode.REFRESH_INVALID,
-            AuthFailureCode.REFRESH_EXPIRED,
-            AuthFailureCode.REFRESH_REVOKED,
-            AuthFailureCode.REFRESH_REPLAY_DETECTED -> HttpStatus.UNAUTHORIZED
-            AuthFailureCode.OAUTH_PROVIDER_ERROR -> HttpStatus.BAD_GATEWAY
-        }
+        val status =
+            when (ex.failure) {
+                AuthFailureCode.INVALID_EMAIL,
+                AuthFailureCode.WEAK_PASSWORD,
+                AuthFailureCode.INVALID_DISPLAY_NAME,
+                AuthFailureCode.MALFORMED_REQUEST,
+                -> HttpStatus.BAD_REQUEST
+                AuthFailureCode.EMAIL_TAKEN -> HttpStatus.CONFLICT
+                AuthFailureCode.INVALID_CREDENTIALS,
+                AuthFailureCode.OAUTH_EMAIL_UNVERIFIED,
+                AuthFailureCode.REFRESH_INVALID,
+                AuthFailureCode.REFRESH_EXPIRED,
+                AuthFailureCode.REFRESH_REVOKED,
+                AuthFailureCode.REFRESH_REPLAY_DETECTED,
+                -> HttpStatus.UNAUTHORIZED
+                AuthFailureCode.OAUTH_PROVIDER_ERROR -> HttpStatus.BAD_GATEWAY
+            }
         return ResponseEntity.status(status).body(
-            AuthFailureBody(code = ex.failure.name, message = messageFor(ex.failure))
+            AuthFailureBody(code = ex.failure.name, message = messageFor(ex.failure)),
         )
     }
 
@@ -118,26 +140,27 @@ class AuthController(
             AuthFailureBody(
                 code = AuthFailureCode.MALFORMED_REQUEST.name,
                 message = "Request body could not be parsed.",
-            )
+            ),
         )
 
-    private fun messageFor(code: AuthFailureCode): String = when (code) {
-        AuthFailureCode.INVALID_EMAIL -> "Email is missing or not a valid address."
-        AuthFailureCode.WEAK_PASSWORD ->
-            "Password must be at least ${AuthService.MIN_PASSWORD_LENGTH} characters."
-        AuthFailureCode.INVALID_DISPLAY_NAME ->
-            "Display name must be ${AuthService.MIN_DISPLAY_NAME_LENGTH}–${AuthService.MAX_DISPLAY_NAME_LENGTH}" +
-                " characters of [A-Za-z0-9_-] and not contain reserved substrings."
-        AuthFailureCode.MALFORMED_REQUEST -> "Request body could not be parsed."
-        AuthFailureCode.EMAIL_TAKEN -> "An account with this email already exists."
-        AuthFailureCode.INVALID_CREDENTIALS -> "Email or password is incorrect."
-        AuthFailureCode.OAUTH_EMAIL_UNVERIFIED ->
-            "OAuth provider did not return a verified email."
-        AuthFailureCode.OAUTH_PROVIDER_ERROR -> "OAuth provider exchange failed."
-        AuthFailureCode.REFRESH_INVALID -> "Refresh token is missing or unknown."
-        AuthFailureCode.REFRESH_EXPIRED -> "Refresh token has expired."
-        AuthFailureCode.REFRESH_REVOKED -> "Refresh token has been revoked."
-        AuthFailureCode.REFRESH_REPLAY_DETECTED ->
-            "Refresh token reuse detected; all sessions for this account have been revoked."
-    }
+    private fun messageFor(code: AuthFailureCode): String =
+        when (code) {
+            AuthFailureCode.INVALID_EMAIL -> "Email is missing or not a valid address."
+            AuthFailureCode.WEAK_PASSWORD ->
+                "Password must be at least ${AuthService.MIN_PASSWORD_LENGTH} characters."
+            AuthFailureCode.INVALID_DISPLAY_NAME ->
+                "Display name must be ${AuthService.MIN_DISPLAY_NAME_LENGTH}–${AuthService.MAX_DISPLAY_NAME_LENGTH}" +
+                    " characters of [A-Za-z0-9_-] and not contain reserved substrings."
+            AuthFailureCode.MALFORMED_REQUEST -> "Request body could not be parsed."
+            AuthFailureCode.EMAIL_TAKEN -> "An account with this email already exists."
+            AuthFailureCode.INVALID_CREDENTIALS -> "Email or password is incorrect."
+            AuthFailureCode.OAUTH_EMAIL_UNVERIFIED ->
+                "OAuth provider did not return a verified email."
+            AuthFailureCode.OAUTH_PROVIDER_ERROR -> "OAuth provider exchange failed."
+            AuthFailureCode.REFRESH_INVALID -> "Refresh token is missing or unknown."
+            AuthFailureCode.REFRESH_EXPIRED -> "Refresh token has expired."
+            AuthFailureCode.REFRESH_REVOKED -> "Refresh token has been revoked."
+            AuthFailureCode.REFRESH_REPLAY_DETECTED ->
+                "Refresh token reuse detected; all sessions for this account have been revoked."
+        }
 }

@@ -14,13 +14,22 @@ import org.junit.jupiter.api.Test
  * чтобы валидировать саму математику.
  */
 class BlackjackScoreCalculationTest {
-
-    private val combiner: Map<Rank, Int> = mapOf(
-        Rank.C2 to 2, Rank.C3 to 3, Rank.C4 to 4, Rank.C5 to 5,
-        Rank.C6 to 6, Rank.C7 to 7, Rank.C8 to 8, Rank.C9 to 9,
-        Rank.C10 to 10, Rank.CJ to 10, Rank.CQ to 10, Rank.CK to 10,
-        Rank.CA to 11
-    )
+    private val combiner: Map<Rank, Int> =
+        mapOf(
+            Rank.C2 to 2,
+            Rank.C3 to 3,
+            Rank.C4 to 4,
+            Rank.C5 to 5,
+            Rank.C6 to 6,
+            Rank.C7 to 7,
+            Rank.C8 to 8,
+            Rank.C9 to 9,
+            Rank.C10 to 10,
+            Rank.CJ to 10,
+            Rank.CQ to 10,
+            Rank.CK to 10,
+            Rank.CA to 11,
+        )
 
     private fun calculateScore(hand: CardDeck): Int {
         val cards = hand.getCards()
@@ -45,7 +54,6 @@ class BlackjackScoreCalculationTest {
 
     @Nested
     inner class BasicScoring {
-
         @Test
         fun `two number cards sum correctly`() {
             val hand = deckOf(Rank.C5 to Suit.HEARTS, Rank.C7 to Suit.SPADES)
@@ -72,20 +80,24 @@ class BlackjackScoreCalculationTest {
 
         @Test
         fun `three cards sum correctly`() {
-            val hand = deckOf(
-                Rank.C3 to Suit.HEARTS,
-                Rank.C4 to Suit.SPADES,
-                Rank.C5 to Suit.DIAMONDS
-            )
+            val hand =
+                deckOf(
+                    Rank.C3 to Suit.HEARTS,
+                    Rank.C4 to Suit.SPADES,
+                    Rank.C5 to Suit.DIAMONDS,
+                )
             assertEquals(12, calculateScore(hand))
         }
 
         @Test
         fun `all twos sum to 8`() {
-            val hand = deckOf(
-                Rank.C2 to Suit.HEARTS, Rank.C2 to Suit.SPADES,
-                Rank.C2 to Suit.DIAMONDS, Rank.C2 to Suit.CLUBS
-            )
+            val hand =
+                deckOf(
+                    Rank.C2 to Suit.HEARTS,
+                    Rank.C2 to Suit.SPADES,
+                    Rank.C2 to Suit.DIAMONDS,
+                    Rank.C2 to Suit.CLUBS,
+                )
             assertEquals(8, calculateScore(hand))
         }
     }
@@ -96,7 +108,6 @@ class BlackjackScoreCalculationTest {
 
     @Nested
     inner class AceLogic {
-
         @Test
         fun `single ace counts as 11 when safe`() {
             val hand = deckOf(Rank.CA to Suit.HEARTS, Rank.C5 to Suit.SPADES)
@@ -117,11 +128,12 @@ class BlackjackScoreCalculationTest {
 
         @Test
         fun `ace demotes to 1 when would bust`() {
-            val hand = deckOf(
-                Rank.CA to Suit.HEARTS,
-                Rank.C8 to Suit.SPADES,
-                Rank.C7 to Suit.DIAMONDS
-            )
+            val hand =
+                deckOf(
+                    Rank.CA to Suit.HEARTS,
+                    Rank.C8 to Suit.SPADES,
+                    Rank.C7 to Suit.DIAMONDS,
+                )
             // 11+8+7=26 -> bust, ace becomes 1 -> 1+8+7=16
             assertEquals(16, calculateScore(hand))
         }
@@ -135,55 +147,62 @@ class BlackjackScoreCalculationTest {
 
         @Test
         fun `two aces plus 9 equals 21`() {
-            val hand = deckOf(
-                Rank.CA to Suit.HEARTS,
-                Rank.CA to Suit.SPADES,
-                Rank.C9 to Suit.DIAMONDS
-            )
+            val hand =
+                deckOf(
+                    Rank.CA to Suit.HEARTS,
+                    Rank.CA to Suit.SPADES,
+                    Rank.C9 to Suit.DIAMONDS,
+                )
             // 11+11+9=31 -> 1+11+9=21
             assertEquals(21, calculateScore(hand))
         }
 
         @Test
         fun `three aces equal 13`() {
-            val hand = deckOf(
-                Rank.CA to Suit.HEARTS,
-                Rank.CA to Suit.SPADES,
-                Rank.CA to Suit.DIAMONDS
-            )
+            val hand =
+                deckOf(
+                    Rank.CA to Suit.HEARTS,
+                    Rank.CA to Suit.SPADES,
+                    Rank.CA to Suit.DIAMONDS,
+                )
             // 11+11+11=33 -> 1+11+11=23 -> 1+1+11=13
             assertEquals(13, calculateScore(hand))
         }
 
         @Test
         fun `four aces equal 14`() {
-            val hand = deckOf(
-                Rank.CA to Suit.HEARTS, Rank.CA to Suit.SPADES,
-                Rank.CA to Suit.DIAMONDS, Rank.CA to Suit.CLUBS
-            )
+            val hand =
+                deckOf(
+                    Rank.CA to Suit.HEARTS,
+                    Rank.CA to Suit.SPADES,
+                    Rank.CA to Suit.DIAMONDS,
+                    Rank.CA to Suit.CLUBS,
+                )
             // 44 -> 34 -> 24 -> 14
             assertEquals(14, calculateScore(hand))
         }
 
         @Test
         fun `ace with high cards demotes correctly`() {
-            val hand = deckOf(
-                Rank.CA to Suit.HEARTS,
-                Rank.CK to Suit.SPADES,
-                Rank.CQ to Suit.DIAMONDS
-            )
+            val hand =
+                deckOf(
+                    Rank.CA to Suit.HEARTS,
+                    Rank.CK to Suit.SPADES,
+                    Rank.CQ to Suit.DIAMONDS,
+                )
             // 11+10+10=31 -> 1+10+10=21
             assertEquals(21, calculateScore(hand))
         }
 
         @Test
         fun `ace demotes and still busts when impossible`() {
-            val hand = deckOf(
-                Rank.CA to Suit.HEARTS,
-                Rank.CK to Suit.SPADES,
-                Rank.CQ to Suit.DIAMONDS,
-                Rank.C5 to Suit.CLUBS
-            )
+            val hand =
+                deckOf(
+                    Rank.CA to Suit.HEARTS,
+                    Rank.CK to Suit.SPADES,
+                    Rank.CQ to Suit.DIAMONDS,
+                    Rank.C5 to Suit.CLUBS,
+                )
             // 11+10+10+5=36 -> 1+10+10+5=26 (bust)
             assertEquals(26, calculateScore(hand))
         }
@@ -195,24 +214,25 @@ class BlackjackScoreCalculationTest {
 
     @Nested
     inner class EdgeCases {
-
         @Test
         fun `exact 21 without ace`() {
-            val hand = deckOf(
-                Rank.C7 to Suit.HEARTS,
-                Rank.C4 to Suit.SPADES,
-                Rank.CK to Suit.DIAMONDS
-            )
+            val hand =
+                deckOf(
+                    Rank.C7 to Suit.HEARTS,
+                    Rank.C4 to Suit.SPADES,
+                    Rank.CK to Suit.DIAMONDS,
+                )
             assertEquals(21, calculateScore(hand))
         }
 
         @Test
         fun `bust at 22`() {
-            val hand = deckOf(
-                Rank.CK to Suit.HEARTS,
-                Rank.CQ to Suit.SPADES,
-                Rank.C2 to Suit.DIAMONDS
-            )
+            val hand =
+                deckOf(
+                    Rank.CK to Suit.HEARTS,
+                    Rank.CQ to Suit.SPADES,
+                    Rank.C2 to Suit.DIAMONDS,
+                )
             assertEquals(22, calculateScore(hand))
         }
 
@@ -224,10 +244,13 @@ class BlackjackScoreCalculationTest {
 
         @Test
         fun `maximum face card hand`() {
-            val hand = deckOf(
-                Rank.CK to Suit.HEARTS, Rank.CK to Suit.SPADES,
-                Rank.CK to Suit.DIAMONDS, Rank.CK to Suit.CLUBS
-            )
+            val hand =
+                deckOf(
+                    Rank.CK to Suit.HEARTS,
+                    Rank.CK to Suit.SPADES,
+                    Rank.CK to Suit.DIAMONDS,
+                    Rank.CK to Suit.CLUBS,
+                )
             assertEquals(40, calculateScore(hand))
         }
 
@@ -245,11 +268,14 @@ class BlackjackScoreCalculationTest {
 
         @Test
         fun `five card charlie - 5 cards under 21`() {
-            val hand = deckOf(
-                Rank.C2 to Suit.HEARTS, Rank.C3 to Suit.SPADES,
-                Rank.C4 to Suit.DIAMONDS, Rank.C2 to Suit.CLUBS,
-                Rank.C3 to Suit.HEARTS
-            )
+            val hand =
+                deckOf(
+                    Rank.C2 to Suit.HEARTS,
+                    Rank.C3 to Suit.SPADES,
+                    Rank.C4 to Suit.DIAMONDS,
+                    Rank.C2 to Suit.CLUBS,
+                    Rank.C3 to Suit.HEARTS,
+                )
             assertEquals(14, calculateScore(hand))
         }
     }
@@ -260,7 +286,6 @@ class BlackjackScoreCalculationTest {
 
     @Nested
     inner class BlackjackConditions {
-
         @Test
         fun `natural blackjack is exactly 21 with 2 cards`() {
             val hand = deckOf(Rank.CA to Suit.HEARTS, Rank.CK to Suit.SPADES)
@@ -270,11 +295,12 @@ class BlackjackScoreCalculationTest {
 
         @Test
         fun `21 with 3 cards is not natural blackjack`() {
-            val hand = deckOf(
-                Rank.C7 to Suit.HEARTS,
-                Rank.C4 to Suit.SPADES,
-                Rank.CK to Suit.DIAMONDS
-            )
+            val hand =
+                deckOf(
+                    Rank.C7 to Suit.HEARTS,
+                    Rank.C4 to Suit.SPADES,
+                    Rank.CK to Suit.DIAMONDS,
+                )
             assertEquals(21, calculateScore(hand))
             assertNotEquals(2, hand.getCards().size)
         }

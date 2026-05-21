@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
 
 class PokerPlayerTest {
-
     private lateinit var player: PokerPlayer
     private val mockRoom = mock(PokerGameRoom::class.java)
     private val mockSession = mock(PlayerSession::class.java)
@@ -30,7 +29,6 @@ class PokerPlayerTest {
 
     @Nested
     inner class Initialization {
-
         @Test
         fun `initial state is correct`() {
             assertEquals(100.0, player.bet)
@@ -47,7 +45,6 @@ class PokerPlayerTest {
 
     @Nested
     inner class UpdateState {
-
         @Test
         fun `updateState sets decision and marks as made`() {
             player.updateState(PokerDecision.CHECK, null)
@@ -96,7 +93,6 @@ class PokerPlayerTest {
 
     @Nested
     inner class BetValidation {
-
         @Test
         fun `call with exact matching amount adds to currentBet`() {
             // lastMaxBet = 100, currentBet = 0, need to call 100
@@ -146,7 +142,6 @@ class PokerPlayerTest {
 
     @Nested
     inner class CommitBet {
-
         @Test
         fun `commitBet adds currentBet to pot and resets`() {
             var potValue = 0.0
@@ -164,7 +159,6 @@ class PokerPlayerTest {
 
     @Nested
     inner class PackGeneration {
-
         @Test
         fun `getInfoPack returns correct data`() {
             player.balance = 1500.0

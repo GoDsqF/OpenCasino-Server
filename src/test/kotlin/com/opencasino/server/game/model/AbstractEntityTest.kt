@@ -4,9 +4,10 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class AbstractEntityTest {
-
     // Конкретная реализация для тестирования
-    class TestEntity(id: Long) : AbstractEntity<Long>(id)
+    class TestEntity(
+        id: Long,
+    ) : AbstractEntity<Long>(id)
 
     @Test
     fun `entities with same id are equal`() {

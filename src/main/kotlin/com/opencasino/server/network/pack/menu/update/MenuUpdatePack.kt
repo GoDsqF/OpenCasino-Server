@@ -5,7 +5,7 @@ import com.opencasino.server.network.pack.Pack
 data class GameMetadata(
     val name: String,
     val activeRooms: Int,
-    val activePlayers: Int
+    val activePlayers: Int,
 )
 
 data class MenuUpdatePack(

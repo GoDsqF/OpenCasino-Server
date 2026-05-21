@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 
 class BlackjackMapTest {
-
     private lateinit var map: BlackjackMap
     private val mockRoom = mock(BlackjackGameRoom::class.java)
     private val mockSession = mock(PlayerSession::class.java)
@@ -19,9 +18,7 @@ class BlackjackMapTest {
         map = BlackjackMap()
     }
 
-    private fun createPlayer(id: Long = map.nextPlayerId()): BlackjackPlayer {
-        return BlackjackPlayer(id, mockRoom, mockSession)
-    }
+    private fun createPlayer(id: Long = map.nextPlayerId()): BlackjackPlayer = BlackjackPlayer(id, mockRoom, mockSession)
 
     @Test
     fun `initially has no players`() {

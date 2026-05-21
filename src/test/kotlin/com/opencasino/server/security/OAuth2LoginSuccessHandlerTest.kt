@@ -24,7 +24,6 @@ import java.time.Duration
 import java.time.Instant
 
 class OAuth2LoginSuccessHandlerTest {
-
     private lateinit var linking: OAuth2UserLinkingService
     private lateinit var jwtIssuer: JwtIssuer
     private lateinit var refreshTokenService: RefreshTokenService
@@ -43,12 +42,14 @@ class OAuth2LoginSuccessHandlerTest {
         whenever(refreshTokenService.issue(any(), anyOrNull(), anyOrNull())).thenAnswer {
             Mono.just(IssuedRefresh(plaintext = "refresh-plain", expiresAt = Instant.parse("2026-06-15T12:00:00Z")))
         }
-        props = AuthProperties(
-            oauth2 = OAuth2RedirectProperties(
-                successRedirect = "https://app.example.com/oauth2/redirect",
-                failureRedirect = "https://app.example.com/oauth2/error",
-            ),
-        )
+        props =
+            AuthProperties(
+                oauth2 =
+                    OAuth2RedirectProperties(
+                        successRedirect = "https://app.example.com/oauth2/redirect",
+                        failureRedirect = "https://app.example.com/oauth2/error",
+                    ),
+            )
         handler = OAuth2LoginSuccessHandler(linking, jwtIssuer, refreshTokenService, props, clientIpResolver, auditLogger)
     }
 
@@ -62,11 +63,14 @@ class OAuth2LoginSuccessHandlerTest {
         val exchange = exchangeWithSession()
         val auth = oauth2Token("alice@example.com", emailVerified = true, name = "Alice Smith")
 
-        StepVerifier.create(handler.onAuthenticationSuccess(WebFilterExchange(exchange, noopChain), auth))
+        StepVerifier
+            .create(handler.onAuthenticationSuccess(WebFilterExchange(exchange, noopChain), auth))
             .verifyComplete()
 
         assertEquals(HttpStatus.FOUND, exchange.response.statusCode)
-        val location = exchange.response.headers.location.toString()
+        val location =
+            exchange.response.headers.location
+                .toString()
         assertTrue(location.startsWith("https://app.example.com/oauth2/redirect"), "got $location")
         assertTrue(location.contains("token=jwt-access"), "got $location")
         assertTrue(location.contains("expiresAt="), "got $location")
@@ -82,11 +86,14 @@ class OAuth2LoginSuccessHandlerTest {
         val exchange = exchangeWithSession()
         val auth = oauth2Token("alice@example.com", emailVerified = false, name = "Alice")
 
-        StepVerifier.create(handler.onAuthenticationSuccess(WebFilterExchange(exchange, noopChain), auth))
+        StepVerifier
+            .create(handler.onAuthenticationSuccess(WebFilterExchange(exchange, noopChain), auth))
             .verifyComplete()
 
         assertEquals(HttpStatus.FOUND, exchange.response.statusCode)
-        val location = exchange.response.headers.location.toString()
+        val location =
+            exchange.response.headers.location
+                .toString()
         assertTrue(location.startsWith("https://app.example.com/oauth2/error"), "got $location")
         assertTrue(location.contains("error=OAUTH_EMAIL_UNVERIFIED"), "got $location")
     }
@@ -98,32 +105,41 @@ class OAuth2LoginSuccessHandlerTest {
         val exchange = exchangeWithSession()
         val auth = oauth2Token("alice@example.com", emailVerified = true, name = "Alice")
 
-        StepVerifier.create(handler.onAuthenticationSuccess(WebFilterExchange(exchange, noopChain), auth))
+        StepVerifier
+            .create(handler.onAuthenticationSuccess(WebFilterExchange(exchange, noopChain), auth))
             .verifyComplete()
 
-        val location = exchange.response.headers.location.toString()
+        val location =
+            exchange.response.headers.location
+                .toString()
         assertTrue(location.contains("error=OAUTH_PROVIDER_ERROR"), "got $location")
     }
 
     @Test
     fun `failure redirect falls back to success URI when failureRedirect is unset`() {
-        val noFailureProps = AuthProperties(
-            oauth2 = OAuth2RedirectProperties(
-                successRedirect = "https://app.example.com/oauth2/redirect",
-                failureRedirect = null,
-            ),
-        )
-        val handlerNoFallback = OAuth2LoginSuccessHandler(linking, jwtIssuer, refreshTokenService, noFailureProps, clientIpResolver, auditLogger)
+        val noFailureProps =
+            AuthProperties(
+                oauth2 =
+                    OAuth2RedirectProperties(
+                        successRedirect = "https://app.example.com/oauth2/redirect",
+                        failureRedirect = null,
+                    ),
+            )
+        val handlerNoFallback =
+            OAuth2LoginSuccessHandler(linking, jwtIssuer, refreshTokenService, noFailureProps, clientIpResolver, auditLogger)
         whenever(linking.linkOrCreate(any()))
             .thenReturn(Mono.error(AuthException(AuthFailureCode.OAUTH_EMAIL_UNVERIFIED)))
 
         val exchange = exchangeWithSession()
         val auth = oauth2Token("alice@example.com", emailVerified = false, name = "Alice")
 
-        StepVerifier.create(handlerNoFallback.onAuthenticationSuccess(WebFilterExchange(exchange, noopChain), auth))
+        StepVerifier
+            .create(handlerNoFallback.onAuthenticationSuccess(WebFilterExchange(exchange, noopChain), auth))
             .verifyComplete()
 
-        val location = exchange.response.headers.location.toString()
+        val location =
+            exchange.response.headers.location
+                .toString()
         assertTrue(location.startsWith("https://app.example.com/oauth2/redirect"), "got $location")
         assertTrue(location.contains("error=OAUTH_EMAIL_UNVERIFIED"), "got $location")
     }
@@ -133,19 +149,25 @@ class OAuth2LoginSuccessHandlerTest {
 
     private val noopChain = WebFilterChain { Mono.empty() }
 
-    private fun oauth2Token(email: String, emailVerified: Boolean, name: String): OAuth2AuthenticationToken {
-        val claims = mapOf<String, Any>(
-            "sub" to "google-sub-123",
-            "email" to email,
-            "email_verified" to emailVerified,
-            "name" to name,
-        )
-        val idToken = OidcIdToken(
-            "id-token-value",
-            Instant.now(),
-            Instant.now().plus(Duration.ofMinutes(5)),
-            claims,
-        )
+    private fun oauth2Token(
+        email: String,
+        emailVerified: Boolean,
+        name: String,
+    ): OAuth2AuthenticationToken {
+        val claims =
+            mapOf<String, Any>(
+                "sub" to "google-sub-123",
+                "email" to email,
+                "email_verified" to emailVerified,
+                "name" to name,
+            )
+        val idToken =
+            OidcIdToken(
+                "id-token-value",
+                Instant.now(),
+                Instant.now().plus(Duration.ofMinutes(5)),
+                claims,
+            )
         val authorities = listOf(SimpleGrantedAuthority("OIDC_USER"))
         return OAuth2AuthenticationToken(DefaultOidcUser(authorities, idToken), authorities, "google")
     }

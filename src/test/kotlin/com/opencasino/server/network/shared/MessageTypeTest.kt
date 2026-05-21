@@ -1,11 +1,10 @@
-package com.opencasino.server.network.shared;
+package com.opencasino.server.network.shared
 
 import com.opencasino.server.service.shared.MessageType
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class MessageTypeTest {
-
     @Test
     fun `SYSTEM has type 1`() {
         assertEquals(1, MessageType.SYSTEM.type)

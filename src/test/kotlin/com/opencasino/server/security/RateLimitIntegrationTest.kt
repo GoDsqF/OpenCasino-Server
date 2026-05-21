@@ -4,8 +4,8 @@ package com.opencasino.server.security
 
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
@@ -28,30 +28,36 @@ import org.springframework.test.web.reactive.server.WebTestClient
         "app.ratelimit.login.refill=3",
         "app.ratelimit.login.period=PT1M",
         "spring.test.webtestclient.timeout=30s",
-    ]
+    ],
 )
 @AutoConfigureWebTestClient
 @ActiveProfiles("security-on")
 class RateLimitIntegrationTest {
-
     @Autowired lateinit var webClient: WebTestClient
 
     @Test
     fun `login bucket returns 429 with Retry-After header after capacity is exhausted`() {
         val body = mapOf("email" to "noone@example.com", "password" to "irrelevant1")
         repeat(3) {
-            webClient.post().uri("/auth/login")
+            webClient
+                .post()
+                .uri("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(body)
                 .exchange()
-                .expectStatus().isUnauthorized
+                .expectStatus()
+                .isUnauthorized
         }
 
-        webClient.post().uri("/auth/login")
+        webClient
+            .post()
+            .uri("/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(body)
             .exchange()
-            .expectStatus().isEqualTo(429)
-            .expectHeader().exists(HttpHeaders.RETRY_AFTER)
+            .expectStatus()
+            .isEqualTo(429)
+            .expectHeader()
+            .exists(HttpHeaders.RETRY_AFTER)
     }
 }

@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class EventsTest {
-
     @Test
     fun `BetEvent stores bet amount`() {
         val event = BetEvent(50.0)

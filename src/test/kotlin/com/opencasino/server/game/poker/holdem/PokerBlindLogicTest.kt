@@ -9,14 +9,16 @@ import org.junit.jupiter.api.Test
  * воспроизводя алгоритмы из PokerGameRoom.
  */
 class PokerBlindLogicTest {
-
     data class PlayerStub(
         var stack: Double,
-        var position: Int
+        var position: Int,
     )
 
-    private fun takeBlind(player: PlayerStub, amount: Double): Double {
-        return if (player.stack >= amount) {
+    private fun takeBlind(
+        player: PlayerStub,
+        amount: Double,
+    ): Double =
+        if (player.stack >= amount) {
             player.stack -= amount
             amount
         } else {
@@ -24,11 +26,9 @@ class PokerBlindLogicTest {
             player.stack = 0.0
             contributed
         }
-    }
 
     @Nested
     inner class TakeBlind {
-
         @Test
         fun `takes full blind when stack is sufficient`() {
             val player = PlayerStub(stack = 1000.0, position = 0)
@@ -73,15 +73,14 @@ class PokerBlindLogicTest {
 
     @Nested
     inner class PotCalculation {
-
         @Test
         fun `pot collects both blinds`() {
             val p1 = PlayerStub(stack = 1000.0, position = 0)
             val p2 = PlayerStub(stack = 1000.0, position = 1)
             var pot = 0.0
 
-            pot += takeBlind(p1, 100.0)  // big blind
-            pot += takeBlind(p2, 50.0)   // small blind
+            pot += takeBlind(p1, 100.0) // big blind
+            pot += takeBlind(p2, 50.0) // small blind
 
             assertEquals(150.0, pot)
             assertEquals(900.0, p1.stack)
@@ -95,7 +94,7 @@ class PokerBlindLogicTest {
             var pot = 0.0
 
             pot += takeBlind(p1, 100.0)
-            pot += takeBlind(p2, 50.0)  // only 20 available
+            pot += takeBlind(p2, 50.0) // only 20 available
 
             assertEquals(120.0, pot)
             assertEquals(900.0, p1.stack)
@@ -119,7 +118,6 @@ class PokerBlindLogicTest {
 
     @Nested
     inner class BetTypeCalculation {
-
         @Test
         fun `fixed limit min and max are correct`() {
             val bet = 100.0

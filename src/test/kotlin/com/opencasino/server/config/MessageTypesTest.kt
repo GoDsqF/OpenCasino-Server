@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class MessageTypesTest {
-
     @Test
     fun `all message type codes are unique`() {
         val codes = mutableListOf<MessageType>()

@@ -8,41 +8,29 @@ import java.util.UUID
 
 @Table(name = "users")
 data class User(
-
     @Id
     @Column("id")
     val id: UUID = UUID.randomUUID(),
-
     @Column("email")
     val email: String,
-
     @Column("email_verified")
     val emailVerified: Boolean = true,
-
     @Column("password_hash")
     val passwordHash: String? = null,
-
     @Column("role")
     val role: Role = Role.USER,
-
     @Column("balance")
     val balance: Double = 50_000.0,
-
     @Column("display_name")
     val displayName: String,
-
     @Column("first_name")
     val firstName: String? = null,
-
     @Column("last_name")
     val lastName: String? = null,
-
     @Column("created_at")
     val createdAt: Instant = Instant.now(),
-
     @Column("updated_at")
     val updatedAt: Instant = Instant.now(),
-
     @Column("last_login_at")
     val lastLoginAt: Instant? = null,
 )

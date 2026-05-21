@@ -15,7 +15,11 @@ data class JwtKeyMaterial(
     val keyId: String,
 ) {
     companion object {
-        fun fromPem(privatePem: String, publicPem: String, keyId: String): JwtKeyMaterial {
+        fun fromPem(
+            privatePem: String,
+            publicPem: String,
+            keyId: String,
+        ): JwtKeyMaterial {
             require(privatePem.isNotBlank()) {
                 "app.jwt.privateKeyPem is not set. Generate a key pair via " +
                     "`openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048` " +
@@ -28,30 +32,38 @@ data class JwtKeyMaterial(
                     "or set app.jwt.publicKeyPath to a PEM file mounted in the container."
             }
             val factory = KeyFactory.getInstance("RSA")
-            val privateKey = factory.generatePrivate(
-                PKCS8EncodedKeySpec(decode(privatePem, "PRIVATE KEY"))
-            ) as RSAPrivateKey
-            val publicKey = factory.generatePublic(
-                X509EncodedKeySpec(decode(publicPem, "PUBLIC KEY"))
-            ) as RSAPublicKey
+            val privateKey =
+                factory.generatePrivate(
+                    PKCS8EncodedKeySpec(decode(privatePem, "PRIVATE KEY")),
+                ) as RSAPrivateKey
+            val publicKey =
+                factory.generatePublic(
+                    X509EncodedKeySpec(decode(publicPem, "PUBLIC KEY")),
+                ) as RSAPublicKey
             return JwtKeyMaterial(privateKey, publicKey, keyId)
         }
 
         fun fromProperties(props: JwtProperties): JwtKeyMaterial {
-            val privatePem = resolvePem(
-                inline = props.privateKeyPem,
-                path = props.privateKeyPath,
-                propertyName = "app.jwt.privateKey",
-            )
-            val publicPem = resolvePem(
-                inline = props.publicKeyPem,
-                path = props.publicKeyPath,
-                propertyName = "app.jwt.publicKey",
-            )
+            val privatePem =
+                resolvePem(
+                    inline = props.privateKeyPem,
+                    path = props.privateKeyPath,
+                    propertyName = "app.jwt.privateKey",
+                )
+            val publicPem =
+                resolvePem(
+                    inline = props.publicKeyPem,
+                    path = props.publicKeyPath,
+                    propertyName = "app.jwt.publicKey",
+                )
             return fromPem(privatePem, publicPem, props.keyId)
         }
 
-        private fun resolvePem(inline: String, path: String, propertyName: String): String {
+        private fun resolvePem(
+            inline: String,
+            path: String,
+            propertyName: String,
+        ): String {
             if (inline.isNotBlank()) return inline
             if (path.isBlank()) return ""
             val file = Path.of(path)
@@ -75,11 +87,15 @@ data class JwtKeyMaterial(
             return Files.readString(file)
         }
 
-        private fun decode(pem: String, label: String): ByteArray {
-            val body = pem
-                .replace("-----BEGIN $label-----", "")
-                .replace("-----END $label-----", "")
-                .replace(Regex("\\s+"), "")
+        private fun decode(
+            pem: String,
+            label: String,
+        ): ByteArray {
+            val body =
+                pem
+                    .replace("-----BEGIN $label-----", "")
+                    .replace("-----END $label-----", "")
+                    .replace(Regex("\\s+"), "")
             return Base64.getDecoder().decode(body)
         }
     }

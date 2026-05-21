@@ -6,10 +6,10 @@ import com.opencasino.server.config.FAILURE
 import com.opencasino.server.config.GAME_ROOM_JOIN_FAILURE
 import com.opencasino.server.config.MESSAGE
 import com.opencasino.server.game.room.GameRoom
-import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.pack.shared.FailurePack
 import com.opencasino.server.network.pack.shared.GameMessagePack
 import com.opencasino.server.network.shared.Message
+import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.FailureCode
@@ -60,15 +60,18 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
     )
 
     override fun sendBroadcast(message: Any) = sessionPublishers.values.forEach { it.tryEmitNext(message) }
+
     override fun close(playerSession: PlayerSession): Mono<Void> {
-        if (sessionSubscriptions.containsKey(playerSession.id))
+        if (sessionSubscriptions.containsKey(playerSession.id)) {
             sessionSubscriptions[playerSession.id]!!.cancel()
+        }
         return Mono.empty()
     }
 
     override fun close(userSessionId: String): Mono<Void> {
-        if (sessions.containsKey(userSessionId))
+        if (sessions.containsKey(userSessionId)) {
             return close(sessions[userSessionId]!!)
+        }
         return Mono.empty()
     }
 
@@ -77,36 +80,43 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
         return Mono.empty()
     }
 
-    override fun roomIds(): Mono<Collection<String>> = Mono.fromCallable {
-        blackjackRoomService.getRoomIds()
-    }
+    override fun roomIds(): Mono<Collection<String>> =
+        Mono.fromCallable {
+            blackjackRoomService.getRoomIds()
+        }
 
-    override fun sessionIds(): Mono<Collection<String>> = Mono.fromCallable {
-        sessions.keys.toList()
-    }
+    override fun sessionIds(): Mono<Collection<String>> =
+        Mono.fromCallable {
+            sessions.keys.toList()
+        }
 
-    override fun roomSessionIds(roomId: UUID): Mono<Collection<String>> = Mono.fromCallable {
-        blackjackRoomService.getRoomSessionIds(roomId)
-    }
+    override fun roomSessionIds(roomId: UUID): Mono<Collection<String>> =
+        Mono.fromCallable {
+            blackjackRoomService.getRoomSessionIds(roomId)
+        }
 
     override fun sendBroadcast(messageFunction: Function<PlayerSession, Any>) =
-        sessions.values.stream().forEach { this.send( it, messageFunction ) }
-
-    override fun sendBroadcast(userSessions: Collection<PlayerSession>, message: Any) =
-        userSessions.forEach { send(it, message) }
-
-    override fun send(
-        userSession: PlayerSession,
-        function: Function<PlayerSession, Any>
-    ) =
-        send(userSession, function.apply(userSession))
+        sessions.values.stream().forEach { this.send(it, messageFunction) }
 
     override fun sendBroadcast(
         userSessions: Collection<PlayerSession>,
-        function: Function<PlayerSession, Any>
+        message: Any,
+    ) = userSessions.forEach { send(it, message) }
+
+    override fun send(
+        userSession: PlayerSession,
+        function: Function<PlayerSession, Any>,
+    ) = send(userSession, function.apply(userSession))
+
+    override fun sendBroadcast(
+        userSessions: Collection<PlayerSession>,
+        function: Function<PlayerSession, Any>,
     ) = userSessions.forEach { send(it, function.apply(it)) }
 
-    override fun send(userSession: PlayerSession, message: Any) {
+    override fun send(
+        userSession: PlayerSession,
+        message: Any,
+    ) {
         val webSocketSessionId = userSession.id
         if (sessionPublishers.containsKey(webSocketSessionId)) {
             stampServiceId(userSession, message)
@@ -114,23 +124,40 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
         }
     }
 
-    private fun stampServiceId(session: PlayerSession, message: Any) {
+    private fun stampServiceId(
+        session: PlayerSession,
+        message: Any,
+    ) {
         if (message is Message && message.serviceId == null) {
             message.serviceId = session.serviceId
         }
     }
 
-    override fun sendFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) =
-        send(userSession, Message(FAILURE, FailurePack(code.name, message, details)))
+    override fun sendFailure(
+        userSession: PlayerSession,
+        code: FailureCode,
+        message: String,
+        details: Any?,
+    ) = send(userSession, Message(FAILURE, FailurePack(code.name, message, details)))
 
-    override fun sendBetFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) =
-        send(userSession, Message(BET_FAILURE, FailurePack(code.name, message, details)))
+    override fun sendBetFailure(
+        userSession: PlayerSession,
+        code: FailureCode,
+        message: String,
+        details: Any?,
+    ) = send(userSession, Message(BET_FAILURE, FailurePack(code.name, message, details)))
 
-    override fun sendJoinFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) =
-        send(userSession, Message(GAME_ROOM_JOIN_FAILURE, FailurePack(code.name, message, details)))
+    override fun sendJoinFailure(
+        userSession: PlayerSession,
+        code: FailureCode,
+        message: String,
+        details: Any?,
+    ) = send(userSession, Message(GAME_ROOM_JOIN_FAILURE, FailurePack(code.name, message, details)))
 
-    override fun sendBroadcast(type: MessageType, message: String) =
-        sendBroadcast(Message(MESSAGE, GameMessagePack(type.type, message)))
+    override fun sendBroadcast(
+        type: MessageType,
+        message: String,
+    ) = sendBroadcast(Message(MESSAGE, GameMessagePack(type.type, message)))
 
     override fun onActive(playerSession: PlayerSession): Flux<Any> {
         log.debug("Client ${playerSession.id} connected")
@@ -140,13 +167,16 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
         return sink.asFlux()
     }
 
-    override fun onSubscribe(playerSession: PlayerSession, subscription: Subscription) {
+    override fun onSubscribe(
+        playerSession: PlayerSession,
+        subscription: Subscription,
+    ) {
         sessionSubscriptions[playerSession.id] = subscription
     }
 
     override fun onPrincipalInit(
         playerSession: PlayerSession,
-        principal: Principal
+        principal: Principal,
     ) {
         playerSession.principal = principal
         val userId = playerSession.userId ?: return
@@ -155,7 +185,10 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
         reattach(pending.oldSession, playerSession)
     }
 
-    private fun reattach(oldSession: PlayerSession, newSession: PlayerSession) {
+    private fun reattach(
+        oldSession: PlayerSession,
+        newSession: PlayerSession,
+    ) {
         val service = oldSession.serviceId
         val roomKey = oldSession.roomKey
         if (service == null || roomKey == null) {

@@ -17,17 +17,17 @@ import reactor.test.StepVerifier
 import reactor.test.scheduler.VirtualTimeScheduler
 
 class WebSocketSessionServiceStampTest {
-
     private val handshake: HandshakeInfo = mock()
     private lateinit var service: WebSocketSessionServiceImpl
 
     @BeforeEach
     fun setUp() {
-        service = WebSocketSessionServiceImpl().also {
-            it.setBlackjackGameRoomManagementService(mock<RoomService>())
-            it.setPokerGameRoomManagementService(mock<RoomService>())
-            it.overrideSchedulerForTests(VirtualTimeScheduler.create())
-        }
+        service =
+            WebSocketSessionServiceImpl().also {
+                it.setBlackjackGameRoomManagementService(mock<RoomService>())
+                it.setPokerGameRoomManagementService(mock<RoomService>())
+                it.overrideSchedulerForTests(VirtualTimeScheduler.create())
+            }
     }
 
     @Test
@@ -39,12 +39,12 @@ class WebSocketSessionServiceStampTest {
         val message = Message(MESSAGE, GameMessagePack(MessageType.ROOM.type, "hi"))
         service.send(s, message)
 
-        StepVerifier.create(flux)
+        StepVerifier
+            .create(flux)
             .assertNext { emitted ->
                 emitted as Message
                 assertEquals("Poker", emitted.serviceId)
-            }
-            .thenCancel()
+            }.thenCancel()
             .verify()
     }
 
@@ -58,12 +58,12 @@ class WebSocketSessionServiceStampTest {
         message.serviceId = "Blackjack"
         service.send(s, message)
 
-        StepVerifier.create(flux)
+        StepVerifier
+            .create(flux)
             .assertNext { emitted ->
                 emitted as Message
                 assertEquals("Blackjack", emitted.serviceId)
-            }
-            .thenCancel()
+            }.thenCancel()
             .verify()
     }
 
@@ -75,12 +75,12 @@ class WebSocketSessionServiceStampTest {
         val message = Message(MESSAGE, "anonymous broadcast")
         service.send(s, message)
 
-        StepVerifier.create(flux)
+        StepVerifier
+            .create(flux)
             .assertNext { emitted ->
                 emitted as Message
                 assertNull(emitted.serviceId)
-            }
-            .thenCancel()
+            }.thenCancel()
             .verify()
     }
 
@@ -92,7 +92,8 @@ class WebSocketSessionServiceStampTest {
 
         service.sendBroadcast(MessageType.SYSTEM, "scheduled maintenance")
 
-        StepVerifier.create(flux)
+        StepVerifier
+            .create(flux)
             .assertNext { emitted ->
                 emitted as Message
                 assertEquals(MESSAGE, emitted.type)
@@ -100,8 +101,7 @@ class WebSocketSessionServiceStampTest {
                 val pack = emitted.data as GameMessagePack
                 assertEquals(MessageType.SYSTEM.type, pack.messageType)
                 assertEquals("scheduled maintenance", pack.message)
-            }
-            .thenCancel()
+            }.thenCancel()
             .verify()
     }
 }

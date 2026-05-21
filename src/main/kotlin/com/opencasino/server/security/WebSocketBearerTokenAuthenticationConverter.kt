@@ -17,9 +17,9 @@ import reactor.core.publisher.Mono
 class WebSocketBearerTokenAuthenticationConverter(
     private val delegate: ServerBearerTokenAuthenticationConverter = ServerBearerTokenAuthenticationConverter(),
 ) : ServerAuthenticationConverter {
-
     override fun convert(exchange: ServerWebExchange): Mono<Authentication> =
-        delegate.convert(exchange)
+        delegate
+            .convert(exchange)
             .switchIfEmpty(Mono.defer { Mono.justOrEmpty(tokenFromRequest(exchange)) })
 
     private fun tokenFromRequest(exchange: ServerWebExchange): Authentication? {
@@ -28,14 +28,17 @@ class WebSocketBearerTokenAuthenticationConverter(
     }
 
     private fun tokenFromQuery(exchange: ServerWebExchange): String? =
-        exchange.request.queryParams.getFirst(QUERY_PARAM)?.takeIf { it.isNotBlank() }
+        exchange.request.queryParams
+            .getFirst(QUERY_PARAM)
+            ?.takeIf { it.isNotBlank() }
 
     private fun tokenFromSubProtocol(exchange: ServerWebExchange): String? {
         val raw = exchange.request.headers.getFirst(SUB_PROTOCOL_HEADER) ?: return null
         val values = raw.split(',').map { it.trim() }.filter { it.isNotEmpty() }
         val bearerIdx = values.indexOf(SUB_PROTOCOL_BEARER)
         if (bearerIdx == -1) return null
-        return values.asSequence()
+        return values
+            .asSequence()
             .filterIndexed { i, _ -> i != bearerIdx }
             .firstOrNull { it.isNotBlank() }
     }

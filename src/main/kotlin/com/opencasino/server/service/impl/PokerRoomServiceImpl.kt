@@ -13,8 +13,8 @@ import com.opencasino.server.game.poker.holdem.model.PokerPlayer
 import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
 import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.pack.menu.update.PokerRoomSummary
-import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message
+import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.PokerLobbyService
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
@@ -39,8 +39,7 @@ class PokerRoomServiceImpl(
     private val ledgerService: BalanceLedgerService,
     private val userRepository: UserRepository,
 ) : RoomService,
-    PokerLobbyService
-{
+    PokerLobbyService {
     private lateinit var webSocketSessionService: WebSocketSessionService
 
     companion object {
@@ -49,11 +48,15 @@ class PokerRoomServiceImpl(
 
     private val gameRoomMap: MutableMap<UUID, PokerGameRoom> = mutableMapOf()
     private val sessionQueue: MutableMap<UUID, Queue<WaitingPlayerSession>> = mutableMapOf()
-    override fun getRoomSessionIds(key: UUID?): List<String>? = getRoomByKey(key).map { room ->
-        room.sessions().map { it.id }
-    }.orElse(emptyList())
+
+    override fun getRoomSessionIds(key: UUID?): List<String>? =
+        getRoomByKey(key)
+            .map { room ->
+                room.sessions().map { it.id }
+            }.orElse(emptyList())
 
     override fun getRoomIds(): Collection<String> = gameRoomMap.keys.map { it.toString() }
+
     override fun getRooms(): Collection<PokerGameRoom> = gameRoomMap.values.toList()
 
     override fun listJoinableRooms(): List<PokerRoomSummary> {
@@ -74,10 +77,12 @@ class PokerRoomServiceImpl(
             }
     }
 
-    override fun getRoomByKey(key: UUID?): Optional<GameRoom> =
-        if (key != null) Optional.ofNullable(gameRoomMap[key]) else Optional.empty()
+    override fun getRoomByKey(key: UUID?): Optional<GameRoom> = if (key != null) Optional.ofNullable(gameRoomMap[key]) else Optional.empty()
 
-    override fun addPlayerToWait(userSession: PlayerSession, initialData: AbstractEvent) {
+    override fun addPlayerToWait(
+        userSession: PlayerSession,
+        initialData: AbstractEvent,
+    ) {
         when (initialData) {
             is GameRoomCreateEvent -> {
                 webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))
@@ -89,10 +94,11 @@ class PokerRoomServiceImpl(
 
                 val ps: PlayerSession = userSession
 
-                val id = GameRoomJoinEvent(
-                    room.gameRoomId.toString(),
-                    ps.id
-                )
+                val id =
+                    GameRoomJoinEvent(
+                        room.gameRoomId.toString(),
+                        ps.id,
+                    )
 
                 val player: PokerPlayer = playerFactory.create(gameTable.nextPlayerId(), id, room, ps)
 
@@ -125,7 +131,7 @@ class PokerRoomServiceImpl(
                 webSocketSessionService.sendJoinFailure(
                     userSession,
                     FailureCode.INVALID_DECISION,
-                    "Unsupported join event: ${initialData::class.simpleName}"
+                    "Unsupported join event: ${initialData::class.simpleName}",
                 )
             }
         }
@@ -189,15 +195,20 @@ class PokerRoomServiceImpl(
         userSession.serviceId = "Poker"
 
         val userId = userSession.userId
-        val balance =
+        val profile =
             if (userId == null) {
-                Mono.just(0.00)
+                Mono.just(0.00 to "guest")
             } else {
-                userRepository.findById(userId).map { it.balance }.defaultIfEmpty(0.00)
+                userRepository
+                    .findById(userId)
+                    .map { it.balance to it.displayName }
+                    .defaultIfEmpty(0.00 to "guest")
             }
-        balance
-            .doOnNext { player.balance = it }
-            .doOnSuccess { room.addLatePlayer(userSession) }
+        profile
+            .doOnNext { (balance, name) ->
+                player.balance = balance
+                player.displayName = name
+            }.doOnSuccess { room.addLatePlayer(userSession) }
             .subscribe()
     }
 
@@ -207,15 +218,20 @@ class PokerRoomServiceImpl(
         room: PokerGameRoom,
     ) {
         val userId = ps.userId
-        val balance =
+        val profile =
             if (userId == null) {
-                Mono.just(0.00)
+                Mono.just(0.00 to "guest")
             } else {
-                userRepository.findById(userId).map { it.balance }.defaultIfEmpty(0.00)
+                userRepository
+                    .findById(userId)
+                    .map { it.balance to it.displayName }
+                    .defaultIfEmpty(0.00 to "guest")
             }
-        balance
-            .doOnNext { player.balance = it }
-            .doOnSuccess { tryLaunchWaitingRoom(room) }
+        profile
+            .doOnNext { (balance, name) ->
+                player.balance = balance
+                player.displayName = name
+            }.doOnSuccess { tryLaunchWaitingRoom(room) }
             .subscribe()
     }
 

@@ -7,15 +7,14 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
+import org.springframework.transaction.ReactiveTransactionManager
+import org.springframework.transaction.reactive.TransactionalOperator
 import org.springframework.web.reactive.HandlerMapping
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping
 import org.springframework.web.reactive.socket.WebSocketHandler
-import org.springframework.transaction.ReactiveTransactionManager
-import org.springframework.transaction.reactive.TransactionalOperator
 import reactor.core.scheduler.Scheduler
 import reactor.core.scheduler.Schedulers
-
 
 const val WEBSOCKET_PATH = "/ws"
 const val WEBSOCKET_MENU_PATH = "/ws/menu"
@@ -29,17 +28,14 @@ class ApplicationConfiguration(
     private val handler: MainWebSocketHandler,
     private val menuHandler: MenuWebSocketHandler,
 ) {
-
     @Bean
     @Primary
     @Qualifier(GAME_TASK_MANAGER)
-    fun taskManagerService(): Scheduler =
-        Schedulers.newParallel(serverProperties.game.gameThreads, Thread.ofVirtual().factory())
+    fun taskManagerService(): Scheduler = Schedulers.newParallel(serverProperties.game.gameThreads, Thread.ofVirtual().factory())
 
     @Bean(destroyMethod = "dispose")
     @Qualifier(HEARTBEAT_SCHEDULER)
-    fun heartbeatScheduler(): Scheduler =
-        Schedulers.newParallel("ws-heartbeat", 2, true)
+    fun heartbeatScheduler(): Scheduler = Schedulers.newParallel("ws-heartbeat", 2, true)
 
     @Bean
     fun webSocketHandlerMapping(): HandlerMapping {
@@ -53,6 +49,5 @@ class ApplicationConfiguration(
     }
 
     @Bean
-    fun transactionalOperator(tm: ReactiveTransactionManager): TransactionalOperator =
-        TransactionalOperator.create(tm)
+    fun transactionalOperator(tm: ReactiveTransactionManager): TransactionalOperator = TransactionalOperator.create(tm)
 }

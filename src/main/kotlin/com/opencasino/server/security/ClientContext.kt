@@ -10,7 +10,10 @@ data class ClientContext(
     companion object {
         val EMPTY = ClientContext(userAgent = null, ip = null)
 
-        fun from(exchange: ServerWebExchange, ipResolver: ClientIpResolver): ClientContext =
+        fun from(
+            exchange: ServerWebExchange,
+            ipResolver: ClientIpResolver,
+        ): ClientContext =
             ClientContext(
                 userAgent = exchange.request.headers.getFirst(HttpHeaders.USER_AGENT),
                 ip = ipResolver.resolve(exchange),

@@ -22,7 +22,6 @@ class OAuth2UserLinkingService(
     private val identities: UserOAuthIdentityRepository,
     private val authProperties: AuthProperties,
 ) {
-
     // Phase 6 contract:
     //   1. (provider, subject) already linked    -> return that user
     //   2. provider didn't return verified email -> AuthException(OAUTH_EMAIL_UNVERIFIED)
@@ -33,7 +32,8 @@ class OAuth2UserLinkingService(
     // every account is trusted to own its email at create time, so OAuth
     // proving ownership of the same email is a legitimate link, not takeover.
     fun linkOrCreate(principal: OAuth2UserPrincipal): Mono<User> =
-        identities.findByProviderAndSubject(principal.provider, principal.subject)
+        identities
+            .findByProviderAndSubject(principal.provider, principal.subject)
             .flatMap { existing -> users.findById(existing.userId) }
             .switchIfEmpty(Mono.defer { linkOrCreateForFreshIdentity(principal) })
             .flatMap { user -> users.updateLastLoginAt(user.id, Instant.now()).thenReturn(user) }
@@ -43,35 +43,49 @@ class OAuth2UserLinkingService(
             return Mono.error(AuthException(AuthFailureCode.OAUTH_EMAIL_UNVERIFIED))
         }
         val email = principal.email.lowercase()
-        return users.findByEmail(email)
+        return users
+            .findByEmail(email)
             .flatMap { existing -> linkExisting(principal, existing) }
             .switchIfEmpty(Mono.defer { createUserAndIdentity(principal, email) })
     }
 
-    private fun linkExisting(principal: OAuth2UserPrincipal, user: User): Mono<User> =
-        identities.save(
-            UserOAuthIdentity(userId = user.id, provider = principal.provider, subject = principal.subject)
-        ).thenReturn(user)
+    private fun linkExisting(
+        principal: OAuth2UserPrincipal,
+        user: User,
+    ): Mono<User> =
+        identities
+            .save(
+                UserOAuthIdentity(userId = user.id, provider = principal.provider, subject = principal.subject),
+            ).thenReturn(user)
 
-    private fun createUserAndIdentity(principal: OAuth2UserPrincipal, email: String): Mono<User> =
+    private fun createUserAndIdentity(
+        principal: OAuth2UserPrincipal,
+        email: String,
+    ): Mono<User> =
         freshDisplayName(principal.profileName, email)
             .flatMap { displayName ->
                 users.save(
-                    User(email = email, passwordHash = null, displayName = displayName)
+                    User(email = email, passwordHash = null, displayName = displayName),
                 )
-            }
-            .flatMap { user ->
-                identities.save(
-                    UserOAuthIdentity(userId = user.id, provider = principal.provider, subject = principal.subject)
-                ).thenReturn(user)
+            }.flatMap { user ->
+                identities
+                    .save(
+                        UserOAuthIdentity(userId = user.id, provider = principal.provider, subject = principal.subject),
+                    ).thenReturn(user)
             }
 
-    private fun freshDisplayName(profileName: String?, email: String): Mono<String> {
+    private fun freshDisplayName(
+        profileName: String?,
+        email: String,
+    ): Mono<String> {
         val base = AuthService.deriveDisplayNameForOAuth(profileName, email, authProperties.displayNameBlocklist)
         return tryWithSuffix(base, attempt = 1)
     }
 
-    private fun tryWithSuffix(base: String, attempt: Int): Mono<String> {
+    private fun tryWithSuffix(
+        base: String,
+        attempt: Int,
+    ): Mono<String> {
         if (attempt > MAX_DISPLAY_NAME_SUFFIX_ATTEMPTS) {
             return Mono.error(AuthException(AuthFailureCode.OAUTH_PROVIDER_ERROR))
         }
@@ -81,7 +95,10 @@ class OAuth2UserLinkingService(
         }
     }
 
-    private fun withSuffix(base: String, attempt: Int): String {
+    private fun withSuffix(
+        base: String,
+        attempt: Int,
+    ): String {
         val suffix = "-$attempt"
         val budget = AuthService.MAX_DISPLAY_NAME_LENGTH - suffix.length
         return base.take(budget) + suffix

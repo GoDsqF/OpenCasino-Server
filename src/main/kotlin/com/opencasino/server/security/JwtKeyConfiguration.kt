@@ -13,9 +13,7 @@ import org.springframework.context.annotation.Configuration
     RateLimitProperties::class,
 )
 class JwtKeyConfiguration {
-
     @Bean
     @ConditionalOnMissingBean
-    fun jwtKeyMaterial(props: JwtProperties): JwtKeyMaterial =
-        JwtKeyMaterial.fromProperties(props)
+    fun jwtKeyMaterial(props: JwtProperties): JwtKeyMaterial = JwtKeyMaterial.fromProperties(props)
 }

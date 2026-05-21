@@ -4,5 +4,5 @@ import com.opencasino.server.network.pack.InitPack
 
 data class GameMessagePack(
     val messageType: Int,
-    val message: String
-): InitPack
+    val message: String,
+) : InitPack

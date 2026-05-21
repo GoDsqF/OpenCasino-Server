@@ -18,7 +18,6 @@ class OAuth2LoginSuccessHandler(
     private val clientIpResolver: ClientIpResolver,
     private val auditLogger: SecurityAuditLogger,
 ) : ServerAuthenticationSuccessHandler {
-
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun onAuthenticationSuccess(
@@ -26,24 +25,30 @@ class OAuth2LoginSuccessHandler(
         authentication: Authentication,
     ): Mono<Void> {
         val exchange = webFilterExchange.exchange
-        val token = authentication as? OAuth2AuthenticationToken
-            ?: return errorRedirect(exchange, AuthFailureCode.OAUTH_PROVIDER_ERROR)
-        val principal = principalFrom(token)
-            ?: return errorRedirect(exchange, AuthFailureCode.OAUTH_PROVIDER_ERROR)
+        val token =
+            authentication as? OAuth2AuthenticationToken
+                ?: return errorRedirect(exchange, AuthFailureCode.OAUTH_PROVIDER_ERROR)
+        val principal =
+            principalFrom(token)
+                ?: return errorRedirect(exchange, AuthFailureCode.OAUTH_PROVIDER_ERROR)
 
-        return linkingService.linkOrCreate(principal)
+        return linkingService
+            .linkOrCreate(principal)
             .flatMap { user ->
                 auditLogger.oauthLoginSuccess(principal.provider, user.id, clientIpResolver.resolve(exchange))
                 successRedirect(exchange, user)
-            }
-            .onErrorResume(AuthException::class.java) { ex ->
+            }.onErrorResume(AuthException::class.java) { ex ->
                 log.warn("OAuth login rejected for {}/{}: {}", principal.provider, principal.subject, ex.failure)
                 auditLogger.oauthLoginFailure(principal.provider, principal.subject, ex.failure, clientIpResolver.resolve(exchange))
                 errorRedirect(exchange, ex.failure)
-            }
-            .onErrorResume(Throwable::class.java) { ex ->
+            }.onErrorResume(Throwable::class.java) { ex ->
                 log.error("OAuth login failed unexpectedly for {}/{}", principal.provider, principal.subject, ex)
-                auditLogger.oauthLoginFailure(principal.provider, principal.subject, AuthFailureCode.OAUTH_PROVIDER_ERROR, clientIpResolver.resolve(exchange))
+                auditLogger.oauthLoginFailure(
+                    principal.provider,
+                    principal.subject,
+                    AuthFailureCode.OAUTH_PROVIDER_ERROR,
+                    clientIpResolver.resolve(exchange),
+                )
                 errorRedirect(exchange, AuthFailureCode.OAUTH_PROVIDER_ERROR)
             }
     }
@@ -63,7 +68,10 @@ class OAuth2LoginSuccessHandler(
         )
     }
 
-    private fun successRedirect(exchange: org.springframework.web.server.ServerWebExchange, user: com.opencasino.server.user.User): Mono<Void> {
+    private fun successRedirect(
+        exchange: org.springframework.web.server.ServerWebExchange,
+        user: com.opencasino.server.user.User,
+    ): Mono<Void> {
         val target = authProperties.oauth2.successRedirect
         if (target.isBlank()) {
             log.error("app.auth.oauth2.success-redirect is unset; cannot complete OAuth login")
@@ -71,16 +79,21 @@ class OAuth2LoginSuccessHandler(
         }
         val context = ClientContext.from(exchange, clientIpResolver)
         val issued = jwtIssuer.issueAccess(user)
-        return refreshTokenService.issue(user.id, context.userAgent, context.ip)
+        return refreshTokenService
+            .issue(user.id, context.userAgent, context.ip)
             .flatMap { refresh -> OAuth2RedirectWriter.successRedirect(exchange, target, issued, refresh) }
     }
 
-    private fun errorRedirect(exchange: org.springframework.web.server.ServerWebExchange, code: AuthFailureCode): Mono<Void> {
-        val target = authProperties.oauth2.failureRedirect?.takeIf { it.isNotBlank() }
-            ?: authProperties.oauth2.successRedirect.takeIf { it.isNotBlank() }
-            ?: return Mono.fromRunnable {
-                exchange.response.statusCode = org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR
-            }
+    private fun errorRedirect(
+        exchange: org.springframework.web.server.ServerWebExchange,
+        code: AuthFailureCode,
+    ): Mono<Void> {
+        val target =
+            authProperties.oauth2.failureRedirect?.takeIf { it.isNotBlank() }
+                ?: authProperties.oauth2.successRedirect.takeIf { it.isNotBlank() }
+                ?: return Mono.fromRunnable {
+                    exchange.response.statusCode = org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR
+                }
         return OAuth2RedirectWriter.errorRedirect(exchange, target, code)
     }
 }

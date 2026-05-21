@@ -7,7 +7,6 @@ import reactor.core.publisher.Mono
 import java.net.URI
 
 internal object OAuth2RedirectWriter {
-
     fun successRedirect(
         exchange: ServerWebExchange,
         base: String,
@@ -27,16 +26,25 @@ internal object OAuth2RedirectWriter {
             ),
         )
 
-    fun errorRedirect(exchange: ServerWebExchange, base: String, code: AuthFailureCode): Mono<Void> =
-        sendRedirect(exchange, buildUri(base, mapOf("error" to code.name)))
+    fun errorRedirect(
+        exchange: ServerWebExchange,
+        base: String,
+        code: AuthFailureCode,
+    ): Mono<Void> = sendRedirect(exchange, buildUri(base, mapOf("error" to code.name)))
 
-    private fun buildUri(base: String, params: Map<String, String>): URI {
+    private fun buildUri(
+        base: String,
+        params: Map<String, String>,
+    ): URI {
         val builder = UriComponentsBuilder.fromUriString(base)
         params.forEach { (k, v) -> builder.queryParam(k, v) }
         return builder.encode().build().toUri()
     }
 
-    private fun sendRedirect(exchange: ServerWebExchange, uri: URI): Mono<Void> {
+    private fun sendRedirect(
+        exchange: ServerWebExchange,
+        uri: URI,
+    ): Mono<Void> {
         val response = exchange.response
         response.statusCode = HttpStatus.FOUND
         response.headers.location = uri

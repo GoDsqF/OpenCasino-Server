@@ -24,11 +24,13 @@ class RateLimitWebFilter(
     private val ipResolver: ClientIpResolver,
     private val auditLogger: SecurityAuditLogger,
 ) : WebFilter {
-
     private val log = LoggerFactory.getLogger(javaClass)
     private val buckets = ConcurrentHashMap<String, Bucket>()
 
-    override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
+    override fun filter(
+        exchange: ServerWebExchange,
+        chain: WebFilterChain,
+    ): Mono<Void> {
         if (!props.enabled) return chain.filter(exchange)
 
         val route = classify(exchange.request) ?: return chain.filter(exchange)
@@ -66,11 +68,17 @@ class RateLimitWebFilter(
         }
     }
 
-    private fun identityFor(exchange: ServerWebExchange, route: Route): String {
+    private fun identityFor(
+        exchange: ServerWebExchange,
+        route: Route,
+    ): String {
         if (route == Route.AUTHENTICATED) {
-            val token = exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION)
-                ?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
-                ?.removePrefix("Bearer ")?.trim()
+            val token =
+                exchange.request.headers
+                    .getFirst(HttpHeaders.AUTHORIZATION)
+                    ?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
+                    ?.removePrefix("Bearer ")
+                    ?.trim()
             if (!token.isNullOrEmpty()) return "jwt:${jwtSubjectHint(token)}"
         }
         return "ip:" + (ipResolver.resolve(exchange) ?: "unknown")
@@ -85,7 +93,10 @@ class RateLimitWebFilter(
         return parts[1].hashCode().toString()
     }
 
-    private fun bucketFor(route: Route, identity: String): Bucket {
+    private fun bucketFor(
+        route: Route,
+        identity: String,
+    ): Bucket {
         val key = "${route.name}|$identity"
         return buckets.computeIfAbsent(key) { newBucket(route.spec(props)) }
     }
@@ -95,7 +106,9 @@ class RateLimitWebFilter(
         return Bucket.builder().addLimit(limit).build()
     }
 
-    enum class Route(val keyByIp: Boolean) {
+    enum class Route(
+        val keyByIp: Boolean,
+    ) {
         LOGIN(true) {
             override fun spec(p: RateLimitProperties) = p.login
         },
@@ -110,7 +123,7 @@ class RateLimitWebFilter(
         },
         AUTHENTICATED(false) {
             override fun spec(p: RateLimitProperties) = p.authenticated
-        };
+        }, ;
 
         abstract fun spec(p: RateLimitProperties): RateLimitProperties.BucketSpec
     }

@@ -4,20 +4,22 @@ import com.opencasino.server.game.model.Card
 import com.opencasino.server.game.model.CardDeck
 import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
 import com.opencasino.server.network.pack.poker.info.PlayerInfoPack
-import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
 import com.opencasino.server.network.pack.poker.update.PrivatePlayerUpdatePack
 import com.opencasino.server.network.pack.poker.update.PublicPlayerUpdatePack
+import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
 import com.opencasino.server.network.shared.PlayerSession
-
 import com.opencasino.server.service.shared.FailureCode
 import com.opencasino.server.service.shared.PokerDecision
 
 class PokerPlayer(
-    id: Long, gameRoom: PokerGameRoom, userSession: PlayerSession,
+    id: Long,
+    gameRoom: PokerGameRoom,
+    userSession: PlayerSession,
 ) : PokerBasePlayer<PokerGameRoom, PlayerInfoPack, PlayerHandUpdatePack, PrivatePlayerUpdatePack>(
-    id, gameRoom, userSession
-) {
-
+        id,
+        gameRoom,
+        userSession,
+    ) {
     init {
         bet = gameRoom.bet
         boughtIn = false
@@ -28,7 +30,10 @@ class PokerPlayer(
         playerDeck = CardDeck()
     }
 
-    fun updateState(event: PokerDecision, amount: Double?) {
+    fun updateState(
+        event: PokerDecision,
+        amount: Double?,
+    ) {
         lastDecision = event
         lastBet = amount
         madeDecision = true
@@ -36,14 +41,14 @@ class PokerPlayer(
 
     override fun update() {
         if (madeDecision) {
-            when(lastDecision) {
+            when (lastDecision) {
                 PokerDecision.CHECK -> {
                     madeDecision = false
                     gameRoom.nextMove(this.userSession)
                 }
                 PokerDecision.CALL -> {
                     madeDecision = false
-                    //should be somewhat transactional
+                    // should be somewhat transactional
                     if (lastBet.isValidBet(lastDecision)) {
                         commitToStake(lastBet!!)
                         gameRoom.nextMove(this.userSession)
@@ -74,7 +79,7 @@ class PokerPlayer(
                     gameRoom.sendFailure(
                         userSession,
                         FailureCode.INVALID_DECISION,
-                        "Decision ${lastDecision.name} is not supported"
+                        "Decision ${lastDecision.name} is not supported",
                     )
                 }
             }
@@ -102,25 +107,26 @@ class PokerPlayer(
                 (this != null) && (this > 0) && (currentBet!! + this == gameRoom.lastMaxBet)
             }
             PokerDecision.RAISE -> {
-                (this != null) && (this > 0) && (currentBet!! + this + gameRoom.bigBlind >= gameRoom.lastMaxBet)
+                // Стандартное правило мин. рейза: новая суммарная ставка после
+                // действия должна быть не меньше lastMaxBet + bigBlind. Иначе
+                // действие — это либо колл, либо невалидный «недорейз».
+                (this != null) && (this > 0) && (currentBet!! + this >= gameRoom.lastMaxBet + gameRoom.bigBlind)
             }
             else -> false
         }
 
-    override fun info(): PlayerInfoPack {
-        return getInfoPack()
-    }
+    override fun info(): PlayerInfoPack = getInfoPack()
 
     private fun handValue(): String {
         if (this.isAlive) this.update()
         return PokerHand.fromList(this.playerDeck.getCards()).getHighestRank()
     }
 
-    override fun getUpdatePack(): PlayerHandUpdatePack {
-        return PlayerHandUpdatePack(
+    override fun getUpdatePack(): PlayerHandUpdatePack =
+        PlayerHandUpdatePack(
             getPublicUpdatePack(),
-            playerDeck.getCards())
-    }
+            playerDeck.getCards(),
+        )
 
     fun getSecretUpdatePack(): PlayerHandUpdatePack {
         val deck = mutableListOf<Card?>()
@@ -130,20 +136,17 @@ class PokerPlayer(
         return PlayerHandUpdatePack(getPublicUpdatePack(), deck)
     }
 
-    override fun getInfoPack(): PlayerInfoPack {
-        return PlayerInfoPack(id, balance)
-    }
+    override fun getInfoPack(): PlayerInfoPack = PlayerInfoPack(id, balance)
 
-    override fun getPrivateUpdatePack(): PrivatePlayerUpdatePack {
-        return PrivatePlayerUpdatePack(
+    override fun getPrivateUpdatePack(): PrivatePlayerUpdatePack =
+        PrivatePlayerUpdatePack(
             id,
             this.position,
             stack,
             currentBet ?: 0.0,
             lastDecision,
-            availableActions()
+            availableActions(),
         )
-    }
 
     fun availableActions(): List<String> {
         if (folded || allin || stack <= 0.0) return emptyList()
@@ -162,8 +165,5 @@ class PokerPlayer(
         return actions
     }
 
-    fun getPublicUpdatePack(): PublicPlayerUpdatePack {
-        return PublicPlayerUpdatePack(id, this.position, lastDecision)
-    }
-
+    fun getPublicUpdatePack(): PublicPlayerUpdatePack = PublicPlayerUpdatePack(id, this.position, displayName, lastDecision)
 }

@@ -14,22 +14,28 @@ import java.util.UUID
 class UserOAuthIdentityRepository(
     private val template: R2dbcEntityTemplate,
 ) {
-
-    fun findByProviderAndSubject(provider: String, subject: String): Mono<UserOAuthIdentity> =
-        template.select<UserOAuthIdentity>()
+    fun findByProviderAndSubject(
+        provider: String,
+        subject: String,
+    ): Mono<UserOAuthIdentity> =
+        template
+            .select<UserOAuthIdentity>()
             .matching(
-                Query.query(
-                    Criteria.where("provider").`is`(provider)
-                        .and("subject").`is`(subject)
-                ).limit(1)
-            )
-            .one()
+                Query
+                    .query(
+                        Criteria
+                            .where("provider")
+                            .`is`(provider)
+                            .and("subject")
+                            .`is`(subject),
+                    ).limit(1),
+            ).one()
 
     fun findAllByUserId(userId: UUID): Flux<UserOAuthIdentity> =
-        template.select<UserOAuthIdentity>()
+        template
+            .select<UserOAuthIdentity>()
             .matching(Query.query(Criteria.where("user_id").`is`(userId)))
             .all()
 
-    fun save(identity: UserOAuthIdentity): Mono<UserOAuthIdentity> =
-        template.insert<UserOAuthIdentity>().using(identity)
+    fun save(identity: UserOAuthIdentity): Mono<UserOAuthIdentity> = template.insert<UserOAuthIdentity>().using(identity)
 }

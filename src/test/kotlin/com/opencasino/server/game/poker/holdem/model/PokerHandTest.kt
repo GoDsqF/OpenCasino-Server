@@ -8,14 +8,12 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
 class PokerHandTest {
-
     // =========================================================================
     // Определение комбинаций
     // =========================================================================
 
     @Nested
     inner class HandRecognition {
-
         @Test
         fun `recognizes straight flush`() {
             val hand = PokerHand.fromString("5H 6H 7H 8H 9H")
@@ -26,12 +24,15 @@ class PokerHandTest {
         @Test
         fun `bestOf picks the strongest 5-card hand from 7`() {
             // Hole+community = KH KS KD KC 2H 7D 9C → four kings + 9 kicker
-            val cards = "KH KS KD KC 2H 7D 9C".split(" ").map { s ->
-                com.opencasino.server.game.model.Card(
-                    com.opencasino.server.game.model.Rank.forCode(s[0]),
-                    com.opencasino.server.game.model.Suit.forCode(s[1]),
-                )
-            }
+            val cards =
+                "KH KS KD KC 2H 7D 9C".split(" ").map { s ->
+                    com.opencasino.server.game.model.Card(
+                        com.opencasino.server.game.model.Rank
+                            .forCode(s[0]),
+                        com.opencasino.server.game.model.Suit
+                            .forCode(s[1]),
+                    )
+                }
             val best = PokerHand.bestOf(cards)
             assertEquals("FourOfAKind", best.getHighestRank())
         }
@@ -45,12 +46,15 @@ class PokerHandTest {
         @Test
         fun `bestOf prefers straight over pair from 7 cards`() {
             // 7 cards: 5H 6S 7D 8C 9H 9S 2D → straight 5-9 beats pair of nines
-            val cards = "5H 6S 7D 8C 9H 9S 2D".split(" ").map { s ->
-                com.opencasino.server.game.model.Card(
-                    com.opencasino.server.game.model.Rank.forCode(s[0]),
-                    com.opencasino.server.game.model.Suit.forCode(s[1]),
-                )
-            }
+            val cards =
+                "5H 6S 7D 8C 9H 9S 2D".split(" ").map { s ->
+                    com.opencasino.server.game.model.Card(
+                        com.opencasino.server.game.model.Rank
+                            .forCode(s[0]),
+                        com.opencasino.server.game.model.Suit
+                            .forCode(s[1]),
+                    )
+                }
             val best = PokerHand.bestOf(cards)
             assertEquals("Straight", best.getHighestRank())
         }
@@ -135,7 +139,6 @@ class PokerHandTest {
 
     @Nested
     inner class HandNegativeProperties {
-
         @Test
         fun `straight is not a flush`() {
             val hand = PokerHand.fromString("4H 5S 6D 7C 8H")
@@ -181,7 +184,6 @@ class PokerHandTest {
 
     @Nested
     inner class HandComparison {
-
         @Test
         fun `straight flush beats four of a kind`() {
             val straightFlush = PokerHand.fromString("5H 6H 7H 8H 9H")
@@ -306,7 +308,6 @@ class PokerHandTest {
 
     @Nested
     inner class Parsing {
-
         @Test
         fun `fromString creates correct hand`() {
             val hand = PokerHand.fromString("2H 3H 4H 5H 6H")
@@ -338,13 +339,14 @@ class PokerHandTest {
 
         @Test
         fun `fromList creates sorted hand`() {
-            val cards = listOf(
-                Card(Rank.CA, Suit.SPADES),
-                Card(Rank.C2, Suit.HEARTS),
-                Card(Rank.CK, Suit.DIAMONDS),
-                Card(Rank.C5, Suit.CLUBS),
-                Card(Rank.C9, Suit.HEARTS)
-            )
+            val cards =
+                listOf(
+                    Card(Rank.CA, Suit.SPADES),
+                    Card(Rank.C2, Suit.HEARTS),
+                    Card(Rank.CK, Suit.DIAMONDS),
+                    Card(Rank.C5, Suit.CLUBS),
+                    Card(Rank.C9, Suit.HEARTS),
+                )
             val hand = PokerHand.fromList(cards)
             // Карты должны быть отсортированы по ordinal
             assertEquals(Rank.C2, hand.cards[0].rank)
@@ -361,36 +363,42 @@ class PokerHandTest {
 
     @Nested
     inner class FullHierarchy {
-
         @Test
         fun `complete hand ranking hierarchy is correct`() {
-            val hands = listOf(
-                PokerHand.fromString("2H 5S 7D 9C AH"),  // high card
-                PokerHand.fromString("JH JS 3D 7C 2H"),  // pair
-                PokerHand.fromString("4H 4S 8D 8C AH"),  // two pair
-                PokerHand.fromString("7H 7S 7D 2C 5H"),  // three of a kind
-                PokerHand.fromString("4H 5S 6D 7C 8H"),  // straight
-                PokerHand.fromString("2D 5D 7D 9D AD"),   // flush
-                PokerHand.fromString("3H 3S 3D 6C 6H"),  // full house
-                PokerHand.fromString("9H 9S 9D 9C 2H"),  // four of a kind
-                PokerHand.fromString("5H 6H 7H 8H 9H"),  // straight flush
-            )
+            val hands =
+                listOf(
+                    PokerHand.fromString("2H 5S 7D 9C AH"), // high card
+                    PokerHand.fromString("JH JS 3D 7C 2H"), // pair
+                    PokerHand.fromString("4H 4S 8D 8C AH"), // two pair
+                    PokerHand.fromString("7H 7S 7D 2C 5H"), // three of a kind
+                    PokerHand.fromString("4H 5S 6D 7C 8H"), // straight
+                    PokerHand.fromString("2D 5D 7D 9D AD"), // flush
+                    PokerHand.fromString("3H 3S 3D 6C 6H"), // full house
+                    PokerHand.fromString("9H 9S 9D 9C 2H"), // four of a kind
+                    PokerHand.fromString("5H 6H 7H 8H 9H"), // straight flush
+                )
 
             for (i in hands.indices) {
                 for (j in hands.indices) {
                     when {
-                        i < j -> assertEquals(
-                            PokerHand.LOSS, hands[i].compareTo(hands[j]),
-                            "${hands[i].getHighestRank()} should lose to ${hands[j].getHighestRank()}"
-                        )
-                        i > j -> assertEquals(
-                            PokerHand.WIN, hands[i].compareTo(hands[j]),
-                            "${hands[i].getHighestRank()} should beat ${hands[j].getHighestRank()}"
-                        )
-                        else -> assertEquals(
-                            PokerHand.TIE, hands[i].compareTo(hands[j]),
-                            "${hands[i].getHighestRank()} should tie with itself"
-                        )
+                        i < j ->
+                            assertEquals(
+                                PokerHand.LOSS,
+                                hands[i].compareTo(hands[j]),
+                                "${hands[i].getHighestRank()} should lose to ${hands[j].getHighestRank()}",
+                            )
+                        i > j ->
+                            assertEquals(
+                                PokerHand.WIN,
+                                hands[i].compareTo(hands[j]),
+                                "${hands[i].getHighestRank()} should beat ${hands[j].getHighestRank()}",
+                            )
+                        else ->
+                            assertEquals(
+                                PokerHand.TIE,
+                                hands[i].compareTo(hands[j]),
+                                "${hands[i].getHighestRank()} should tie with itself",
+                            )
                     }
                 }
             }

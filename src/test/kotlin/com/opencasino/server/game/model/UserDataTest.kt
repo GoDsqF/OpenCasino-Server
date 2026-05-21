@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test
 import java.util.*
 
 class UserDataTest {
-
     @Test
     fun `creates with all fields`() {
         val id = UUID.randomUUID()

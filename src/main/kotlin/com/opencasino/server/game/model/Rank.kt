@@ -1,7 +1,8 @@
 package com.opencasino.server.game.model
 
-enum class Rank(private val code: String) : Iterator<Rank?> {
-
+enum class Rank(
+    private val code: String,
+) : Iterator<Rank?> {
     C2("2"),
     C3("3"),
     C4("4"),
@@ -14,14 +15,14 @@ enum class Rank(private val code: String) : Iterator<Rank?> {
     CJ("J"),
     CQ("Q"),
     CK("K"),
-    CA("A");
+    CA("A"),
+    ;
 
     override operator fun next(): Rank? = if (hasNext()) ordinalLookup[this.ordinal + 1] else null
 
     override fun hasNext(): Boolean = this.ordinal < ordinalLookup.size - 1
 
     companion object {
-
         fun forCode(code: Char) = forCode(code.toString())
 
         fun forCode(code: String): Rank = codeLookup[code] ?: throw RuntimeException("No value for code: $code")

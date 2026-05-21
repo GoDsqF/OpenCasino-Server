@@ -19,7 +19,6 @@ import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 
 class OAuth2UserLinkingServiceTest {
-
     private lateinit var users: UserRepository
     private lateinit var identities: UserOAuthIdentityRepository
     private lateinit var props: AuthProperties
@@ -46,7 +45,8 @@ class OAuth2UserLinkingServiceTest {
             .thenReturn(Mono.just(UserOAuthIdentity(user.id, "google", "sub-1")))
         whenever(users.findById(user.id)).thenReturn(Mono.just(user))
 
-        StepVerifier.create(service.linkOrCreate(principal(email = "alice@example.com")))
+        StepVerifier
+            .create(service.linkOrCreate(principal(email = "alice@example.com")))
             .assertNext { assertEquals(user.id, it.id) }
             .verifyComplete()
 
@@ -56,11 +56,11 @@ class OAuth2UserLinkingServiceTest {
 
     @Test
     fun `unverified email is rejected with OAUTH_EMAIL_UNVERIFIED`() {
-        StepVerifier.create(service.linkOrCreate(principal(emailVerified = false)))
+        StepVerifier
+            .create(service.linkOrCreate(principal(emailVerified = false)))
             .expectErrorSatisfies {
                 assert(it is AuthException && it.failure == AuthFailureCode.OAUTH_EMAIL_UNVERIFIED)
-            }
-            .verify()
+            }.verify()
 
         verify(users, never()).save(any())
         verify(identities, never()).save(any())
@@ -68,11 +68,11 @@ class OAuth2UserLinkingServiceTest {
 
     @Test
     fun `missing email is rejected with OAUTH_EMAIL_UNVERIFIED`() {
-        StepVerifier.create(service.linkOrCreate(principal(email = null, emailVerified = true)))
+        StepVerifier
+            .create(service.linkOrCreate(principal(email = null, emailVerified = true)))
             .expectErrorSatisfies {
                 assert(it is AuthException && it.failure == AuthFailureCode.OAUTH_EMAIL_UNVERIFIED)
-            }
-            .verify()
+            }.verify()
     }
 
     @Test
@@ -82,7 +82,8 @@ class OAuth2UserLinkingServiceTest {
         whenever(identities.save(any()))
             .thenReturn(Mono.just(UserOAuthIdentity(existing.id, "google", "sub-1")))
 
-        StepVerifier.create(service.linkOrCreate(principal(email = "alice@example.com")))
+        StepVerifier
+            .create(service.linkOrCreate(principal(email = "alice@example.com")))
             .assertNext { assertEquals(existing.id, it.id) }
             .verifyComplete()
 
@@ -101,7 +102,8 @@ class OAuth2UserLinkingServiceTest {
         whenever(identities.save(any()))
             .thenReturn(Mono.just(UserOAuthIdentity(existing.id, "google", "sub-1")))
 
-        StepVerifier.create(service.linkOrCreate(principal(email = "ALICE@example.com")))
+        StepVerifier
+            .create(service.linkOrCreate(principal(email = "ALICE@example.com")))
             .assertNext { assertEquals(existing.id, it.id) }
             .verifyComplete()
     }
@@ -111,14 +113,14 @@ class OAuth2UserLinkingServiceTest {
         whenever(users.save(any())).thenAnswer { Mono.just(it.arguments[0] as User) }
         whenever(identities.save(any())).thenAnswer { Mono.just(it.arguments[0] as UserOAuthIdentity) }
 
-        StepVerifier.create(service.linkOrCreate(principal(email = "newbie@example.com", profileName = "Newbie Smith")))
+        StepVerifier
+            .create(service.linkOrCreate(principal(email = "newbie@example.com", profileName = "Newbie Smith")))
             .assertNext { user ->
                 assertEquals("newbie@example.com", user.email)
                 assertEquals("NewbieSmith", user.displayName)
                 assertNull(user.passwordHash)
                 assertNotNull(user.id)
-            }
-            .verifyComplete()
+            }.verifyComplete()
 
         val identityCaptor = argumentCaptor<UserOAuthIdentity>()
         verify(identities).save(identityCaptor.capture())
@@ -134,7 +136,8 @@ class OAuth2UserLinkingServiceTest {
         whenever(users.save(any())).thenAnswer { Mono.just(it.arguments[0] as User) }
         whenever(identities.save(any())).thenAnswer { Mono.just(it.arguments[0] as UserOAuthIdentity) }
 
-        StepVerifier.create(service.linkOrCreate(principal(email = "alice@example.com", profileName = "alice")))
+        StepVerifier
+            .create(service.linkOrCreate(principal(email = "alice@example.com", profileName = "alice")))
             .assertNext { user -> assertEquals("alice-3", user.displayName) }
             .verifyComplete()
     }
@@ -144,7 +147,8 @@ class OAuth2UserLinkingServiceTest {
         whenever(users.save(any())).thenAnswer { Mono.just(it.arguments[0] as User) }
         whenever(identities.save(any())).thenAnswer { Mono.just(it.arguments[0] as UserOAuthIdentity) }
 
-        StepVerifier.create(service.linkOrCreate(principal(email = "carol@example.com", profileName = "admin")))
+        StepVerifier
+            .create(service.linkOrCreate(principal(email = "carol@example.com", profileName = "admin")))
             .assertNext { user -> assertEquals("carol", user.displayName) }
             .verifyComplete()
     }

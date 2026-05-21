@@ -8,16 +8,16 @@ import org.springframework.core.env.MapPropertySource
 import org.springframework.mock.env.MockEnvironment
 
 class ShortEnvAliasPostProcessorTest {
-
     private val processor = ShortEnvAliasPostProcessor()
     private val app = SpringApplication()
 
     @Test
     fun `maps GOOGLE_OAUTH_CLIENT envs to spring registration props`() {
-        val env = MockEnvironment().apply {
-            setProperty("GOOGLE_OAUTH_CLIENT_ID", "id-123")
-            setProperty("GOOGLE_OAUTH_CLIENT_SECRET", "shh")
-        }
+        val env =
+            MockEnvironment().apply {
+                setProperty("GOOGLE_OAUTH_CLIENT_ID", "id-123")
+                setProperty("GOOGLE_OAUTH_CLIENT_SECRET", "shh")
+            }
 
         processor.postProcessEnvironment(env, app)
 
@@ -28,11 +28,12 @@ class ShortEnvAliasPostProcessorTest {
 
     @Test
     fun `honours custom GOOGLE_OAUTH_SCOPE`() {
-        val env = MockEnvironment().apply {
-            setProperty("GOOGLE_OAUTH_CLIENT_ID", "id")
-            setProperty("GOOGLE_OAUTH_CLIENT_SECRET", "s")
-            setProperty("GOOGLE_OAUTH_SCOPE", "openid,email")
-        }
+        val env =
+            MockEnvironment().apply {
+                setProperty("GOOGLE_OAUTH_CLIENT_ID", "id")
+                setProperty("GOOGLE_OAUTH_CLIENT_SECRET", "s")
+                setProperty("GOOGLE_OAUTH_SCOPE", "openid,email")
+            }
 
         processor.postProcessEnvironment(env, app)
 
@@ -51,10 +52,11 @@ class ShortEnvAliasPostProcessorTest {
 
     @Test
     fun `skips google registration when credentials blank`() {
-        val env = MockEnvironment().apply {
-            setProperty("GOOGLE_OAUTH_CLIENT_ID", "")
-            setProperty("GOOGLE_OAUTH_CLIENT_SECRET", "   ")
-        }
+        val env =
+            MockEnvironment().apply {
+                setProperty("GOOGLE_OAUTH_CLIENT_ID", "")
+                setProperty("GOOGLE_OAUTH_CLIENT_SECRET", "   ")
+            }
 
         processor.postProcessEnvironment(env, app)
 
@@ -63,10 +65,11 @@ class ShortEnvAliasPostProcessorTest {
 
     @Test
     fun `maps OAUTH redirect aliases`() {
-        val env = MockEnvironment().apply {
-            setProperty("OAUTH_SUCCESS_REDIRECT", "https://example.test/ok")
-            setProperty("OAUTH_FAILURE_REDIRECT", "https://example.test/err")
-        }
+        val env =
+            MockEnvironment().apply {
+                setProperty("OAUTH_SUCCESS_REDIRECT", "https://example.test/ok")
+                setProperty("OAUTH_FAILURE_REDIRECT", "https://example.test/err")
+            }
 
         processor.postProcessEnvironment(env, app)
 
@@ -92,7 +95,7 @@ class ShortEnvAliasPostProcessorTest {
     fun `explicit property in higher source overrides code default`() {
         val env = MockEnvironment()
         env.propertySources.addFirst(
-            MapPropertySource("config-file", mapOf("app.jwt.issuer" to "casino-prod"))
+            MapPropertySource("config-file", mapOf("app.jwt.issuer" to "casino-prod")),
         )
 
         processor.postProcessEnvironment(env, app)

@@ -16,20 +16,21 @@ class MenuServiceImpl(
     @Qualifier("pokerRoomServiceImpl") @Lazy private val pokerRoomService: RoomService,
     @Lazy private val pokerLobbyService: PokerLobbyService,
 ) : MenuService {
-
     override fun getMenuSnapshot(): MenuUpdatePack {
-        val games = AvailableGames.entries.map { game ->
-            val service = when (game) {
-                AvailableGames.Blackjack -> blackjackRoomService
-                AvailableGames.Poker -> pokerRoomService
+        val games =
+            AvailableGames.entries.map { game ->
+                val service =
+                    when (game) {
+                        AvailableGames.Blackjack -> blackjackRoomService
+                        AvailableGames.Poker -> pokerRoomService
+                    }
+                val rooms = service.getRooms()
+                GameMetadata(
+                    name = game.name,
+                    activeRooms = rooms.size,
+                    activePlayers = rooms.sumOf { it.currentPlayersCount() },
+                )
             }
-            val rooms = service.getRooms()
-            GameMetadata(
-                name = game.name,
-                activeRooms = rooms.size,
-                activePlayers = rooms.sumOf { it.currentPlayersCount() }
-            )
-        }
         return MenuUpdatePack(
             games = games,
             totalActivePlayers = games.sumOf { it.activePlayers },

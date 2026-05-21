@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
 import java.security.KeyPairGenerator
@@ -35,12 +35,11 @@ private const val TEST_ISSUER = "opencasino-test"
         "spring.liquibase.user=sa",
         "spring.liquibase.password=",
         "app.jwt.issuer=$TEST_ISSUER",
-    ]
+    ],
 )
 @AutoConfigureWebTestClient
 @ActiveProfiles("security-on")
 class SecurityConfigIntegrationTest {
-
     @Autowired
     lateinit var keys: JwtKeyMaterial
 
@@ -55,112 +54,145 @@ class SecurityConfigIntegrationTest {
 
     @Nested
     inner class HttpRequests {
-
         @Test
         fun `GET on a protected path without auth returns 401`() {
-            webClient.get().uri("/api/anything-not-allowlisted")
+            webClient
+                .get()
+                .uri("/api/anything-not-allowlisted")
                 .exchange()
-                .expectStatus().isUnauthorized
+                .expectStatus()
+                .isUnauthorized
         }
 
         @Test
         fun `auth me with valid jwt returns 200 and echoes claims`() {
             val userId = UUID.randomUUID()
-            users.save(
-                User(
-                    id = userId,
-                    email = "me-${userId}@example.com",
-                    displayName = "me-${userId.toString().take(8)}",
+            users
+                .save(
+                    User(
+                        id = userId,
+                        email = "me-$userId@example.com",
+                        displayName = "me-${userId.toString().take(8)}",
+                    ),
+                ).block()
+            val token =
+                signToken(
+                    JWTClaimsSet
+                        .Builder()
+                        .issuer(TEST_ISSUER)
+                        .subject(userId.toString())
+                        .issueTime(Date())
+                        .expirationTime(Date.from(Instant.now().plusSeconds(60)))
+                        .claim(JwtIssuer.CLAIM_EMAIL, "me@example.com")
+                        .claim(JwtIssuer.CLAIM_ROLES, listOf("USER"))
+                        .build(),
+                    keys.privateKey,
+                    keys.keyId,
                 )
-            ).block()
-            val token = signToken(
-                JWTClaimsSet.Builder()
-                    .issuer(TEST_ISSUER)
-                    .subject(userId.toString())
-                    .issueTime(Date())
-                    .expirationTime(Date.from(Instant.now().plusSeconds(60)))
-                    .claim(JwtIssuer.CLAIM_EMAIL, "me@example.com")
-                    .claim(JwtIssuer.CLAIM_ROLES, listOf("USER"))
-                    .build(),
-                keys.privateKey,
-                keys.keyId,
-            )
 
-            webClient.get().uri("/auth/me")
+            webClient
+                .get()
+                .uri("/auth/me")
                 .header("Authorization", "Bearer $token")
                 .exchange()
-                .expectStatus().isOk
+                .expectStatus()
+                .isOk
                 .expectBody()
-                .jsonPath("$.userId").isEqualTo(userId.toString())
-                .jsonPath("$.email").isEqualTo("me@example.com")
-                .jsonPath("$.displayName").isEqualTo("me-${userId.toString().take(8)}")
-                .jsonPath("$.roles[0]").isEqualTo("USER")
+                .jsonPath("$.userId")
+                .isEqualTo(userId.toString())
+                .jsonPath("$.email")
+                .isEqualTo("me@example.com")
+                .jsonPath("$.displayName")
+                .isEqualTo("me-${userId.toString().take(8)}")
+                .jsonPath("$.roles[0]")
+                .isEqualTo("USER")
         }
 
         @Test
         fun `auth me without token returns 401`() {
-            webClient.get().uri("/auth/me")
+            webClient
+                .get()
+                .uri("/auth/me")
                 .exchange()
-                .expectStatus().isUnauthorized
+                .expectStatus()
+                .isUnauthorized
         }
 
         @Test
         fun `auth me with token signed by foreign key returns 401`() {
-            val foreignPair = KeyPairGenerator.getInstance("RSA")
-                .apply { initialize(2048) }.generateKeyPair()
-            val token = signToken(
-                JWTClaimsSet.Builder()
-                    .issuer(TEST_ISSUER)
-                    .subject(UUID.randomUUID().toString())
-                    .issueTime(Date())
-                    .expirationTime(Date.from(Instant.now().plusSeconds(60)))
-                    .build(),
-                foreignPair.private as RSAPrivateKey,
-                keys.keyId,
-            )
+            val foreignPair =
+                KeyPairGenerator
+                    .getInstance("RSA")
+                    .apply { initialize(2048) }
+                    .generateKeyPair()
+            val token =
+                signToken(
+                    JWTClaimsSet
+                        .Builder()
+                        .issuer(TEST_ISSUER)
+                        .subject(UUID.randomUUID().toString())
+                        .issueTime(Date())
+                        .expirationTime(Date.from(Instant.now().plusSeconds(60)))
+                        .build(),
+                    foreignPair.private as RSAPrivateKey,
+                    keys.keyId,
+                )
 
-            webClient.get().uri("/auth/me")
+            webClient
+                .get()
+                .uri("/auth/me")
                 .header("Authorization", "Bearer $token")
                 .exchange()
-                .expectStatus().isUnauthorized
+                .expectStatus()
+                .isUnauthorized
         }
 
         @Test
         fun `auth me with expired token returns 401`() {
-            val expired = signToken(
-                JWTClaimsSet.Builder()
-                    .issuer(TEST_ISSUER)
-                    .subject(UUID.randomUUID().toString())
-                    .issueTime(Date.from(Instant.now().minusSeconds(3600)))
-                    .expirationTime(Date.from(Instant.now().minusSeconds(60)))
-                    .build(),
-                keys.privateKey,
-                keys.keyId,
-            )
+            val expired =
+                signToken(
+                    JWTClaimsSet
+                        .Builder()
+                        .issuer(TEST_ISSUER)
+                        .subject(UUID.randomUUID().toString())
+                        .issueTime(Date.from(Instant.now().minusSeconds(3600)))
+                        .expirationTime(Date.from(Instant.now().minusSeconds(60)))
+                        .build(),
+                    keys.privateKey,
+                    keys.keyId,
+                )
 
-            webClient.get().uri("/auth/me")
+            webClient
+                .get()
+                .uri("/auth/me")
                 .header("Authorization", "Bearer $expired")
                 .exchange()
-                .expectStatus().isUnauthorized
+                .expectStatus()
+                .isUnauthorized
         }
 
         @Test
         fun `auth me with wrong issuer returns 401`() {
-            val token = signToken(
-                JWTClaimsSet.Builder()
-                    .issuer("someone-else")
-                    .subject(UUID.randomUUID().toString())
-                    .issueTime(Date())
-                    .expirationTime(Date.from(Instant.now().plusSeconds(60)))
-                    .build(),
-                keys.privateKey,
-                keys.keyId,
-            )
+            val token =
+                signToken(
+                    JWTClaimsSet
+                        .Builder()
+                        .issuer("someone-else")
+                        .subject(UUID.randomUUID().toString())
+                        .issueTime(Date())
+                        .expirationTime(Date.from(Instant.now().plusSeconds(60)))
+                        .build(),
+                    keys.privateKey,
+                    keys.keyId,
+                )
 
-            webClient.get().uri("/auth/me")
+            webClient
+                .get()
+                .uri("/auth/me")
                 .header("Authorization", "Bearer $token")
                 .exchange()
-                .expectStatus().isUnauthorized
+                .expectStatus()
+                .isUnauthorized
         }
     }
 
@@ -169,36 +201,43 @@ class SecurityConfigIntegrationTest {
         signingKey: RSAPrivateKey,
         kid: String,
     ): String {
-        val header = JWSHeader.Builder(JWSAlgorithm.RS256)
-            .type(JOSEObjectType.JWT)
-            .keyID(kid)
-            .build()
+        val header =
+            JWSHeader
+                .Builder(JWSAlgorithm.RS256)
+                .type(JOSEObjectType.JWT)
+                .keyID(kid)
+                .build()
         return SignedJWT(header, claims).apply { sign(RSASSASigner(signingKey)) }.serialize()
     }
 
     @Nested
     inner class WebSocketHandshake {
-
         @Test
         fun `handshake on ws without auth returns 401`() {
-            webClient.get().uri("/ws")
+            webClient
+                .get()
+                .uri("/ws")
                 .header("Upgrade", "websocket")
                 .header("Connection", "Upgrade")
                 .header("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
                 .header("Sec-WebSocket-Version", "13")
                 .exchange()
-                .expectStatus().isUnauthorized
+                .expectStatus()
+                .isUnauthorized
         }
 
         @Test
         fun `handshake on ws menu without auth is permitted`() {
-            webClient.get().uri("/ws/menu")
+            webClient
+                .get()
+                .uri("/ws/menu")
                 .header("Upgrade", "websocket")
                 .header("Connection", "Upgrade")
                 .header("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
                 .header("Sec-WebSocket-Version", "13")
                 .exchange()
-                .expectStatus().value { code -> assertNotEquals(401, code) }
+                .expectStatus()
+                .value { code -> assertNotEquals(401, code) }
         }
     }
 }

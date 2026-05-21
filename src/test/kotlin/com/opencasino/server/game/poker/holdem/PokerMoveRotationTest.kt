@@ -9,18 +9,20 @@ import org.junit.jupiter.api.Test
  * воспроизводя nextMove из PokerGameRoom.
  */
 class PokerMoveRotationTest {
-
     data class PlayerStub(
         val position: Int,
         var folded: Boolean = false,
         var allin: Boolean = false,
-        var currentBet: Double = 0.0
+        var currentBet: Double = 0.0,
     )
 
     /**
      * Воспроизводит allBetsValid из PokerGameRoom
      */
-    private fun allBetsValid(players: List<PlayerStub>, lastMaxBet: Double): Boolean {
+    private fun allBetsValid(
+        players: List<PlayerStub>,
+        lastMaxBet: Double,
+    ): Boolean {
         for (player in players) {
             if (player.currentBet != lastMaxBet) {
                 if (!player.folded && !player.allin) return false
@@ -32,18 +34,28 @@ class PokerMoveRotationTest {
     /**
      * Воспроизводит вычисление следующей позиции из nextMove
      */
-    private fun nextPosition(currentPosition: Int, playersCount: Int): Int {
-        return if (currentPosition == playersCount - 1) 0
-        else currentPosition + 1
-    }
+    private fun nextPosition(
+        currentPosition: Int,
+        playersCount: Int,
+    ): Int =
+        if (currentPosition == playersCount - 1) {
+            0
+        } else {
+            currentPosition + 1
+        }
 
     /**
      * Воспроизводит вычисление lastPlayer из nextMove
      */
-    private fun lastPlayer(currentStartPlayer: Int, playersCount: Int): Int {
-        return if (currentStartPlayer != 0) currentStartPlayer - 1
-        else playersCount - 1
-    }
+    private fun lastPlayer(
+        currentStartPlayer: Int,
+        playersCount: Int,
+    ): Int =
+        if (currentStartPlayer != 0) {
+            currentStartPlayer - 1
+        } else {
+            playersCount - 1
+        }
 
     // =========================================================================
     // Ротация позиций
@@ -51,10 +63,9 @@ class PokerMoveRotationTest {
 
     @Nested
     inner class PositionRotation {
-
         @Test
         fun `next position wraps around`() {
-            assertEquals(0, nextPosition(5, 6))   // last -> first
+            assertEquals(0, nextPosition(5, 6)) // last -> first
         }
 
         @Test
@@ -106,75 +117,81 @@ class PokerMoveRotationTest {
 
     @Nested
     inner class AllBetsValidTests {
-
         @Test
         fun `all players matched bet - valid`() {
-            val players = listOf(
-                PlayerStub(0, currentBet = 100.0),
-                PlayerStub(1, currentBet = 100.0),
-                PlayerStub(2, currentBet = 100.0)
-            )
+            val players =
+                listOf(
+                    PlayerStub(0, currentBet = 100.0),
+                    PlayerStub(1, currentBet = 100.0),
+                    PlayerStub(2, currentBet = 100.0),
+                )
             assertTrue(allBetsValid(players, 100.0))
         }
 
         @Test
         fun `one player has not matched bet - invalid`() {
-            val players = listOf(
-                PlayerStub(0, currentBet = 100.0),
-                PlayerStub(1, currentBet = 50.0),
-                PlayerStub(2, currentBet = 100.0)
-            )
+            val players =
+                listOf(
+                    PlayerStub(0, currentBet = 100.0),
+                    PlayerStub(1, currentBet = 50.0),
+                    PlayerStub(2, currentBet = 100.0),
+                )
             assertFalse(allBetsValid(players, 100.0))
         }
 
         @Test
         fun `folded player with lower bet is valid`() {
-            val players = listOf(
-                PlayerStub(0, currentBet = 100.0),
-                PlayerStub(1, currentBet = 0.0, folded = true),
-                PlayerStub(2, currentBet = 100.0)
-            )
+            val players =
+                listOf(
+                    PlayerStub(0, currentBet = 100.0),
+                    PlayerStub(1, currentBet = 0.0, folded = true),
+                    PlayerStub(2, currentBet = 100.0),
+                )
             assertTrue(allBetsValid(players, 100.0))
         }
 
         @Test
         fun `allin player with lower bet is valid`() {
-            val players = listOf(
-                PlayerStub(0, currentBet = 100.0),
-                PlayerStub(1, currentBet = 30.0, allin = true),
-                PlayerStub(2, currentBet = 100.0)
-            )
+            val players =
+                listOf(
+                    PlayerStub(0, currentBet = 100.0),
+                    PlayerStub(1, currentBet = 30.0, allin = true),
+                    PlayerStub(2, currentBet = 100.0),
+                )
             assertTrue(allBetsValid(players, 100.0))
         }
 
         @Test
         fun `all folded except one is valid`() {
-            val players = listOf(
-                PlayerStub(0, currentBet = 100.0),
-                PlayerStub(1, currentBet = 0.0, folded = true),
-                PlayerStub(2, currentBet = 0.0, folded = true)
-            )
+            val players =
+                listOf(
+                    PlayerStub(0, currentBet = 100.0),
+                    PlayerStub(1, currentBet = 0.0, folded = true),
+                    PlayerStub(2, currentBet = 0.0, folded = true),
+                )
             assertTrue(allBetsValid(players, 100.0))
         }
 
         @Test
         fun `all allin is valid`() {
-            val players = listOf(
-                PlayerStub(0, currentBet = 50.0, allin = true),
-                PlayerStub(1, currentBet = 30.0, allin = true),
-                PlayerStub(2, currentBet = 100.0)
-            )
+            val players =
+                listOf(
+                    PlayerStub(0, currentBet = 50.0, allin = true),
+                    PlayerStub(1, currentBet = 30.0, allin = true),
+                    PlayerStub(2, currentBet = 100.0),
+                )
             assertTrue(allBetsValid(players, 100.0))
         }
 
         @Test
         fun `mix of folded and allin with unmatched active - invalid`() {
-            val players = listOf(
-                PlayerStub(0, currentBet = 100.0),
-                PlayerStub(1, currentBet = 0.0, folded = true),
-                PlayerStub(2, currentBet = 50.0, allin = true),
-                PlayerStub(3, currentBet = 75.0) // active but not matched
-            )
+            val players =
+                listOf(
+                    PlayerStub(0, currentBet = 100.0),
+                    PlayerStub(1, currentBet = 0.0, folded = true),
+                    PlayerStub(2, currentBet = 50.0, allin = true),
+                    PlayerStub(3, currentBet = 75.0), // active but not matched
+                )
             assertFalse(allBetsValid(players, 100.0))
         }
 
@@ -197,10 +214,11 @@ class PokerMoveRotationTest {
 
         @Test
         fun `zero lastMaxBet with zero bets is valid`() {
-            val players = listOf(
-                PlayerStub(0, currentBet = 0.0),
-                PlayerStub(1, currentBet = 0.0)
-            )
+            val players =
+                listOf(
+                    PlayerStub(0, currentBet = 0.0),
+                    PlayerStub(1, currentBet = 0.0),
+                )
             assertTrue(allBetsValid(players, 0.0))
         }
     }
@@ -211,14 +229,14 @@ class PokerMoveRotationTest {
 
     @Nested
     inner class FullRotationScenarios {
-
         @Test
         fun `3 players full round - everyone calls`() {
-            val players = listOf(
-                PlayerStub(0, currentBet = 0.0),
-                PlayerStub(1, currentBet = 0.0),
-                PlayerStub(2, currentBet = 0.0)
-            )
+            val players =
+                listOf(
+                    PlayerStub(0, currentBet = 0.0),
+                    PlayerStub(1, currentBet = 0.0),
+                    PlayerStub(2, currentBet = 0.0),
+                )
             val lastMaxBet = 100.0
             var currentPos = 0
             val startPlayer = 0
@@ -235,29 +253,31 @@ class PokerMoveRotationTest {
 
         @Test
         fun `4 players - one folds, rest call`() {
-            val players = listOf(
-                PlayerStub(0, currentBet = 0.0),
-                PlayerStub(1, currentBet = 0.0),
-                PlayerStub(2, currentBet = 0.0),
-                PlayerStub(3, currentBet = 0.0)
-            )
+            val players =
+                listOf(
+                    PlayerStub(0, currentBet = 0.0),
+                    PlayerStub(1, currentBet = 0.0),
+                    PlayerStub(2, currentBet = 0.0),
+                    PlayerStub(3, currentBet = 0.0),
+                )
             val lastMaxBet = 100.0
 
-            players[0].currentBet = lastMaxBet       // call
-            players[1].folded = true                   // fold
-            players[2].currentBet = lastMaxBet        // call
-            players[3].currentBet = lastMaxBet        // call
+            players[0].currentBet = lastMaxBet // call
+            players[1].folded = true // fold
+            players[2].currentBet = lastMaxBet // call
+            players[3].currentBet = lastMaxBet // call
 
             assertTrue(allBetsValid(players, lastMaxBet))
         }
 
         @Test
         fun `raise forces new round of betting`() {
-            val players = mutableListOf(
-                PlayerStub(0, currentBet = 0.0),
-                PlayerStub(1, currentBet = 0.0),
-                PlayerStub(2, currentBet = 0.0)
-            )
+            val players =
+                mutableListOf(
+                    PlayerStub(0, currentBet = 0.0),
+                    PlayerStub(1, currentBet = 0.0),
+                    PlayerStub(2, currentBet = 0.0),
+                )
 
             // Round 1: P0 calls 100, P1 raises to 200, P2 needs to respond
             players[0].currentBet = 100.0
@@ -277,11 +297,12 @@ class PokerMoveRotationTest {
 
         @Test
         fun `allin player does not block round completion`() {
-            val players = listOf(
-                PlayerStub(0, currentBet = 100.0),
-                PlayerStub(1, currentBet = 40.0, allin = true),  // short stack
-                PlayerStub(2, currentBet = 100.0)
-            )
+            val players =
+                listOf(
+                    PlayerStub(0, currentBet = 100.0),
+                    PlayerStub(1, currentBet = 40.0, allin = true), // short stack
+                    PlayerStub(2, currentBet = 100.0),
+                )
             assertTrue(allBetsValid(players, 100.0))
         }
 
@@ -298,7 +319,7 @@ class PokerMoveRotationTest {
 
             assertEquals(
                 listOf(0, 1, 2, 3, 0, 1, 2, 3),
-                fullCycle
+                fullCycle,
             )
         }
 

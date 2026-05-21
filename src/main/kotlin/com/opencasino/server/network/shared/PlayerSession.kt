@@ -8,7 +8,7 @@ import java.util.*
 
 open class PlayerSession(
     override val id: String,
-    open val handshakeInfo: HandshakeInfo
+    open val handshakeInfo: HandshakeInfo,
 ) : AbstractEntity<String>(id) {
     open var player: Entity<Long>? = null
     open var serviceId: String? = null
@@ -18,6 +18,7 @@ open class PlayerSession(
     val userId: UUID?
         get() = principal?.name?.let { runCatching { UUID.fromString(it) }.getOrNull() }
 
-    override fun toString(): String = "UserSession [id=$id, player=$player" +
+    override fun toString(): String =
+        "UserSession [id=$id, player=$player" +
             ", serviceId=$serviceId, parentGameRoom=$roomKey]"
 }

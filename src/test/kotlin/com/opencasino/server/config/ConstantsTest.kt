@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class ConstantsTest {
-
     @Test
     fun `loop rate is positive`() {
         assertTrue(DEFAULT_LOOP_RATE > 0)

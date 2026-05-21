@@ -8,7 +8,6 @@ import org.springframework.core.env.StandardEnvironment
 import org.springframework.core.env.SystemEnvironmentPropertySource
 
 class SecurityNetworkPropertiesEnvBindingTest {
-
     // Asserts that the canonical short env-var name maps to app.security.trusted-proxies
     // via Spring relaxed binding on the "systemEnvironment" property source (the same
     // source Spring uses for OS env vars). Without an entry in ShortEnvAliasPostProcessor,
@@ -40,8 +39,11 @@ class SecurityNetworkPropertiesEnvBindingTest {
             ),
         )
 
-        val bound = Binder.get(env).bind("app.security", SecurityNetworkProperties::class.java)
-            .orElse(SecurityNetworkProperties())!!
+        val bound =
+            Binder
+                .get(env)
+                .bind("app.security", SecurityNetworkProperties::class.java)
+                .orElse(SecurityNetworkProperties())!!
         assertEquals(emptyList<String>(), bound.trustedProxies)
     }
 
@@ -49,7 +51,7 @@ class SecurityNetworkPropertiesEnvBindingTest {
     fun `canonical property name also binds`() {
         val env = StandardEnvironment()
         env.propertySources.addFirst(
-            MapPropertySource("test", mapOf("app.security.trusted-proxies" to "192.168.0.0/16"))
+            MapPropertySource("test", mapOf("app.security.trusted-proxies" to "192.168.0.0/16")),
         )
         val bound = Binder.get(env).bind("app.security", SecurityNetworkProperties::class.java).get()
         assertEquals(listOf("192.168.0.0/16"), bound.trustedProxies)

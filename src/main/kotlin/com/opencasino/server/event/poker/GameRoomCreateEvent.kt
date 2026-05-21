@@ -4,5 +4,5 @@ import com.opencasino.server.event.AbstractEvent
 
 data class GameRoomCreateEvent(
     val playerUUID: String,
-    val settings: GameSettingsUpdateEvent
+    val settings: GameSettingsUpdateEvent,
 ) : AbstractEvent()

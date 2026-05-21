@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class PokerBetTypeTest {
-
     @Test
     fun `three bet types exist`() {
         assertEquals(3, PokerBetType.entries.size)

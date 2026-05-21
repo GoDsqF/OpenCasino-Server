@@ -3,9 +3,8 @@ package com.opencasino.server.config
 import org.springframework.boot.context.properties.ConfigurationProperties
 import java.time.Duration
 
-
 data class GameProperties(
-    val gameThreads: Int = 4
+    val gameThreads: Int = 4,
 )
 
 data class HeartbeatProperties(
@@ -16,7 +15,7 @@ data class HeartbeatProperties(
 
 enum class AvailableGames {
     Blackjack,
-    Poker
+    Poker,
 }
 
 data class BlackjackRoomProperties(
@@ -27,7 +26,7 @@ data class BlackjackRoomProperties(
     val maxPlayers: Int = MAX_BLACKJACK_PLAYERS,
     val minBet: Double = MIN_BLACKJACK_BET,
     val deckStacks: Int = BLACKJACK_DECK_STACKS,
-    val reshuffleThreshold: Int = BLACKJACK_RESHUFFLE_THRESHOLD
+    val reshuffleThreshold: Int = BLACKJACK_RESHUFFLE_THRESHOLD,
 )
 
 data class PokerRoomProperties(
@@ -38,7 +37,7 @@ data class PokerRoomProperties(
     val maxPlayers: Int = MAX_POKER_PLAYERS,
     val minPlayers: Int = MIN_POKER_PLAYERS,
     val buyIn: Int = POKER_BUY_IN,
-    val deckStacks: Int = POKER_DECK_STACKS
+    val deckStacks: Int = POKER_DECK_STACKS,
 )
 
 data class DatabaseProperties(
@@ -46,9 +45,8 @@ data class DatabaseProperties(
     var port: Int,
     var database: String,
     var user: String,
-    var password: String
+    var password: String,
 )
-
 
 @ConfigurationProperties(prefix = "application")
 data class ApplicationProperties(

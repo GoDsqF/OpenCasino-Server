@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 
 class PokerMapTest {
-
     private lateinit var map: PokerMap
     private val mockRoom = mock(PokerGameRoom::class.java)
     private val mockSession = mock(PlayerSession::class.java)
@@ -19,9 +18,7 @@ class PokerMapTest {
         map = PokerMap()
     }
 
-    private fun createPlayer(id: Long = map.nextPlayerId()): PokerPlayer {
-        return PokerPlayer(id, mockRoom, mockSession)
-    }
+    private fun createPlayer(id: Long = map.nextPlayerId()): PokerPlayer = PokerPlayer(id, mockRoom, mockSession)
 
     @Test
     fun `initially has no players`() {

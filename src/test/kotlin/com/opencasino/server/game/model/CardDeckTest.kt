@@ -1,51 +1,44 @@
 package com.opencasino.server.game.model
 
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.RepeatedTest
+import org.junit.jupiter.api.Test
 
 class CardDeckTest {
-
     @Test
-    fun `empty deck has no cards`()
-    {
+    fun `empty deck has no cards`() {
         val deck = CardDeck()
         assertTrue(deck.getCards().isEmpty())
     }
 
     @Test
-    fun `single stack deck contains 52 cards`()
-    {
+    fun `single stack deck contains 52 cards`() {
         val deck = CardDeck(1)
         assertEquals(52, deck.getCards().size)
     }
 
     @Test
-    fun `multi stack deck contains correct number of cards`()
-    {
+    fun `multi stack deck contains correct number of cards`() {
         val deck = CardDeck(8)
         assertEquals(52 * 8, deck.getCards().size)
     }
 
     @Test
-    fun `single stack contains all rank suit combinations`()
-    {
+    fun `single stack contains all rank suit combinations`() {
         val deck = CardDeck(1)
         val cards = deck.getCards()
         for (rank in Rank.entries) {
             for (suit in Suit.entries) {
                 assertTrue(
                     cards.any { it.rank == rank && it.suit == suit },
-                    "Deck should contain $rank of $suit"
+                    "Deck should contain $rank of $suit",
                 )
             }
         }
     }
 
     @Test
-    fun `dealCard removes card from source and adds to target`()
-    {
+    fun `dealCard removes card from source and adds to target`() {
         val source = CardDeck(1)
         val target = CardDeck()
 
@@ -57,8 +50,7 @@ class CardDeckTest {
     }
 
     @Test
-    fun `dealCard with visibility true makes card visible`()
-    {
+    fun `dealCard with visibility true makes card visible`() {
         val source = CardDeck(1)
         val target = CardDeck()
 
@@ -68,8 +60,7 @@ class CardDeckTest {
     }
 
     @Test
-    fun `dealCard with visibility false makes card hidden`()
-    {
+    fun `dealCard with visibility false makes card hidden`() {
         val source = CardDeck(1)
         val target = CardDeck()
 
@@ -79,8 +70,7 @@ class CardDeckTest {
     }
 
     @Test
-    fun `dealCards deals correct number of cards`()
-    {
+    fun `dealCards deals correct number of cards`() {
         val source = CardDeck(1)
         val target = CardDeck()
 
@@ -91,8 +81,7 @@ class CardDeckTest {
     }
 
     @Test
-    fun `addCard increases deck size`()
-    {
+    fun `addCard increases deck size`() {
         val deck = CardDeck()
         val card = Card(Rank.CA, Suit.SPADES)
 
@@ -104,8 +93,7 @@ class CardDeckTest {
     }
 
     @Test
-    fun `addCard respects visibility parameter`()
-    {
+    fun `addCard respects visibility parameter`() {
         val deck = CardDeck()
         val card = Card(Rank.CA, Suit.SPADES)
 
@@ -117,8 +105,7 @@ class CardDeckTest {
     }
 
     @Test
-    fun `clear removes all cards`()
-    {
+    fun `clear removes all cards`() {
         val deck = CardDeck(1)
         assertFalse(deck.getCards().isEmpty())
 

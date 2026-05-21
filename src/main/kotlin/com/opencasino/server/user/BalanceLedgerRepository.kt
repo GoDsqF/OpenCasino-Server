@@ -14,17 +14,17 @@ import java.util.UUID
 class BalanceLedgerRepository(
     private val template: R2dbcEntityTemplate,
 ) {
-
-    fun insert(entry: BalanceLedgerEntry): Mono<BalanceLedgerEntry> =
-        template.insert<BalanceLedgerEntry>().using(entry)
+    fun insert(entry: BalanceLedgerEntry): Mono<BalanceLedgerEntry> = template.insert<BalanceLedgerEntry>().using(entry)
 
     fun findByUserId(userId: UUID): Flux<BalanceLedgerEntry> =
-        template.select<BalanceLedgerEntry>()
+        template
+            .select<BalanceLedgerEntry>()
             .matching(Query.query(Criteria.where("user_id").`is`(userId)))
             .all()
 
     fun findByRoundId(roundId: UUID): Flux<BalanceLedgerEntry> =
-        template.select<BalanceLedgerEntry>()
+        template
+            .select<BalanceLedgerEntry>()
             .matching(Query.query(Criteria.where("round_id").`is`(roundId)))
             .all()
 }

@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate
 import org.springframework.test.context.ActiveProfiles
-import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.UUID
 
@@ -19,22 +18,25 @@ import java.util.UUID
         "spring.liquibase.url=jdbc:h2:mem:ledgertest;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE",
         "spring.liquibase.user=sa",
         "spring.liquibase.password=",
-    ]
+    ],
 )
 @ActiveProfiles("test")
 class BalanceLedgerServiceIntegrationTest {
-
     @Autowired lateinit var users: UserRepository
+
     @Autowired lateinit var ledger: BalanceLedgerRepository
+
     @Autowired lateinit var ledgerService: BalanceLedgerService
+
     @Autowired lateinit var template: R2dbcEntityTemplate
 
     private fun newUser(initialBalance: Double = 100.0): User {
-        val user = User(
-            email = "ledger-${UUID.randomUUID()}@example.com",
-            displayName = "ledger-user",
-            balance = initialBalance,
-        )
+        val user =
+            User(
+                email = "ledger-${UUID.randomUUID()}@example.com",
+                displayName = "ledger-user",
+                balance = initialBalance,
+            )
         users.save(user).block()
         return user
     }
@@ -44,16 +46,15 @@ class BalanceLedgerServiceIntegrationTest {
         val user = newUser(100.0)
         val roundId = UUID.randomUUID()
 
-        StepVerifier.create(
-            ledgerService.applyDelta(user.id, roundId, 25.0, BalanceLedgerReason.BLACKJACK_ROUND)
-        )
-            .assertNext { entry ->
+        StepVerifier
+            .create(
+                ledgerService.applyDelta(user.id, roundId, 25.0, BalanceLedgerReason.BLACKJACK_ROUND),
+            ).assertNext { entry ->
                 assertEquals(user.id, entry.userId)
                 assertEquals(roundId, entry.roundId)
                 assertEquals(25.0, entry.delta)
                 assertEquals(BalanceLedgerReason.BLACKJACK_ROUND, entry.reason)
-            }
-            .verifyComplete()
+            }.verifyComplete()
 
         assertEquals(125.0, users.findById(user.id).block()!!.balance)
         val rows = ledger.findByUserId(user.id).collectList().block()!!
@@ -84,7 +85,14 @@ class BalanceLedgerServiceIntegrationTest {
         ledgerService.applyDelta(user.id, UUID.randomUUID(), 0.0, BalanceLedgerReason.ADJUSTMENT).block()
 
         assertEquals(200.0, users.findById(user.id).block()!!.balance)
-        assertEquals(1, ledger.findByUserId(user.id).collectList().block()!!.size)
+        assertEquals(
+            1,
+            ledger
+                .findByUserId(user.id)
+                .collectList()
+                .block()!!
+                .size,
+        )
     }
 
     @Test
@@ -97,11 +105,11 @@ class BalanceLedgerServiceIntegrationTest {
         ledgerService.applyDelta(user.id, targetRound, 5.0, BalanceLedgerReason.BLACKJACK_ROUND).block()
         ledgerService.applyDelta(user.id, otherRound, 99.0, BalanceLedgerReason.BLACKJACK_ROUND).block()
 
-        StepVerifier.create(ledger.findByRoundId(targetRound).collectList())
+        StepVerifier
+            .create(ledger.findByRoundId(targetRound).collectList())
             .assertNext { list ->
                 assertEquals(2, list.size)
                 assertTrue(list.all { it.roundId == targetRound })
-            }
-            .verifyComplete()
+            }.verifyComplete()
     }
 }

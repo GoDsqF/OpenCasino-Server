@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class PokerDecisionTest {
-
     @Test
     fun `valueOf works for all entries`() {
         for (decision in PokerDecision.entries) {

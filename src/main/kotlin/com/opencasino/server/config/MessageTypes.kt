@@ -10,7 +10,7 @@ const val MAIN_MENU_JOIN_FAILURE = 2004
 
 const val GAME_ROOM_CREATE = 7
 const val GAME_ROOM_JOIN = 10
-const val GAME_ROOM_JOIN_WAIT = 11 
+const val GAME_ROOM_JOIN_WAIT = 11
 const val GAME_ROOM_JOIN_SUCCESS = 12
 const val GAME_ROOM_JOIN_FAILURE = 44
 

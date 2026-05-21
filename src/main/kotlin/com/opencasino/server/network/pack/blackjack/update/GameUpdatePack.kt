@@ -7,5 +7,5 @@ import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
 data class GameUpdatePack(
     val player: PrivatePlayerUpdatePack,
     val players: Collection<PlayerHandUpdatePack>,
-    val dealer: DealerUpdatePack
-): UpdatePack
+    val dealer: DealerUpdatePack,
+) : UpdatePack

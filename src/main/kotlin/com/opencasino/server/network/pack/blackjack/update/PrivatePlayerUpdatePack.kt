@@ -3,7 +3,6 @@ package com.opencasino.server.network.pack.blackjack.update
 import com.opencasino.server.network.pack.PrivateUpdatePack
 import com.opencasino.server.service.shared.BlackjackDecision
 
-
 data class PrivatePlayerUpdatePack(
     val id: Long,
     val balance: Double,
@@ -12,4 +11,4 @@ data class PrivatePlayerUpdatePack(
     val availableActions: List<String>,
     val hands: List<BlackjackHandView>,
     val activeHandIndex: Int,
-): PrivateUpdatePack
+) : PrivateUpdatePack

@@ -25,11 +25,10 @@ import java.time.Duration
         "app.jwt.issuer=opencasino-test",
         "app.cors.allowed-origins=https://app.example.com,http://localhost:3000",
         "app.ratelimit.enabled=false",
-    ]
+    ],
 )
 @ActiveProfiles("security-on")
 class CorsIntegrationTest {
-
     // Bind WebTestClient to the real port — @AutoConfigureWebTestClient gives an
     // in-process client whose request URI lacks scheme/host, which trips Spring's
     // CorsUtils.isSameOrigin (null scheme assertion) and shows up as
@@ -39,38 +38,51 @@ class CorsIntegrationTest {
 
     @BeforeEach
     fun setUp() {
-        webClient = WebTestClient.bindToServer()
-            .baseUrl("http://localhost:$port")
-            .responseTimeout(Duration.ofSeconds(30))
-            .build()
+        webClient =
+            WebTestClient
+                .bindToServer()
+                .baseUrl("http://localhost:$port")
+                .responseTimeout(Duration.ofSeconds(30))
+                .build()
     }
 
     @Test
     fun `preflight from allowed origin returns Access-Control-Allow-Origin`() {
-        webClient.options().uri("/auth/login")
+        webClient
+            .options()
+            .uri("/auth/login")
             .header(HttpHeaders.ORIGIN, "https://app.example.com")
             .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, HttpMethod.POST.name())
             .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "Content-Type")
             .exchange()
-            .expectStatus().isOk
-            .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "https://app.example.com")
-            .expectHeader().exists(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS)
+            .expectStatus()
+            .isOk
+            .expectHeader()
+            .valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "https://app.example.com")
+            .expectHeader()
+            .exists(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS)
     }
 
     @Test
     fun `preflight from disallowed origin is rejected`() {
-        webClient.options().uri("/auth/login")
+        webClient
+            .options()
+            .uri("/auth/login")
             .header(HttpHeaders.ORIGIN, "https://evil.example.com")
             .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, HttpMethod.POST.name())
             .exchange()
-            .expectStatus().isForbidden
+            .expectStatus()
+            .isForbidden
     }
 
     @Test
     fun `non-cors request to an allowed permit-all endpoint passes through`() {
-        webClient.post().uri("/auth/login")
+        webClient
+            .post()
+            .uri("/auth/login")
             .bodyValue(mapOf("email" to "", "password" to ""))
             .exchange()
-            .expectStatus().isUnauthorized
+            .expectStatus()
+            .isUnauthorized
     }
 }

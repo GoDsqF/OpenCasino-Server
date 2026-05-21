@@ -16,14 +16,15 @@ import java.util.UUID
 class UserRepository(
     private val template: R2dbcEntityTemplate,
 ) {
-
     fun findById(id: UUID): Mono<User> =
-        template.select<User>()
+        template
+            .select<User>()
             .matching(Query.query(Criteria.where("id").`is`(id)).limit(1))
             .one()
 
     fun findByEmail(email: String): Mono<User> =
-        template.select<User>()
+        template
+            .select<User>()
             .matching(Query.query(Criteria.where("email").`is`(email)).limit(1))
             .one()
 
@@ -33,16 +34,20 @@ class UserRepository(
             User::class.java,
         )
 
-    fun save(user: User): Mono<User> =
-        template.insert<User>().using(user)
+    fun save(user: User): Mono<User> = template.insert<User>().using(user)
 
     fun deleteById(id: UUID): Mono<Long> =
-        template.delete<User>()
+        template
+            .delete<User>()
             .matching(Query.query(Criteria.where("id").`is`(id)))
             .all()
 
-    fun updateLastLoginAt(id: UUID, at: Instant): Mono<Long> =
-        template.update(User::class.java)
+    fun updateLastLoginAt(
+        id: UUID,
+        at: Instant,
+    ): Mono<Long> =
+        template
+            .update(User::class.java)
             .matching(Query.query(Criteria.where("id").`is`(id)))
             .apply(Update.update("last_login_at", at))
 }

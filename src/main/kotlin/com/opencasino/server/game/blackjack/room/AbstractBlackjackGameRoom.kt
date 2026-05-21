@@ -1,14 +1,12 @@
 package com.opencasino.server.game.blackjack.room
 
 import com.opencasino.server.config.MESSAGE
-import com.opencasino.server.event.AbstractEvent
 import com.opencasino.server.event.BetEvent
 import com.opencasino.server.event.BlackjackPlayerDecisionEvent
-import com.opencasino.server.event.poker.PokerPlayerDecisionEvent
 import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.pack.shared.GameMessagePack
-import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.network.shared.Message
+import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.FailureCode
@@ -18,8 +16,8 @@ import org.apache.logging.log4j.Logger
 import reactor.core.Disposable
 import reactor.core.scheduler.Scheduler
 import java.util.*
-import java.util.function.Function
 import java.util.concurrent.TimeUnit
+import java.util.function.Function
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
@@ -27,9 +25,10 @@ abstract class AbstractBlackjackGameRoom protected constructor(
     var gameRoomId: UUID,
     private val schedulerService: Scheduler,
     protected val roomService: RoomService,
-    protected val webSocketSessionService: WebSocketSessionService
+    protected val webSocketSessionService: WebSocketSessionService,
 ) : GameRoom {
     private val roomFutureList: MutableList<Disposable> = ArrayList()
+
     companion object {
         val log: Logger = LogManager.getLogger(this::class.java)
     }
@@ -50,11 +49,16 @@ abstract class AbstractBlackjackGameRoom protected constructor(
         }
     }
 
-    override fun schedule(runnable: Runnable, delayMillis: Long)=
-        roomFutureList.add(schedulerService.schedule(runnable, delayMillis, TimeUnit.MILLISECONDS))
+    override fun schedule(
+        runnable: Runnable,
+        delayMillis: Long,
+    ) = roomFutureList.add(schedulerService.schedule(runnable, delayMillis, TimeUnit.MILLISECONDS))
 
-    override fun schedulePeriodically(runnable: Runnable, initDelay: Long, loopRate: Long)=
-        roomFutureList.add(schedulerService.schedulePeriodically(runnable,initDelay, loopRate,TimeUnit.MILLISECONDS))
+    override fun schedulePeriodically(
+        runnable: Runnable,
+        initDelay: Long,
+        loopRate: Long,
+    ) = roomFutureList.add(schedulerService.schedulePeriodically(runnable, initDelay, loopRate, TimeUnit.MILLISECONDS))
 
     override fun onDisconnect(userSession: PlayerSession): PlayerSession {
         val removed = sessions.remove(userSession.id) ?: return userSession
@@ -64,47 +68,75 @@ abstract class AbstractBlackjackGameRoom protected constructor(
         return removed
     }
 
-    override fun onReattach(oldSession: PlayerSession, newSession: PlayerSession) {
+    override fun onReattach(
+        oldSession: PlayerSession,
+        newSession: PlayerSession,
+    ) {
         if (sessions.remove(oldSession.id) == null) return
         sessions[newSession.id] = newSession
     }
 
-    override fun send(userSession: PlayerSession, message: Any) =
-        webSocketSessionService.send(userSession, message)
+    override fun send(
+        userSession: PlayerSession,
+        message: Any,
+    ) = webSocketSessionService.send(userSession, message)
 
-    override fun sendBroadcast(message: Any) =
-        webSocketSessionService.sendBroadcast(sessions.values, message)
+    override fun sendBroadcast(message: Any) = webSocketSessionService.sendBroadcast(sessions.values, message)
 
     override fun sendBroadcast(messageFunction: Function<PlayerSession, Any>) =
         webSocketSessionService.sendBroadcast(sessions.values, messageFunction)
 
-    override fun sendFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) {
+    override fun sendFailure(
+        userSession: PlayerSession,
+        code: FailureCode,
+        message: String,
+        details: Any?,
+    ) {
         webSocketSessionService.sendFailure(userSession, code, message, details)
     }
 
-    override fun sendBetFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) {
+    override fun sendBetFailure(
+        userSession: PlayerSession,
+        code: FailureCode,
+        message: String,
+        details: Any?,
+    ) {
         webSocketSessionService.sendBetFailure(userSession, code, message, details)
     }
 
-    override fun sendJoinFailure(userSession: PlayerSession, code: FailureCode, message: String, details: Any?) {
+    override fun sendJoinFailure(
+        userSession: PlayerSession,
+        code: FailureCode,
+        message: String,
+        details: Any?,
+    ) {
         webSocketSessionService.sendJoinFailure(userSession, code, message, details)
     }
 
-    override fun sendBroadcast(type: MessageType, message: String) {
+    override fun sendBroadcast(
+        type: MessageType,
+        message: String,
+    ) {
         sendBroadcast(Message(MESSAGE, GameMessagePack(type.type, message)))
     }
 
-    override fun sendBroadcast(userSessions: Collection<PlayerSession>, message: Any) {
+    override fun sendBroadcast(
+        userSessions: Collection<PlayerSession>,
+        message: Any,
+    ) {
         webSocketSessionService.sendBroadcast(userSessions, message)
     }
 
-    override fun send(userSession: PlayerSession, function: Function<PlayerSession, Any>) {
+    override fun send(
+        userSession: PlayerSession,
+        function: Function<PlayerSession, Any>,
+    ) {
         webSocketSessionService.send(userSession, function)
     }
 
     override fun sendBroadcast(
         userSessions: Collection<PlayerSession>,
-        function: Function<PlayerSession, Any>
+        function: Function<PlayerSession, Any>,
     ) {
         webSocketSessionService.sendBroadcast(userSessions, function)
     }
@@ -126,17 +158,31 @@ abstract class AbstractBlackjackGameRoom protected constructor(
     }
 
     override fun onClose(userSession: PlayerSession) {}
+
     override fun getPlayerSessionBySessionId(userSession: PlayerSession): Optional<PlayerSession> =
-        if (sessions.containsKey(userSession.id)) Optional.of(sessions[userSession.id]!!)
-        else Optional.empty()
+        if (sessions.containsKey(userSession.id)) {
+            Optional.of(sessions[userSession.id]!!)
+        } else {
+            Optional.empty()
+        }
 
     override fun sessions(): Collection<PlayerSession> = sessions.values
+
     override fun currentPlayersCount(): Int = sessions.size
+
     override fun key(): UUID = gameRoomId
+
     override fun key(key: UUID) {
         this.gameRoomId = key
     }
 
-    abstract fun onPlayerDecision(userSession: PlayerSession, event: BlackjackPlayerDecisionEvent)
-    abstract fun onBet(userSession: PlayerSession, event: BetEvent)
+    abstract fun onPlayerDecision(
+        userSession: PlayerSession,
+        event: BlackjackPlayerDecisionEvent,
+    )
+
+    abstract fun onBet(
+        userSession: PlayerSession,
+        event: BetEvent,
+    )
 }

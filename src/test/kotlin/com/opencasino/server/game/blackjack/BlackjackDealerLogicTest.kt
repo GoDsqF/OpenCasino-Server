@@ -14,13 +14,22 @@ import org.junit.jupiter.api.Test
  * воспроизводя алгоритм из BlackjackGameRoom.
  */
 class BlackjackDealerLogicTest {
-
-    private val combiner: Map<Rank, Int> = mapOf(
-        Rank.C2 to 2, Rank.C3 to 3, Rank.C4 to 4, Rank.C5 to 5,
-        Rank.C6 to 6, Rank.C7 to 7, Rank.C8 to 8, Rank.C9 to 9,
-        Rank.C10 to 10, Rank.CJ to 10, Rank.CQ to 10, Rank.CK to 10,
-        Rank.CA to 11
-    )
+    private val combiner: Map<Rank, Int> =
+        mapOf(
+            Rank.C2 to 2,
+            Rank.C3 to 3,
+            Rank.C4 to 4,
+            Rank.C5 to 5,
+            Rank.C6 to 6,
+            Rank.C7 to 7,
+            Rank.C8 to 8,
+            Rank.C9 to 9,
+            Rank.C10 to 10,
+            Rank.CJ to 10,
+            Rank.CQ to 10,
+            Rank.CK to 10,
+            Rank.CA to 11,
+        )
 
     private fun calculateScore(hand: CardDeck): Int {
         val cards = hand.getCards()
@@ -40,7 +49,10 @@ class BlackjackDealerLogicTest {
     }
 
     /** Воспроизводит initialCheck из BlackjackGameRoom */
-    private fun initialCheck(dealerHand: CardDeck, playerHand: CardDeck): BlackjackCondition? {
+    private fun initialCheck(
+        dealerHand: CardDeck,
+        playerHand: CardDeck,
+    ): BlackjackCondition? {
         val dealerSum = calculateScore(dealerHand)
         val playerSum = calculateScore(playerHand)
         return when {
@@ -60,21 +72,25 @@ class BlackjackDealerLogicTest {
     }
 
 /** Воспроизводит onDealerTurn (рекурсивную) из BlackjackGameRoom */
-private fun dealerPlay(dealerHand: CardDeck, playerHand: CardDeck, sourceDeck: CardDeck): BlackjackCondition? {
-    val dealerSum = calculateScore(dealerHand)
-    val playerSum = calculateScore(playerHand)
+    private fun dealerPlay(
+        dealerHand: CardDeck,
+        playerHand: CardDeck,
+        sourceDeck: CardDeck,
+    ): BlackjackCondition? {
+        val dealerSum = calculateScore(dealerHand)
+        val playerSum = calculateScore(playerHand)
 
-    if (dealerSum < 17) {
-        sourceDeck.dealCard(dealerHand)
-        return dealerPlay(dealerHand, playerHand, sourceDeck)
+        if (dealerSum < 17) {
+            sourceDeck.dealCard(dealerHand)
+            return dealerPlay(dealerHand, playerHand, sourceDeck)
+        }
+        return when {
+            dealerSum > 21 -> BlackjackCondition.PlayerWin
+            dealerSum < playerSum -> BlackjackCondition.PlayerWin
+            dealerSum > playerSum -> BlackjackCondition.DealerWin
+            else -> BlackjackCondition.Draw
+        }
     }
-    return when {
-        dealerSum > 21 -> BlackjackCondition.PlayerWin
-        dealerSum < playerSum -> BlackjackCondition.PlayerWin
-        dealerSum > playerSum -> BlackjackCondition.DealerWin
-        else -> BlackjackCondition.Draw
-    }
-}
 
     // =========================================================================
     // Initial Check
@@ -82,7 +98,6 @@ private fun dealerPlay(dealerHand: CardDeck, playerHand: CardDeck, sourceDeck: C
 
     @Nested
     inner class InitialCheckTests {
-
         @Test
         fun `dealer blackjack detected`() {
             val dealer = deckOf(Rank.CA to Suit.SPADES, Rank.CK to Suit.HEARTS)
@@ -134,24 +149,25 @@ private fun dealerPlay(dealerHand: CardDeck, playerHand: CardDeck, sourceDeck: C
 
     @Nested
     inner class PlayerTurnTests {
-
         @Test
         fun `player busts over 21`() {
-            val player = deckOf(
-                Rank.CK to Suit.SPADES,
-                Rank.CQ to Suit.HEARTS,
-                Rank.C5 to Suit.DIAMONDS
-            )
+            val player =
+                deckOf(
+                    Rank.CK to Suit.SPADES,
+                    Rank.CQ to Suit.HEARTS,
+                    Rank.C5 to Suit.DIAMONDS,
+                )
             assertEquals(BlackjackCondition.DealerWin, checkPlayerTurn(player))
         }
 
         @Test
         fun `player at exactly 21 does not bust`() {
-            val player = deckOf(
-                Rank.C7 to Suit.SPADES,
-                Rank.C4 to Suit.HEARTS,
-                Rank.CK to Suit.DIAMONDS
-            )
+            val player =
+                deckOf(
+                    Rank.C7 to Suit.SPADES,
+                    Rank.C4 to Suit.HEARTS,
+                    Rank.CK to Suit.DIAMONDS,
+                )
             assertNull(checkPlayerTurn(player))
         }
 
@@ -163,45 +179,49 @@ private fun dealerPlay(dealerHand: CardDeck, playerHand: CardDeck, sourceDeck: C
 
         @Test
         fun `player at 22 busts`() {
-            val player = deckOf(
-                Rank.CK to Suit.SPADES,
-                Rank.CQ to Suit.HEARTS,
-                Rank.C2 to Suit.DIAMONDS
-            )
+            val player =
+                deckOf(
+                    Rank.CK to Suit.SPADES,
+                    Rank.CQ to Suit.HEARTS,
+                    Rank.C2 to Suit.DIAMONDS,
+                )
             assertEquals(BlackjackCondition.DealerWin, checkPlayerTurn(player))
         }
 
         @Test
         fun `player with ace soft hand does not bust`() {
-            val player = deckOf(
-                Rank.CA to Suit.SPADES,
-                Rank.C8 to Suit.HEARTS,
-                Rank.C7 to Suit.DIAMONDS
-            )
+            val player =
+                deckOf(
+                    Rank.CA to Suit.SPADES,
+                    Rank.C8 to Suit.HEARTS,
+                    Rank.C7 to Suit.DIAMONDS,
+                )
             // 11+8+7=26 -> ace demotes -> 1+8+7=16
             assertNull(checkPlayerTurn(player))
         }
 
         @Test
         fun `player four cards bust`() {
-            val player = deckOf(
-                Rank.C8 to Suit.SPADES,
-                Rank.C7 to Suit.HEARTS,
-                Rank.C4 to Suit.DIAMONDS,
-                Rank.C5 to Suit.CLUBS
-            )
+            val player =
+                deckOf(
+                    Rank.C8 to Suit.SPADES,
+                    Rank.C7 to Suit.HEARTS,
+                    Rank.C4 to Suit.DIAMONDS,
+                    Rank.C5 to Suit.CLUBS,
+                )
             // 8+7+4+5=24
             assertEquals(BlackjackCondition.DealerWin, checkPlayerTurn(player))
         }
 
         @Test
         fun `player four cards no bust`() {
-            val player = deckOf(
-                Rank.C2 to Suit.SPADES,
-                Rank.C3 to Suit.HEARTS,
-                Rank.C4 to Suit.DIAMONDS,
-                Rank.C5 to Suit.CLUBS
-            )
+            val player =
+                deckOf(
+                    Rank.C2 to Suit.SPADES,
+                    Rank.C3 to Suit.HEARTS,
+                    Rank.C4 to Suit.DIAMONDS,
+                    Rank.C5 to Suit.CLUBS,
+                )
             // 2+3+4+5=14
             assertNull(checkPlayerTurn(player))
         }
@@ -219,7 +239,6 @@ private fun dealerPlay(dealerHand: CardDeck, playerHand: CardDeck, sourceDeck: C
 
     @Nested
     inner class DealerTurnTests {
-
         private fun sourceDeckWith(vararg cards: Pair<Rank, Suit>): CardDeck {
             val deck = CardDeck()
             cards.forEach { deck.addCard(Card(it.first, it.second)) }
@@ -278,17 +297,19 @@ private fun dealerPlay(dealerHand: CardDeck, playerHand: CardDeck, sourceDeck: C
             val source = sourceDeckWith(Rank.C4 to Suit.DIAMONDS)
             assertEquals(BlackjackCondition.DealerWin, dealerPlay(dealer, player, source))
         }
+
         @Test
         fun `dealer hits multiple times before standing`() {
             val dealer = deckOf(Rank.C2 to Suit.SPADES, Rank.C3 to Suit.HEARTS)
             val player = deckOf(Rank.CK to Suit.DIAMONDS, Rank.C7 to Suit.CLUBS) // 17
             // dealer=5, hits 4 -> 9, hits 3 -> 12, hits 6 -> 18
             // 18 > 17 -> DealerWin
-            val source = sourceDeckWith(
-                Rank.C4 to Suit.DIAMONDS,
-                Rank.C3 to Suit.CLUBS,
-                Rank.C6 to Suit.SPADES
-            )
+            val source =
+                sourceDeckWith(
+                    Rank.C4 to Suit.DIAMONDS,
+                    Rank.C3 to Suit.CLUBS,
+                    Rank.C6 to Suit.SPADES,
+                )
             assertEquals(BlackjackCondition.DealerWin, dealerPlay(dealer, player, source))
         }
 
@@ -297,11 +318,12 @@ private fun dealerPlay(dealerHand: CardDeck, playerHand: CardDeck, sourceDeck: C
             val dealer = deckOf(Rank.C2 to Suit.SPADES, Rank.C3 to Suit.HEARTS)
             val player = deckOf(Rank.CK to Suit.DIAMONDS, Rank.C8 to Suit.CLUBS) // 18
             // dealer=5, hits 5 -> 10, hits 4 -> 14, hits 9 -> 23 bust
-            val source = sourceDeckWith(
-                Rank.C5 to Suit.DIAMONDS,
-                Rank.C4 to Suit.CLUBS,
-                Rank.C9 to Suit.SPADES
-            )
+            val source =
+                sourceDeckWith(
+                    Rank.C5 to Suit.DIAMONDS,
+                    Rank.C4 to Suit.CLUBS,
+                    Rank.C9 to Suit.SPADES,
+                )
             assertEquals(BlackjackCondition.PlayerWin, dealerPlay(dealer, player, source))
         }
 
@@ -317,11 +339,12 @@ private fun dealerPlay(dealerHand: CardDeck, playerHand: CardDeck, sourceDeck: C
 
         @Test
         fun `dealer 21 vs player 20 dealer wins`() {
-            val dealer = deckOf(
-                Rank.C7 to Suit.SPADES,
-                Rank.C4 to Suit.HEARTS,
-                Rank.CK to Suit.DIAMONDS
-            )
+            val dealer =
+                deckOf(
+                    Rank.C7 to Suit.SPADES,
+                    Rank.C4 to Suit.HEARTS,
+                    Rank.CK to Suit.DIAMONDS,
+                )
             val player = deckOf(Rank.CK to Suit.CLUBS, Rank.CQ to Suit.SPADES) // 20
             val source = sourceDeckWith()
             assertEquals(BlackjackCondition.DealerWin, dealerPlay(dealer, player, source))
@@ -329,16 +352,18 @@ private fun dealerPlay(dealerHand: CardDeck, playerHand: CardDeck, sourceDeck: C
 
         @Test
         fun `dealer 21 vs player 21 is draw`() {
-            val dealer = deckOf(
-                Rank.C7 to Suit.SPADES,
-                Rank.C4 to Suit.HEARTS,
-                Rank.CK to Suit.DIAMONDS
-            )
-            val player = deckOf(
-                Rank.C6 to Suit.CLUBS,
-                Rank.C5 to Suit.SPADES,
-                Rank.CQ to Suit.HEARTS
-            )
+            val dealer =
+                deckOf(
+                    Rank.C7 to Suit.SPADES,
+                    Rank.C4 to Suit.HEARTS,
+                    Rank.CK to Suit.DIAMONDS,
+                )
+            val player =
+                deckOf(
+                    Rank.C6 to Suit.CLUBS,
+                    Rank.C5 to Suit.SPADES,
+                    Rank.CQ to Suit.HEARTS,
+                )
             val source = sourceDeckWith()
             assertEquals(BlackjackCondition.Draw, dealerPlay(dealer, player, source))
         }
@@ -367,7 +392,6 @@ private fun dealerPlay(dealerHand: CardDeck, playerHand: CardDeck, sourceDeck: C
 
     @Nested
     inner class FullRoundScenarios {
-
         private fun sourceDeckWith(vararg cards: Pair<Rank, Suit>): CardDeck {
             val deck = CardDeck()
             cards.forEach { deck.addCard(Card(it.first, it.second)) }
@@ -477,11 +501,12 @@ private fun dealerPlay(dealerHand: CardDeck, playerHand: CardDeck, sourceDeck: C
             // player stands at 20
             // dealer: 5, hits 4->9, hits 3->12, hits 5->17, stands
             // 17 < 20 -> PlayerWin
-            val source = sourceDeckWith(
-                Rank.C4 to Suit.CLUBS,
-                Rank.C3 to Suit.DIAMONDS,
-                Rank.C5 to Suit.HEARTS
-            )
+            val source =
+                sourceDeckWith(
+                    Rank.C4 to Suit.CLUBS,
+                    Rank.C3 to Suit.DIAMONDS,
+                    Rank.C5 to Suit.HEARTS,
+                )
             assertEquals(BlackjackCondition.PlayerWin, dealerPlay(dealer, player, source))
         }
 
@@ -517,10 +542,11 @@ private fun dealerPlay(dealerHand: CardDeck, playerHand: CardDeck, sourceDeck: C
 
         @Test
         fun `scenario - player barely survives with ace demotion`() {
-            val player = deckOf(
-                Rank.CA to Suit.SPADES,
-                Rank.C6 to Suit.HEARTS
-            ) // soft 17
+            val player =
+                deckOf(
+                    Rank.CA to Suit.SPADES,
+                    Rank.C6 to Suit.HEARTS,
+                ) // soft 17
 
             assertNull(checkPlayerTurn(player))
 

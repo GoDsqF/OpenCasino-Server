@@ -5,5 +5,5 @@ import com.opencasino.server.network.pack.InitPack
 data class FailurePack(
     val code: String,
     val message: String,
-    val details: Any? = null
+    val details: Any? = null,
 ) : InitPack

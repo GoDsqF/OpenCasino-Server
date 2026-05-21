@@ -23,7 +23,6 @@ import java.security.Principal
 import java.util.UUID
 
 class PokerLateEntryTest {
-
     private val handshake: HandshakeInfo = mock()
     private val webSocketSessionService: WebSocketSessionService = mock()
     private val ledgerService: BalanceLedgerService = mock()
@@ -32,10 +31,17 @@ class PokerLateEntryTest {
     private val pokerProps: PokerRoomProperties = appProps.pokerRoom
     private val gameProps = appProps.game
 
-    private fun newRoom(): PokerGameRoom = PokerGameRoom(
-        PokerMap(), UUID.randomUUID(), roomService, webSocketSessionService,
-        VirtualTimeScheduler.create(), gameProps, pokerProps, ledgerService,
-    )
+    private fun newRoom(): PokerGameRoom =
+        PokerGameRoom(
+            PokerMap(),
+            UUID.randomUUID(),
+            roomService,
+            webSocketSessionService,
+            VirtualTimeScheduler.create(),
+            gameProps,
+            pokerProps,
+            ledgerService,
+        )
 
     private fun newSession(userId: UUID? = UUID.randomUUID()): PlayerSession {
         val s = PlayerSession(UUID.randomUUID().toString(), handshake)
@@ -43,7 +49,10 @@ class PokerLateEntryTest {
         return s
     }
 
-    private fun seatInitial(room: PokerGameRoom, id: Long): Pair<PlayerSession, PokerPlayer> {
+    private fun seatInitial(
+        room: PokerGameRoom,
+        id: Long,
+    ): Pair<PlayerSession, PokerPlayer> {
         val s = newSession()
         val p = PokerPlayer(id, room, s).apply { balance = 5000.0 }
         s.player = p

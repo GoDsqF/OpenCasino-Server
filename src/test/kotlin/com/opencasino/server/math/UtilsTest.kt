@@ -5,12 +5,11 @@ import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 
 class UtilsTest {
-
     @RepeatedTest(50)
     fun `getRandomIndex returns value within range`() {
         val max = 10
         val result = getRandomIndex(max)
-        assertTrue(result in 0 until max, "Expected 0..${max-1}, got $result")
+        assertTrue(result in 0 until max, "Expected 0..${max - 1}, got $result")
     }
 
     @Test
@@ -26,7 +25,7 @@ class UtilsTest {
         val min = 5
         val max = 15
         val result = getRandomNumber(min, max)
-        assertTrue(result in min until max, "Expected $min..${max-1}, got $result")
+        assertTrue(result in min until max, "Expected $min..${max - 1}, got $result")
     }
 
     @RepeatedTest(50)

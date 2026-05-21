@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
 
 class BlackjackPlayerTest {
-
     private lateinit var player: BlackjackPlayer
     private val mockRoom = mock(BlackjackGameRoom::class.java)
     private val mockSession = mock(PlayerSession::class.java)
@@ -38,7 +37,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class Initialization {
-
         @Test
         fun `initial bet is MIN_BLACKJACK_BET`() {
             assertEquals(MIN_BLACKJACK_BET, player.bet)
@@ -86,7 +84,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class UpdateState {
-
         @Test
         fun `updateState sets lastDecision to HIT`() {
             player.updateState(BlackjackDecision.HIT)
@@ -143,7 +140,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class Update {
-
         @Test
         fun `update does nothing when madeDecision is false`() {
             player.madeDecision = false
@@ -227,7 +223,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class InfoPackGeneration {
-
         @Test
         fun `info returns PlayerInfoPack with correct id`() {
             val info = player.info()
@@ -277,7 +272,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class UpdatePackGeneration {
-
         @Test
         fun `getUpdatePack returns pack with empty cards when no cards dealt`() {
             val pack = player.getUpdatePack()
@@ -343,7 +337,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class PrivateUpdatePackGeneration {
-
         @Test
         fun `getPrivateUpdatePack returns correct id`() {
             val pack = player.getPrivateUpdatePack()
@@ -394,7 +387,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class BalanceAndBet {
-
         @Test
         fun `balance can be set and retrieved`() {
             player.balance = 5000.0
@@ -431,7 +423,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class PlayerState {
-
         @Test
         fun `isAlive can be toggled`() {
             assertTrue(player.isAlive)
@@ -481,7 +472,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class EntityEquality {
-
         @Test
         fun `players with same id are equal`() {
             val player1 = BlackjackPlayer(42L, mockRoom, mockSession)
@@ -527,7 +517,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class GameFlowSimulation {
-
         @Test
         fun `player hits twice then stands - full flow`() {
             val gameDeck = CardDeck(1)
@@ -617,7 +606,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class MultipleInstances {
-
         @Test
         fun `two players have independent decks`() {
             val player2 = BlackjackPlayer(2L, mockRoom, mockSession)
@@ -666,7 +654,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class DoubleDown {
-
         @Test
         fun `DOUBLE deals one card, doubles bet, resolves hand and advances`() {
             val gameDeck = CardDeck(1)
@@ -680,7 +667,14 @@ class BlackjackPlayerTest {
             player.updateState(BlackjackDecision.DOUBLE)
             player.update()
 
-            assertEquals(3, player.currentHand().deck.getCards().size)
+            assertEquals(
+                3,
+                player
+                    .currentHand()
+                    .deck
+                    .getCards()
+                    .size,
+            )
             assertEquals(100.0, player.currentHand().bet)
             assertEquals(950.0, player.balance)
             assertTrue(player.currentHand().resolved)
@@ -699,7 +693,14 @@ class BlackjackPlayerTest {
             player.update()
 
             verify(mockRoom).sendFailure(mockSession, FailureCode.INVALID_DECISION, "DOUBLE is not available", null)
-            assertEquals(2, player.currentHand().deck.getCards().size)
+            assertEquals(
+                2,
+                player
+                    .currentHand()
+                    .deck
+                    .getCards()
+                    .size,
+            )
             assertEquals(100.0, player.currentHand().bet)
             assertFalse(player.currentHand().resolved)
         }
@@ -725,7 +726,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class Split {
-
         @Test
         fun `SPLIT on pair creates two hands, deducts second bet, deals one card to each`() {
             val gameDeck = CardDeck()
@@ -745,10 +745,34 @@ class BlackjackPlayerTest {
             assertEquals(50.0, player.hands[0].bet)
             assertEquals(50.0, player.hands[1].bet)
             assertEquals(950.0, player.balance)
-            assertEquals(2, player.hands[0].deck.getCards().size)
-            assertEquals(2, player.hands[1].deck.getCards().size)
-            assertEquals(Rank.C8, player.hands[0].deck.getCards()[0].rank)
-            assertEquals(Rank.C8, player.hands[1].deck.getCards()[0].rank)
+            assertEquals(
+                2,
+                player.hands[0]
+                    .deck
+                    .getCards()
+                    .size,
+            )
+            assertEquals(
+                2,
+                player.hands[1]
+                    .deck
+                    .getCards()
+                    .size,
+            )
+            assertEquals(
+                Rank.C8,
+                player.hands[0]
+                    .deck
+                    .getCards()[0]
+                    .rank,
+            )
+            assertEquals(
+                Rank.C8,
+                player.hands[1]
+                    .deck
+                    .getCards()[0]
+                    .rank,
+            )
             assertTrue(player.hands[0].fromSplit)
             assertTrue(player.hands[1].fromSplit)
             verify(mockRoom).onSplitCompleted(player)
@@ -804,7 +828,10 @@ class BlackjackPlayerTest {
             player.update()
 
             verify(mockRoom, times(1)).sendFailure(
-                mockSession, FailureCode.INVALID_DECISION, "SPLIT is not available", null
+                mockSession,
+                FailureCode.INVALID_DECISION,
+                "SPLIT is not available",
+                null,
             )
         }
     }
@@ -815,7 +842,6 @@ class BlackjackPlayerTest {
 
     @Nested
     inner class AvailableActions {
-
         @Test
         fun `HIT and STAND when hand has cards and bet is positive`() {
             player.currentHand().bet = 50.0

@@ -9,26 +9,25 @@ import org.junit.jupiter.api.Test
  * Тестирует валидацию ставок, воспроизводя isValidBet из PokerPlayer.
  */
 class PokerBetValidationTest {
-
     private fun isValidBet(
         amount: Double?,
         lastBet: Double?,
         lastMaxBet: Double,
         bigBlind: Double,
-        betType: PokerDecision
-    ): Boolean = when (betType) {
-        PokerDecision.CALL -> {
-            (amount != null) && (amount > 0) && (lastBet!! + amount == lastMaxBet)
+        betType: PokerDecision,
+    ): Boolean =
+        when (betType) {
+            PokerDecision.CALL -> {
+                (amount != null) && (amount > 0) && (lastBet!! + amount == lastMaxBet)
+            }
+            PokerDecision.RAISE -> {
+                (amount != null) && (amount > 0) && (lastBet!! + amount + bigBlind >= lastMaxBet)
+            }
+            else -> false
         }
-        PokerDecision.RAISE -> {
-            (amount != null) && (amount > 0) && (lastBet!! + amount + bigBlind >= lastMaxBet)
-        }
-        else -> false
-    }
 
     @Nested
     inner class CallValidation {
-
         @Test
         fun `valid call matches lastMaxBet`() {
             // lastBet=0, amount=100, lastMaxBet=100: 0+100==100 ✓
@@ -71,7 +70,6 @@ class PokerBetValidationTest {
 
     @Nested
     inner class RaiseValidation {
-
         @Test
         fun `valid raise meets minimum`() {
             // lastBet=0, amount=200, bigBlind=100, lastMaxBet=100
@@ -111,7 +109,6 @@ class PokerBetValidationTest {
 
     @Nested
     inner class OtherDecisions {
-
         @Test
         fun `CHECK is not valid for bet validation`() {
             assertFalse(isValidBet(100.0, 0.0, 100.0, 100.0, PokerDecision.CHECK))

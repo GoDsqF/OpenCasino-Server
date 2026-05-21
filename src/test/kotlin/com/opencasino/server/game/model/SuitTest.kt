@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class SuitTest {
-
     @Test
     fun `forCode returns correct suit`() {
         assertEquals(Suit.SPADES, Suit.forCode("S"))

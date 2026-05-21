@@ -17,54 +17,81 @@ import java.util.UUID
 class RefreshTokenRepository(
     private val template: R2dbcEntityTemplate,
 ) {
-
     fun findByTokenHash(tokenHash: String): Mono<RefreshToken> =
-        template.select<RefreshToken>()
+        template
+            .select<RefreshToken>()
             .matching(Query.query(Criteria.where("token_hash").`is`(tokenHash)).limit(1))
             .one()
 
-    fun save(token: RefreshToken): Mono<RefreshToken> =
-        template.insert<RefreshToken>().using(token)
+    fun save(token: RefreshToken): Mono<RefreshToken> = template.insert<RefreshToken>().using(token)
 
-    fun markRevoked(id: UUID, revokedAt: Instant): Mono<Long> =
-        template.update(RefreshToken::class.java)
+    fun markRevoked(
+        id: UUID,
+        revokedAt: Instant,
+    ): Mono<Long> =
+        template
+            .update(RefreshToken::class.java)
             .matching(
                 Query.query(
-                    Criteria.where("id").`is`(id)
-                        .and("revoked_at").isNull
-                )
-            )
-            .apply(Update.update("revoked_at", revokedAt))
+                    Criteria
+                        .where("id")
+                        .`is`(id)
+                        .and("revoked_at")
+                        .isNull,
+                ),
+            ).apply(Update.update("revoked_at", revokedAt))
 
-    fun revokeAllForUser(userId: UUID, revokedAt: Instant): Mono<Long> =
-        template.update(RefreshToken::class.java)
+    fun revokeAllForUser(
+        userId: UUID,
+        revokedAt: Instant,
+    ): Mono<Long> =
+        template
+            .update(RefreshToken::class.java)
             .matching(
                 Query.query(
-                    Criteria.where("user_id").`is`(userId)
-                        .and("revoked_at").isNull
-                )
-            )
-            .apply(Update.update("revoked_at", revokedAt))
+                    Criteria
+                        .where("user_id")
+                        .`is`(userId)
+                        .and("revoked_at")
+                        .isNull,
+                ),
+            ).apply(Update.update("revoked_at", revokedAt))
 
-    fun revokeByIdForUser(id: UUID, userId: UUID, revokedAt: Instant): Mono<Long> =
-        template.update(RefreshToken::class.java)
+    fun revokeByIdForUser(
+        id: UUID,
+        userId: UUID,
+        revokedAt: Instant,
+    ): Mono<Long> =
+        template
+            .update(RefreshToken::class.java)
             .matching(
                 Query.query(
-                    Criteria.where("id").`is`(id)
-                        .and("user_id").`is`(userId)
-                        .and("revoked_at").isNull
-                )
-            )
-            .apply(Update.update("revoked_at", revokedAt))
+                    Criteria
+                        .where("id")
+                        .`is`(id)
+                        .and("user_id")
+                        .`is`(userId)
+                        .and("revoked_at")
+                        .isNull,
+                ),
+            ).apply(Update.update("revoked_at", revokedAt))
 
-    fun findActiveByUser(userId: UUID, now: Instant): Flux<RefreshToken> =
-        template.select<RefreshToken>()
+    fun findActiveByUser(
+        userId: UUID,
+        now: Instant,
+    ): Flux<RefreshToken> =
+        template
+            .select<RefreshToken>()
             .matching(
-                Query.query(
-                    Criteria.where("user_id").`is`(userId)
-                        .and("revoked_at").isNull
-                        .and("expires_at").greaterThan(now)
-                ).sort(Sort.by(Sort.Direction.DESC, "created_at"))
-            )
-            .all()
+                Query
+                    .query(
+                        Criteria
+                            .where("user_id")
+                            .`is`(userId)
+                            .and("revoked_at")
+                            .isNull
+                            .and("expires_at")
+                            .greaterThan(now),
+                    ).sort(Sort.by(Sort.Direction.DESC, "created_at")),
+            ).all()
 }

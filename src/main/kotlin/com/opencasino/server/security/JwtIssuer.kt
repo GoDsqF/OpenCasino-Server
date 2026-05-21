@@ -19,22 +19,26 @@ class JwtIssuer(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     private val signer = RSASSASigner(keys.privateKey)
-    private val header = JWSHeader.Builder(JWSAlgorithm.RS256)
-        .type(JOSEObjectType.JWT)
-        .keyID(keys.keyId)
-        .build()
+    private val header =
+        JWSHeader
+            .Builder(JWSAlgorithm.RS256)
+            .type(JOSEObjectType.JWT)
+            .keyID(keys.keyId)
+            .build()
 
     fun issueAccess(user: User): IssuedToken {
         val now = clock.instant()
         val expiresAt = now.plus(props.accessTtl)
-        val claims = JWTClaimsSet.Builder()
-            .issuer(props.issuer)
-            .subject(user.id.toString())
-            .issueTime(Date.from(now))
-            .expirationTime(Date.from(expiresAt))
-            .claim(CLAIM_EMAIL, user.email)
-            .claim(CLAIM_ROLES, listOf(user.role.name))
-            .build()
+        val claims =
+            JWTClaimsSet
+                .Builder()
+                .issuer(props.issuer)
+                .subject(user.id.toString())
+                .issueTime(Date.from(now))
+                .expirationTime(Date.from(expiresAt))
+                .claim(CLAIM_EMAIL, user.email)
+                .claim(CLAIM_ROLES, listOf(user.role.name))
+                .build()
         val jwt = SignedJWT(header, claims).apply { sign(signer) }
         return IssuedToken(jwt.serialize(), expiresAt)
     }
@@ -45,4 +49,7 @@ class JwtIssuer(
     }
 }
 
-data class IssuedToken(val token: String, val expiresAt: Instant)
+data class IssuedToken(
+    val token: String,
+    val expiresAt: Instant,
+)

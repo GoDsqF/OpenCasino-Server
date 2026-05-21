@@ -20,7 +20,6 @@ import java.security.Principal
 import java.util.UUID
 
 class PokerGameRoomReattachTest {
-
     private val handshake: HandshakeInfo = mock()
     private val webSocketSessionService: WebSocketSessionService = mock()
     private val ledgerService: BalanceLedgerService = mock()
@@ -29,10 +28,17 @@ class PokerGameRoomReattachTest {
     private val pokerProps: PokerRoomProperties = appProps.pokerRoom
     private val gameProps = appProps.game
 
-    private fun newRoom(): PokerGameRoom = PokerGameRoom(
-        PokerMap(), UUID.randomUUID(), roomService, webSocketSessionService,
-        VirtualTimeScheduler.create(), gameProps, pokerProps, ledgerService,
-    )
+    private fun newRoom(): PokerGameRoom =
+        PokerGameRoom(
+            PokerMap(),
+            UUID.randomUUID(),
+            roomService,
+            webSocketSessionService,
+            VirtualTimeScheduler.create(),
+            gameProps,
+            pokerProps,
+            ledgerService,
+        )
 
     private fun newSession(userId: UUID? = UUID.randomUUID()): PlayerSession {
         val s = PlayerSession(UUID.randomUUID().toString(), handshake)
@@ -40,7 +46,11 @@ class PokerGameRoomReattachTest {
         return s
     }
 
-    private fun seatPlayer(room: PokerGameRoom, session: PlayerSession, position: Int): PokerPlayer {
+    private fun seatPlayer(
+        room: PokerGameRoom,
+        session: PlayerSession,
+        position: Int,
+    ): PokerPlayer {
         val player = PokerPlayer(position.toLong() + 1, room, session)
         player.balance = 1000.0
         player.stack = 1000.0
@@ -99,7 +109,10 @@ class PokerGameRoomReattachTest {
 
         // Reproduce the reset-table post-step that re-folds disconnected players.
         room.map.getPlayers().forEach { it.folded = false }
-        room.map.getPlayers().filter { it.disconnected }.forEach { it.folded = true }
+        room.map
+            .getPlayers()
+            .filter { it.disconnected }
+            .forEach { it.folded = true }
 
         assertTrue(p1.folded, "disconnected player should be re-folded for the next round")
         assertFalse(p2.folded)

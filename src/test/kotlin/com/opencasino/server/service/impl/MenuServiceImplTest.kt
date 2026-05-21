@@ -12,7 +12,6 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 class MenuServiceImplTest {
-
     private val blackjackRoomService: RoomService = mock()
     private val pokerRoomService: RoomService = mock()
     private val pokerLobbyService: PokerLobbyService = mock()
@@ -61,16 +60,17 @@ class MenuServiceImplTest {
     fun `snapshot exposes joinable poker rooms from lobby service`() {
         whenever(blackjackRoomService.getRooms()).thenReturn(emptyList())
         whenever(pokerRoomService.getRooms()).thenReturn(emptyList())
-        val summary = PokerRoomSummary(
-            roomId = "abc",
-            betType = "PotLimit",
-            bet = 100.0,
-            smallBlind = 50.0,
-            bigBlind = 100.0,
-            currentPlayers = 1,
-            maxPlayers = 6,
-            phase = "WAITING",
-        )
+        val summary =
+            PokerRoomSummary(
+                roomId = "abc",
+                betType = "PotLimit",
+                bet = 100.0,
+                smallBlind = 50.0,
+                bigBlind = 100.0,
+                currentPlayers = 1,
+                maxPlayers = 6,
+                phase = "WAITING",
+            )
         whenever(pokerLobbyService.listJoinableRooms()).thenReturn(listOf(summary))
 
         val snap = service.getMenuSnapshot()

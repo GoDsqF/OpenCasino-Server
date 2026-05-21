@@ -23,14 +23,14 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 class RefreshTokenServiceTest {
-
     private val now = Instant.parse("2026-05-16T12:00:00Z")
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
-    private val props = JwtProperties(
-        issuer = "opencasino-test",
-        accessTtl = Duration.ofMinutes(15),
-        refreshTtl = Duration.ofDays(30),
-    )
+    private val props =
+        JwtProperties(
+            issuer = "opencasino-test",
+            accessTtl = Duration.ofMinutes(15),
+            refreshTtl = Duration.ofDays(30),
+        )
     private val random = SecureRandom().apply { setSeed(42L) }
 
     private lateinit var repository: RefreshTokenRepository
@@ -66,12 +66,13 @@ class RefreshTokenServiceTest {
     fun `rotate marks old token revoked and issues a new one`() {
         val userId = UUID.randomUUID()
         val plaintext = "active-token"
-        val existing = RefreshToken(
-            userId = userId,
-            tokenHash = sha256Hex(plaintext),
-            createdAt = now.minus(Duration.ofDays(1)),
-            expiresAt = now.plus(Duration.ofDays(29)),
-        )
+        val existing =
+            RefreshToken(
+                userId = userId,
+                tokenHash = sha256Hex(plaintext),
+                createdAt = now.minus(Duration.ofDays(1)),
+                expiresAt = now.plus(Duration.ofDays(29)),
+            )
         whenever(repository.findByTokenHash(sha256Hex(plaintext))).thenReturn(Mono.just(existing))
         whenever(repository.markRevoked(eq(existing.id), eq(now))).thenReturn(Mono.just(1L))
         whenever(repository.save(any())).thenAnswer { Mono.just(it.arguments[0] as RefreshToken) }
@@ -86,15 +87,17 @@ class RefreshTokenServiceTest {
     @Test
     fun `rotate rejects expired refresh token`() {
         val plaintext = "expired-token"
-        val existing = RefreshToken(
-            userId = UUID.randomUUID(),
-            tokenHash = sha256Hex(plaintext),
-            createdAt = now.minus(Duration.ofDays(40)),
-            expiresAt = now.minus(Duration.ofMinutes(1)),
-        )
+        val existing =
+            RefreshToken(
+                userId = UUID.randomUUID(),
+                tokenHash = sha256Hex(plaintext),
+                createdAt = now.minus(Duration.ofDays(40)),
+                expiresAt = now.minus(Duration.ofMinutes(1)),
+            )
         whenever(repository.findByTokenHash(sha256Hex(plaintext))).thenReturn(Mono.just(existing))
 
-        StepVerifier.create(service.rotate(plaintext))
+        StepVerifier
+            .create(service.rotate(plaintext))
             .verifyErrorMatches { it is AuthException && it.failure == AuthFailureCode.REFRESH_EXPIRED }
     }
 
@@ -102,17 +105,19 @@ class RefreshTokenServiceTest {
     fun `replay of revoked token with other active sessions returns REPLAY_DETECTED and revokes all`() {
         val userId = UUID.randomUUID()
         val plaintext = "leaked-token"
-        val existing = RefreshToken(
-            userId = userId,
-            tokenHash = sha256Hex(plaintext),
-            createdAt = now.minus(Duration.ofMinutes(10)),
-            expiresAt = now.plus(Duration.ofDays(30)),
-            revokedAt = now.minus(Duration.ofMinutes(5)),
-        )
+        val existing =
+            RefreshToken(
+                userId = userId,
+                tokenHash = sha256Hex(plaintext),
+                createdAt = now.minus(Duration.ofMinutes(10)),
+                expiresAt = now.plus(Duration.ofDays(30)),
+                revokedAt = now.minus(Duration.ofMinutes(5)),
+            )
         whenever(repository.findByTokenHash(sha256Hex(plaintext))).thenReturn(Mono.just(existing))
         whenever(repository.revokeAllForUser(eq(userId), eq(now))).thenReturn(Mono.just(2L))
 
-        StepVerifier.create(service.rotate(plaintext))
+        StepVerifier
+            .create(service.rotate(plaintext))
             .verifyErrorMatches { it is AuthException && it.failure == AuthFailureCode.REFRESH_REPLAY_DETECTED }
 
         verify(repository).revokeAllForUser(eq(userId), eq(now))
@@ -122,17 +127,19 @@ class RefreshTokenServiceTest {
     fun `revoked token with no active sessions returns REVOKED, not REPLAY`() {
         val userId = UUID.randomUUID()
         val plaintext = "loggedout-token"
-        val existing = RefreshToken(
-            userId = userId,
-            tokenHash = sha256Hex(plaintext),
-            createdAt = now.minus(Duration.ofMinutes(10)),
-            expiresAt = now.plus(Duration.ofDays(30)),
-            revokedAt = now.minus(Duration.ofSeconds(1)),
-        )
+        val existing =
+            RefreshToken(
+                userId = userId,
+                tokenHash = sha256Hex(plaintext),
+                createdAt = now.minus(Duration.ofMinutes(10)),
+                expiresAt = now.plus(Duration.ofDays(30)),
+                revokedAt = now.minus(Duration.ofSeconds(1)),
+            )
         whenever(repository.findByTokenHash(sha256Hex(plaintext))).thenReturn(Mono.just(existing))
         whenever(repository.revokeAllForUser(eq(userId), eq(now))).thenReturn(Mono.just(0L))
 
-        StepVerifier.create(service.rotate(plaintext))
+        StepVerifier
+            .create(service.rotate(plaintext))
             .verifyErrorMatches { it is AuthException && it.failure == AuthFailureCode.REFRESH_REVOKED }
     }
 
@@ -140,25 +147,28 @@ class RefreshTokenServiceTest {
     fun `unknown token returns REFRESH_INVALID`() {
         whenever(repository.findByTokenHash(any())).thenReturn(Mono.empty())
 
-        StepVerifier.create(service.rotate("nonexistent"))
+        StepVerifier
+            .create(service.rotate("nonexistent"))
             .verifyErrorMatches { it is AuthException && it.failure == AuthFailureCode.REFRESH_INVALID }
     }
 
     @Test
     fun `blank token returns REFRESH_INVALID without DB lookup`() {
-        StepVerifier.create(service.rotate("  "))
+        StepVerifier
+            .create(service.rotate("  "))
             .verifyErrorMatches { it is AuthException && it.failure == AuthFailureCode.REFRESH_INVALID }
     }
 
     @Test
     fun `revoke marks token revoked and is idempotent on already-revoked`() {
         val plaintext = "to-revoke"
-        val active = RefreshToken(
-            userId = UUID.randomUUID(),
-            tokenHash = sha256Hex(plaintext),
-            createdAt = now.minus(Duration.ofMinutes(1)),
-            expiresAt = now.plus(Duration.ofDays(30)),
-        )
+        val active =
+            RefreshToken(
+                userId = UUID.randomUUID(),
+                tokenHash = sha256Hex(plaintext),
+                createdAt = now.minus(Duration.ofMinutes(1)),
+                expiresAt = now.plus(Duration.ofDays(30)),
+            )
         whenever(repository.findByTokenHash(sha256Hex(plaintext))).thenReturn(Mono.just(active))
         whenever(repository.markRevoked(eq(active.id), eq(now))).thenReturn(Mono.just(1L))
 
@@ -176,12 +186,13 @@ class RefreshTokenServiceTest {
     fun `revokeAllForUser looks up token, revokes all and returns userId and count`() {
         val userId = UUID.randomUUID()
         val plaintext = "active-pivot"
-        val existing = RefreshToken(
-            userId = userId,
-            tokenHash = sha256Hex(plaintext),
-            createdAt = now.minus(Duration.ofMinutes(1)),
-            expiresAt = now.plus(Duration.ofDays(30)),
-        )
+        val existing =
+            RefreshToken(
+                userId = userId,
+                tokenHash = sha256Hex(plaintext),
+                createdAt = now.minus(Duration.ofMinutes(1)),
+                expiresAt = now.plus(Duration.ofDays(30)),
+            )
         whenever(repository.findByTokenHash(sha256Hex(plaintext))).thenReturn(Mono.just(existing))
         whenever(repository.revokeAllForUser(eq(userId), eq(now))).thenReturn(Mono.just(3L))
 
@@ -194,22 +205,25 @@ class RefreshTokenServiceTest {
     @Test
     fun `revokeAllForUser rejects unknown plaintext`() {
         whenever(repository.findByTokenHash(any())).thenReturn(Mono.empty())
-        StepVerifier.create(service.revokeAllForUser("nope"))
+        StepVerifier
+            .create(service.revokeAllForUser("nope"))
             .verifyErrorMatches { it is AuthException && it.failure == AuthFailureCode.REFRESH_INVALID }
     }
 
     @Test
     fun `listActiveForUser delegates to repository with current instant`() {
         val userId = UUID.randomUUID()
-        val row = RefreshToken(
-            userId = userId,
-            tokenHash = "h",
-            createdAt = now.minus(Duration.ofMinutes(5)),
-            expiresAt = now.plus(Duration.ofDays(30)),
-        )
+        val row =
+            RefreshToken(
+                userId = userId,
+                tokenHash = "h",
+                createdAt = now.minus(Duration.ofMinutes(5)),
+                expiresAt = now.plus(Duration.ofDays(30)),
+            )
         whenever(repository.findActiveByUser(eq(userId), eq(now))).thenReturn(Flux.just(row))
 
-        StepVerifier.create(service.listActiveForUser(userId))
+        StepVerifier
+            .create(service.listActiveForUser(userId))
             .expectNext(row)
             .verifyComplete()
     }
@@ -219,13 +233,15 @@ class RefreshTokenServiceTest {
         val userId = UUID.randomUUID()
         val sessionId = UUID.randomUUID()
         whenever(repository.revokeByIdForUser(eq(sessionId), eq(userId), eq(now))).thenReturn(Mono.just(1L))
-        StepVerifier.create(service.revokeByIdForUser(sessionId, userId))
+        StepVerifier
+            .create(service.revokeByIdForUser(sessionId, userId))
             .expectNext(true)
             .verifyComplete()
 
         val other = UUID.randomUUID()
         whenever(repository.revokeByIdForUser(eq(other), eq(userId), eq(now))).thenReturn(Mono.just(0L))
-        StepVerifier.create(service.revokeByIdForUser(other, userId))
+        StepVerifier
+            .create(service.revokeByIdForUser(other, userId))
             .expectNext(false)
             .verifyComplete()
     }
@@ -234,5 +250,4 @@ class RefreshTokenServiceTest {
         val digest = MessageDigest.getInstance("SHA-256").digest(plaintext.toByteArray(Charsets.UTF_8))
         return digest.joinToString("") { "%02x".format(it) }
     }
-
 }

@@ -1,16 +1,19 @@
 package com.opencasino.server.game.model
 
 import com.opencasino.server.game.Initializable
+import com.opencasino.server.network.pack.IInitPackProvider
 import com.opencasino.server.network.pack.InitPack
 import com.opencasino.server.network.pack.UpdatePack
-import com.opencasino.server.network.pack.IInitPackProvider
 import com.opencasino.server.network.pack.update.IUpdatePackProvider
 
 abstract class PlayerEntity<ID, GR, IP : InitPack, UP : UpdatePack>(
     id: ID,
-    protected var gameRoom: GR
-) : AbstractEntity<ID>(id), Initializable<IP>,
-    IUpdatePackProvider<UP>, IInitPackProvider<IP>, Player<ID> {
+    protected var gameRoom: GR,
+) : AbstractEntity<ID>(id),
+    Initializable<IP>,
+    IUpdatePackProvider<UP>,
+    IInitPackProvider<IP>,
+    Player<ID> {
     var madeDecision: Boolean = false
     var isAlive: Boolean = true
     var position: Int = 0

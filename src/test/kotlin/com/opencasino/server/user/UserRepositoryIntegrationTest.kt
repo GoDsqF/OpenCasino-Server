@@ -18,11 +18,10 @@ import java.util.UUID
         "spring.liquibase.url=jdbc:h2:mem:userrepotest;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE",
         "spring.liquibase.user=sa",
         "spring.liquibase.password=",
-    ]
+    ],
 )
 @ActiveProfiles("test")
 class UserRepositoryIntegrationTest {
-
     @Autowired
     lateinit var users: UserRepository
 
@@ -34,7 +33,8 @@ class UserRepositoryIntegrationTest {
         val user = User(email = "alice-${UUID.randomUUID()}@example.com", displayName = "alice", balance = 42.50)
         users.save(user).block()
 
-        StepVerifier.create(users.findByEmail(user.email))
+        StepVerifier
+            .create(users.findByEmail(user.email))
             .assertNext { found ->
                 assertEquals(user.id, found.id)
                 assertEquals(user.email, found.email)
@@ -43,8 +43,7 @@ class UserRepositoryIntegrationTest {
                 assertNull(found.passwordHash)
                 assertEquals("alice", found.displayName)
                 assertEquals(42.50, found.balance)
-            }
-            .verifyComplete()
+            }.verifyComplete()
     }
 
     @Test
@@ -52,17 +51,18 @@ class UserRepositoryIntegrationTest {
         val user = User(email = "bob-${UUID.randomUUID()}@example.com", displayName = "bob", role = Role.ADMIN)
         users.save(user).block()
 
-        StepVerifier.create(users.findById(user.id))
+        StepVerifier
+            .create(users.findById(user.id))
             .assertNext { found ->
                 assertEquals(user.id, found.id)
                 assertEquals(Role.ADMIN, found.role)
-            }
-            .verifyComplete()
+            }.verifyComplete()
     }
 
     @Test
     fun `findByEmail returns empty when no row matches`() {
-        StepVerifier.create(users.findByEmail("ghost-${UUID.randomUUID()}@example.com"))
+        StepVerifier
+            .create(users.findByEmail("ghost-${UUID.randomUUID()}@example.com"))
             .verifyComplete()
     }
 
@@ -72,7 +72,8 @@ class UserRepositoryIntegrationTest {
         users.save(user).block()
         users.deleteById(user.id).block()
 
-        StepVerifier.create(users.findById(user.id))
+        StepVerifier
+            .create(users.findById(user.id))
             .verifyComplete()
     }
 
@@ -84,13 +85,13 @@ class UserRepositoryIntegrationTest {
         val subject = UUID.randomUUID().toString()
         identities.save(UserOAuthIdentity(user.id, "google", subject)).block()
 
-        StepVerifier.create(identities.findByProviderAndSubject("google", subject))
+        StepVerifier
+            .create(identities.findByProviderAndSubject("google", subject))
             .assertNext { found ->
                 assertEquals(user.id, found.userId)
                 assertEquals("google", found.provider)
                 assertEquals(subject, found.subject)
-            }
-            .verifyComplete()
+            }.verifyComplete()
     }
 
     @Test
@@ -102,12 +103,12 @@ class UserRepositoryIntegrationTest {
         identities.save(UserOAuthIdentity(user.id, "google", subjectA)).block()
         identities.save(UserOAuthIdentity(user.id, "github", subjectB)).block()
 
-        StepVerifier.create(identities.findAllByUserId(user.id).collectList())
+        StepVerifier
+            .create(identities.findAllByUserId(user.id).collectList())
             .assertNext { list ->
                 assertEquals(2, list.size)
                 assertEquals(setOf("google", "github"), list.map { it.provider }.toSet())
-            }
-            .verifyComplete()
+            }.verifyComplete()
     }
 
     @Test
@@ -126,17 +127,18 @@ class UserRepositoryIntegrationTest {
     @Test
     fun `lastLoginAt round-trips through repository`() {
         val ts = Instant.parse("2026-05-10T12:34:56Z")
-        val user = User(
-            email = "frank-${UUID.randomUUID()}@example.com",
-            displayName = "frank",
-            lastLoginAt = ts,
-        )
+        val user =
+            User(
+                email = "frank-${UUID.randomUUID()}@example.com",
+                displayName = "frank",
+                lastLoginAt = ts,
+            )
         users.save(user).block()
 
-        StepVerifier.create(users.findById(user.id))
+        StepVerifier
+            .create(users.findById(user.id))
             .assertNext { found ->
                 assertEquals(ts, found.lastLoginAt)
-            }
-            .verifyComplete()
+            }.verifyComplete()
     }
 }

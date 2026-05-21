@@ -8,7 +8,6 @@ import java.security.interfaces.RSAPublicKey
 
 @Configuration
 class JwtTestKeyConfig {
-
     @Bean
     fun jwtKeyMaterial(): JwtKeyMaterial {
         val pair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()

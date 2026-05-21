@@ -5,5 +5,5 @@ enum class PokerPhase {
     FLOP,
     TURN,
     RIVER,
-    SHOWDOWN
+    SHOWDOWN,
 }

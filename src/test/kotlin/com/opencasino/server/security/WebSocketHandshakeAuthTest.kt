@@ -38,11 +38,10 @@ private const val TEST_ISSUER = "opencasino-test"
         "spring.liquibase.user=sa",
         "spring.liquibase.password=",
         "app.jwt.issuer=$TEST_ISSUER",
-    ]
+    ],
 )
 @ActiveProfiles("security-on")
 class WebSocketHandshakeAuthTest {
-
     @LocalServerPort
     var port: Int = 0
 
@@ -58,31 +57,43 @@ class WebSocketHandshakeAuthTest {
         query: String = "",
         offeredSubProtocols: List<String> = emptyList(),
     ): Throwable? {
-        val handler = object : WebSocketHandler {
-            override fun handle(session: WebSocketSession): Mono<Void> = session.send(Mono.empty()).then()
-            override fun getSubProtocols(): List<String> = offeredSubProtocols
-        }
+        val handler =
+            object : WebSocketHandler {
+                override fun handle(session: WebSocketSession): Mono<Void> = session.send(Mono.empty()).then()
+
+                override fun getSubProtocols(): List<String> = offeredSubProtocols
+            }
         return runCatching {
             client.execute(wsUri(query), headers, handler).block(Duration.ofSeconds(5))
         }.exceptionOrNull()
     }
 
-    private fun validToken(): String = signToken(
-        JWTClaimsSet.Builder()
-            .issuer(TEST_ISSUER)
-            .subject(UUID.randomUUID().toString())
-            .issueTime(Date())
-            .expirationTime(Date.from(Instant.now().plusSeconds(60)))
-            .claim(JwtIssuer.CLAIM_EMAIL, "ws@example.com")
-            .claim(JwtIssuer.CLAIM_ROLES, listOf("USER"))
-            .build(),
-        keys.privateKey,
-        keys.keyId,
-    )
+    private fun validToken(): String =
+        signToken(
+            JWTClaimsSet
+                .Builder()
+                .issuer(TEST_ISSUER)
+                .subject(UUID.randomUUID().toString())
+                .issueTime(Date())
+                .expirationTime(Date.from(Instant.now().plusSeconds(60)))
+                .claim(JwtIssuer.CLAIM_EMAIL, "ws@example.com")
+                .claim(JwtIssuer.CLAIM_ROLES, listOf("USER"))
+                .build(),
+            keys.privateKey,
+            keys.keyId,
+        )
 
-    private fun signToken(claims: JWTClaimsSet, key: RSAPrivateKey, kid: String): String =
+    private fun signToken(
+        claims: JWTClaimsSet,
+        key: RSAPrivateKey,
+        kid: String,
+    ): String =
         SignedJWT(
-            JWSHeader.Builder(JWSAlgorithm.RS256).type(JOSEObjectType.JWT).keyID(kid).build(),
+            JWSHeader
+                .Builder(JWSAlgorithm.RS256)
+                .type(JOSEObjectType.JWT)
+                .keyID(kid)
+                .build(),
             claims,
         ).apply { sign(RSASSASigner(key)) }.serialize()
 
@@ -95,16 +106,18 @@ class WebSocketHandshakeAuthTest {
     @Test
     fun `handshake with forged token is rejected`() {
         val foreign = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-        val forged = signToken(
-            JWTClaimsSet.Builder()
-                .issuer(TEST_ISSUER)
-                .subject(UUID.randomUUID().toString())
-                .issueTime(Date())
-                .expirationTime(Date.from(Instant.now().plusSeconds(60)))
-                .build(),
-            foreign.private as RSAPrivateKey,
-            keys.keyId,
-        )
+        val forged =
+            signToken(
+                JWTClaimsSet
+                    .Builder()
+                    .issuer(TEST_ISSUER)
+                    .subject(UUID.randomUUID().toString())
+                    .issueTime(Date())
+                    .expirationTime(Date.from(Instant.now().plusSeconds(60)))
+                    .build(),
+                foreign.private as RSAPrivateKey,
+                keys.keyId,
+            )
         val error = openWith(query = "?token=$forged")
         assert(error != null) { "expected the handshake to fail with a forged token" }
     }
@@ -124,16 +137,18 @@ class WebSocketHandshakeAuthTest {
 
     @Test
     fun `handshake with expired token in query string is rejected`() {
-        val expired = signToken(
-            JWTClaimsSet.Builder()
-                .issuer(TEST_ISSUER)
-                .subject(UUID.randomUUID().toString())
-                .issueTime(Date.from(Instant.now().minusSeconds(3600)))
-                .expirationTime(Date.from(Instant.now().minusSeconds(60)))
-                .build(),
-            keys.privateKey,
-            keys.keyId,
-        )
+        val expired =
+            signToken(
+                JWTClaimsSet
+                    .Builder()
+                    .issuer(TEST_ISSUER)
+                    .subject(UUID.randomUUID().toString())
+                    .issueTime(Date.from(Instant.now().minusSeconds(3600)))
+                    .expirationTime(Date.from(Instant.now().minusSeconds(60)))
+                    .build(),
+                keys.privateKey,
+                keys.keyId,
+            )
         val error = openWith(query = "?token=$expired")
         assert(error != null) { "expected the handshake to fail with an expired token" }
     }

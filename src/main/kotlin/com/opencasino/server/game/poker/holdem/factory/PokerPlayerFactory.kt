@@ -13,6 +13,6 @@ class PokerPlayerFactory : PlayerFactory<GameRoomJoinEvent, PokerPlayer, PokerGa
         nextId: Long,
         initialData: GameRoomJoinEvent,
         gameRoom: PokerGameRoom,
-        playerSession: PlayerSession
+        playerSession: PlayerSession,
     ): PokerPlayer = PokerPlayer(nextId, gameRoom, playerSession)
 }

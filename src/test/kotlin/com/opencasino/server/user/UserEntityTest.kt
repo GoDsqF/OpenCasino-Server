@@ -6,7 +6,6 @@ import java.time.Instant
 import java.util.UUID
 
 class UserEntityTest {
-
     @Test
     fun `defaults are sensible`() {
         val user = User(email = "alice@example.com", displayName = "alice")
@@ -39,20 +38,21 @@ class UserEntityTest {
     fun `custom fields are preserved`() {
         val id = UUID.randomUUID()
         val now = Instant.parse("2026-05-01T10:00:00Z")
-        val user = User(
-            id = id,
-            email = "x@example.com",
-            emailVerified = true,
-            passwordHash = "bcrypt-hash",
-            role = Role.ADMIN,
-            balance = 1234.56,
-            displayName = "xena",
-            firstName = "Xena",
-            lastName = "Warrior",
-            createdAt = now,
-            updatedAt = now,
-            lastLoginAt = now,
-        )
+        val user =
+            User(
+                id = id,
+                email = "x@example.com",
+                emailVerified = true,
+                passwordHash = "bcrypt-hash",
+                role = Role.ADMIN,
+                balance = 1234.56,
+                displayName = "xena",
+                firstName = "Xena",
+                lastName = "Warrior",
+                createdAt = now,
+                updatedAt = now,
+                lastLoginAt = now,
+            )
         assertEquals(id, user.id)
         assertTrue(user.emailVerified)
         assertEquals("bcrypt-hash", user.passwordHash)

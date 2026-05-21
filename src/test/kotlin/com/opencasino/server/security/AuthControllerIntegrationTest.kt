@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
@@ -36,40 +36,51 @@ import java.util.UUID
         // The real client IP (set via XFF below) is NOT trusted, so the walk surfaces it.
         "app.security.trusted-proxies=127.0.0.0/8,::1/128",
         "spring.test.webtestclient.timeout=30s",
-    ]
+    ],
 )
 @AutoConfigureWebTestClient
 @ActiveProfiles("security-on")
 class AuthControllerIntegrationTest {
-
     @Autowired lateinit var webClient: WebTestClient
+
     @Autowired lateinit var users: UserRepository
+
     @Autowired lateinit var refreshTokens: RefreshTokenRepository
 
     private fun freshEmail(prefix: String) = "$prefix-${UUID.randomUUID()}@example.com"
+
     private fun freshName(prefix: String) = "$prefix${UUID.randomUUID().toString().take(8).replace("-", "")}"
 
-    private fun registerBody(email: String, password: String = "correct-horse-battery", displayName: String? = freshName("u")) =
-        buildMap<String, Any> {
-            put("email", email)
-            put("password", password)
-            if (displayName != null) put("displayName", displayName)
-        }
+    private fun registerBody(
+        email: String,
+        password: String = "correct-horse-battery",
+        displayName: String? = freshName("u"),
+    ) = buildMap<String, Any> {
+        put("email", email)
+        put("password", password)
+        if (displayName != null) put("displayName", displayName)
+    }
 
     @Test
     fun `register creates a user with password hash and returns 201`() {
         val email = freshEmail("alice")
         val displayName = freshName("alice")
 
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(registerBody(email, displayName = displayName))
             .exchange()
-            .expectStatus().isCreated
+            .expectStatus()
+            .isCreated
             .expectBody()
-            .jsonPath("$.userId").exists()
-            .jsonPath("$.email").isEqualTo(email)
-            .jsonPath("$.displayName").isEqualTo(displayName)
+            .jsonPath("$.userId")
+            .exists()
+            .jsonPath("$.email")
+            .isEqualTo(email)
+            .jsonPath("$.displayName")
+            .isEqualTo(displayName)
 
         val saved = users.findByEmail(email).block()
         assertNotNull(saved)
@@ -81,71 +92,101 @@ class AuthControllerIntegrationTest {
     fun `duplicate registration returns 409`() {
         val email = freshEmail("dup")
 
-        webClient.post().uri("/auth/register")
-            .contentType(MediaType.APPLICATION_JSON).bodyValue(registerBody(email))
-            .exchange().expectStatus().isCreated
-
-        webClient.post().uri("/auth/register")
-            .contentType(MediaType.APPLICATION_JSON).bodyValue(registerBody(email))
+        webClient
+            .post()
+            .uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(email))
             .exchange()
-            .expectStatus().isEqualTo(409)
+            .expectStatus()
+            .isCreated
+
+        webClient
+            .post()
+            .uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(email))
+            .exchange()
+            .expectStatus()
+            .isEqualTo(409)
             .expectBody()
-            .jsonPath("$.code").isEqualTo("EMAIL_TAKEN")
+            .jsonPath("$.code")
+            .isEqualTo("EMAIL_TAKEN")
     }
 
     @Test
     fun `weak password is rejected with 400`() {
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(registerBody(freshEmail("weak"), password = "short"))
             .exchange()
-            .expectStatus().isBadRequest
+            .expectStatus()
+            .isBadRequest
             .expectBody()
-            .jsonPath("$.code").isEqualTo("WEAK_PASSWORD")
+            .jsonPath("$.code")
+            .isEqualTo("WEAK_PASSWORD")
     }
 
     @Test
     fun `invalid email format is rejected with 400`() {
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(registerBody("not-an-email"))
             .exchange()
-            .expectStatus().isBadRequest
+            .expectStatus()
+            .isBadRequest
             .expectBody()
-            .jsonPath("$.code").isEqualTo("INVALID_EMAIL")
+            .jsonPath("$.code")
+            .isEqualTo("INVALID_EMAIL")
     }
 
     @Test
     fun `missing displayName is rejected with 400`() {
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(registerBody(freshEmail("noname"), displayName = null))
             .exchange()
-            .expectStatus().isBadRequest
+            .expectStatus()
+            .isBadRequest
             .expectBody()
-            .jsonPath("$.code").isEqualTo("INVALID_DISPLAY_NAME")
+            .jsonPath("$.code")
+            .isEqualTo("INVALID_DISPLAY_NAME")
     }
 
     @Test
     fun `displayName with denylisted substring is rejected with 400`() {
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(registerBody(freshEmail("evil"), displayName = "superadmin42"))
             .exchange()
-            .expectStatus().isBadRequest
+            .expectStatus()
+            .isBadRequest
             .expectBody()
-            .jsonPath("$.code").isEqualTo("INVALID_DISPLAY_NAME")
+            .jsonPath("$.code")
+            .isEqualTo("INVALID_DISPLAY_NAME")
     }
 
     @Test
     fun `displayName with illegal characters is rejected with 400`() {
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(registerBody(freshEmail("bad"), displayName = "spaces are bad"))
             .exchange()
-            .expectStatus().isBadRequest
+            .expectStatus()
+            .isBadRequest
             .expectBody()
-            .jsonPath("$.code").isEqualTo("INVALID_DISPLAY_NAME")
+            .jsonPath("$.code")
+            .isEqualTo("INVALID_DISPLAY_NAME")
     }
 
     @Test
@@ -153,27 +194,38 @@ class AuthControllerIntegrationTest {
         val email = freshEmail("loginok")
         val password = "correct-horse-battery"
 
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(registerBody(email, password))
-            .exchange().expectStatus().isCreated
+            .exchange()
+            .expectStatus()
+            .isCreated
 
-        webClient.post().uri("/auth/login")
+        webClient
+            .post()
+            .uri("/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("email" to email, "password" to password))
             .exchange()
-            .expectStatus().isOk
+            .expectStatus()
+            .isOk
             .expectBody()
-            .jsonPath("$.accessToken").value<String> {
+            .jsonPath("$.accessToken")
+            .value<String> {
                 assertTrue(it.split(".").size == 3, "accessToken should be a JWT (three segments)")
-            }
-            .jsonPath("$.refreshToken").value<String> {
+            }.jsonPath("$.refreshToken")
+            .value<String> {
                 assertTrue(it.isNotBlank() && it.length >= 32, "refreshToken should look like a high-entropy random: got $it")
-            }
-            .jsonPath("$.refreshExpiresAt").exists()
-            .jsonPath("$.tokenType").isEqualTo("Bearer")
-            .jsonPath("$.expiresAt").exists()
-            .jsonPath("$.userId").exists()
+            }.jsonPath("$.refreshExpiresAt")
+            .exists()
+            .jsonPath("$.tokenType")
+            .isEqualTo("Bearer")
+            .jsonPath("$.expiresAt")
+            .exists()
+            .jsonPath("$.userId")
+            .exists()
     }
 
     @Test
@@ -181,31 +233,44 @@ class AuthControllerIntegrationTest {
         val pair = registerAndLogin("mebalance")
         val access = pair["accessToken"] as String
 
-        webClient.get().uri("/auth/me")
+        webClient
+            .get()
+            .uri("/auth/me")
             .header("Authorization", "Bearer $access")
             .exchange()
-            .expectStatus().isOk
+            .expectStatus()
+            .isOk
             .expectBody()
-            .jsonPath("$.userId").exists()
-            .jsonPath("$.balance").exists()
+            .jsonPath("$.userId")
+            .exists()
+            .jsonPath("$.balance")
+            .exists()
     }
 
     private fun registerAndLogin(prefix: String): Map<String, Any> {
         val email = freshEmail(prefix)
         val password = "correct-horse-battery"
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(registerBody(email, password))
-            .exchange().expectStatus().isCreated
+            .exchange()
+            .expectStatus()
+            .isCreated
 
         @Suppress("UNCHECKED_CAST")
-        return webClient.post().uri("/auth/login")
+        return webClient
+            .post()
+            .uri("/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("email" to email, "password" to password))
             .exchange()
-            .expectStatus().isOk
+            .expectStatus()
+            .isOk
             .returnResult(Map::class.java)
-            .responseBody.blockFirst() as Map<String, Any>
+            .responseBody
+            .blockFirst() as Map<String, Any>
     }
 
     @Test
@@ -214,13 +279,18 @@ class AuthControllerIntegrationTest {
         val firstRefresh = first["refreshToken"] as String
         val firstAccess = first["accessToken"] as String
 
-        val second = webClient.post().uri("/auth/refresh")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(mapOf("refreshToken" to firstRefresh))
-            .exchange()
-            .expectStatus().isOk
-            .returnResult(Map::class.java)
-            .responseBody.blockFirst()!!
+        val second =
+            webClient
+                .post()
+                .uri("/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(mapOf("refreshToken" to firstRefresh))
+                .exchange()
+                .expectStatus()
+                .isOk
+                .returnResult(Map::class.java)
+                .responseBody
+                .blockFirst()!!
 
         val secondRefresh = second["refreshToken"] as String
         val secondAccess = second["accessToken"] as String
@@ -233,40 +303,57 @@ class AuthControllerIntegrationTest {
         val first = registerAndLogin("replay1")
         val firstRefresh = first["refreshToken"] as String
 
-        val rotated = webClient.post().uri("/auth/refresh")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(mapOf("refreshToken" to firstRefresh))
-            .exchange()
-            .expectStatus().isOk
-            .returnResult(Map::class.java)
-            .responseBody.blockFirst()!!
+        val rotated =
+            webClient
+                .post()
+                .uri("/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(mapOf("refreshToken" to firstRefresh))
+                .exchange()
+                .expectStatus()
+                .isOk
+                .returnResult(Map::class.java)
+                .responseBody
+                .blockFirst()!!
 
-        webClient.post().uri("/auth/refresh")
+        webClient
+            .post()
+            .uri("/auth/refresh")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("refreshToken" to firstRefresh))
             .exchange()
-            .expectStatus().isUnauthorized
+            .expectStatus()
+            .isUnauthorized
             .expectBody()
-            .jsonPath("$.code").isEqualTo("REFRESH_REPLAY_DETECTED")
+            .jsonPath("$.code")
+            .isEqualTo("REFRESH_REPLAY_DETECTED")
 
-        webClient.post().uri("/auth/refresh")
+        webClient
+            .post()
+            .uri("/auth/refresh")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("refreshToken" to rotated["refreshToken"] as String))
             .exchange()
-            .expectStatus().isUnauthorized
+            .expectStatus()
+            .isUnauthorized
             .expectBody()
-            .jsonPath("$.code").isEqualTo("REFRESH_REVOKED")
+            .jsonPath("$.code")
+            .isEqualTo("REFRESH_REVOKED")
     }
 
     @Test
     fun `unknown refresh token is rejected with REFRESH_INVALID`() {
-        webClient.post().uri("/auth/refresh")
+        webClient
+            .post()
+            .uri("/auth/refresh")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("refreshToken" to "definitely-not-a-real-token"))
             .exchange()
-            .expectStatus().isUnauthorized
+            .expectStatus()
+            .isUnauthorized
             .expectBody()
-            .jsonPath("$.code").isEqualTo("REFRESH_INVALID")
+            .jsonPath("$.code")
+            .isEqualTo("REFRESH_INVALID")
     }
 
     @Test
@@ -274,19 +361,26 @@ class AuthControllerIntegrationTest {
         val pair = registerAndLogin("logout1")
         val refresh = pair["refreshToken"] as String
 
-        webClient.post().uri("/auth/logout")
+        webClient
+            .post()
+            .uri("/auth/logout")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("refreshToken" to refresh))
             .exchange()
-            .expectStatus().isNoContent
+            .expectStatus()
+            .isNoContent
 
-        webClient.post().uri("/auth/refresh")
+        webClient
+            .post()
+            .uri("/auth/refresh")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("refreshToken" to refresh))
             .exchange()
-            .expectStatus().isUnauthorized
+            .expectStatus()
+            .isUnauthorized
             .expectBody()
-            .jsonPath("$.code").isEqualTo("REFRESH_REVOKED")
+            .jsonPath("$.code")
+            .isEqualTo("REFRESH_REVOKED")
     }
 
     @Test
@@ -295,44 +389,62 @@ class AuthControllerIntegrationTest {
         val refresh = pair["refreshToken"] as String
         val access = pair["accessToken"] as String
 
-        webClient.post().uri("/auth/logout")
+        webClient
+            .post()
+            .uri("/auth/logout")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("refreshToken" to refresh))
             .exchange()
-            .expectStatus().isNoContent
+            .expectStatus()
+            .isNoContent
 
-        webClient.get().uri("/auth/me")
+        webClient
+            .get()
+            .uri("/auth/me")
             .header("Authorization", "Bearer $access")
             .exchange()
-            .expectStatus().isOk
+            .expectStatus()
+            .isOk
     }
 
     @Test
     fun `login with wrong password returns 401`() {
         val email = freshEmail("wrongpw")
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(registerBody(email))
-            .exchange().expectStatus().isCreated
+            .exchange()
+            .expectStatus()
+            .isCreated
 
-        webClient.post().uri("/auth/login")
+        webClient
+            .post()
+            .uri("/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("email" to email, "password" to "incorrect-horse"))
             .exchange()
-            .expectStatus().isUnauthorized
+            .expectStatus()
+            .isUnauthorized
             .expectBody()
-            .jsonPath("$.code").isEqualTo("INVALID_CREDENTIALS")
+            .jsonPath("$.code")
+            .isEqualTo("INVALID_CREDENTIALS")
     }
 
     @Test
     fun `login with non-existent email returns 401`() {
-        webClient.post().uri("/auth/login")
+        webClient
+            .post()
+            .uri("/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("email" to freshEmail("ghost"), "password" to "correct-horse-battery"))
             .exchange()
-            .expectStatus().isUnauthorized
+            .expectStatus()
+            .isUnauthorized
             .expectBody()
-            .jsonPath("$.code").isEqualTo("INVALID_CREDENTIALS")
+            .jsonPath("$.code")
+            .isEqualTo("INVALID_CREDENTIALS")
     }
 
     @Test
@@ -340,37 +452,56 @@ class AuthControllerIntegrationTest {
         val mixedCase = "MiXeD-${UUID.randomUUID()}@example.com"
         val lower = mixedCase.lowercase()
 
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(registerBody(mixedCase))
-            .exchange().expectStatus().isCreated
+            .exchange()
+            .expectStatus()
+            .isCreated
 
         assertNotNull(users.findByEmail(lower).block())
         assertNull(users.findByEmail(mixedCase).block())
 
-        webClient.post().uri("/auth/login")
+        webClient
+            .post()
+            .uri("/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("email" to mixedCase, "password" to "correct-horse-battery"))
-            .exchange().expectStatus().isOk
+            .exchange()
+            .expectStatus()
+            .isOk
     }
 
     @Test
     fun `login persists user_agent and ip on the refresh_tokens row`() {
         val email = freshEmail("uatrack")
         val password = "correct-horse-battery"
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(registerBody(email, password))
-            .exchange().expectStatus().isCreated
+            .exchange()
+            .expectStatus()
+            .isCreated
 
         @Suppress("UNCHECKED_CAST")
-        val loginResponse = webClient.post().uri("/auth/login")
-            .contentType(MediaType.APPLICATION_JSON)
-            .header(HttpHeaders.USER_AGENT, "phase8-test-agent/1.0")
-            .header("X-Forwarded-For", "203.0.113.7")
-            .bodyValue(mapOf("email" to email, "password" to password))
-            .exchange().expectStatus().isOk
-            .returnResult(Map::class.java).responseBody.blockFirst() as Map<String, Any>
+        val loginResponse =
+            webClient
+                .post()
+                .uri("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.USER_AGENT, "phase8-test-agent/1.0")
+                .header("X-Forwarded-For", "203.0.113.7")
+                .bodyValue(mapOf("email" to email, "password" to password))
+                .exchange()
+                .expectStatus()
+                .isOk
+                .returnResult(Map::class.java)
+                .responseBody
+                .blockFirst() as Map<String, Any>
 
         val plaintext = loginResponse["refreshToken"] as String
         val token = refreshTokens.findByTokenHash(sha256Hex(plaintext)).block()
@@ -388,46 +519,65 @@ class AuthControllerIntegrationTest {
     fun `logout all revokes every active refresh token for the user`() {
         val email = freshEmail("logoutall")
         val password = "correct-horse-battery"
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(registerBody(email, password))
-            .exchange().expectStatus().isCreated
+            .exchange()
+            .expectStatus()
+            .isCreated
 
         val session1 = login(email, password)
         val session2 = login(email, password)
 
-        webClient.post().uri("/auth/logout?all=true")
+        webClient
+            .post()
+            .uri("/auth/logout?all=true")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("refreshToken" to (session1["refreshToken"] as String)))
             .exchange()
-            .expectStatus().isNoContent
+            .expectStatus()
+            .isNoContent
 
-        webClient.post().uri("/auth/refresh")
+        webClient
+            .post()
+            .uri("/auth/refresh")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("refreshToken" to (session1["refreshToken"] as String)))
             .exchange()
-            .expectStatus().isUnauthorized
+            .expectStatus()
+            .isUnauthorized
             .expectBody()
-            .jsonPath("$.code").isEqualTo("REFRESH_REVOKED")
+            .jsonPath("$.code")
+            .isEqualTo("REFRESH_REVOKED")
 
-        webClient.post().uri("/auth/refresh")
+        webClient
+            .post()
+            .uri("/auth/refresh")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("refreshToken" to (session2["refreshToken"] as String)))
             .exchange()
-            .expectStatus().isUnauthorized
+            .expectStatus()
+            .isUnauthorized
             .expectBody()
-            .jsonPath("$.code").isEqualTo("REFRESH_REVOKED")
+            .jsonPath("$.code")
+            .isEqualTo("REFRESH_REVOKED")
     }
 
     @Test
     fun `logout all without refresh token returns 401 REFRESH_INVALID`() {
-        webClient.post().uri("/auth/logout?all=true")
+        webClient
+            .post()
+            .uri("/auth/logout?all=true")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf<String, Any>())
             .exchange()
-            .expectStatus().isUnauthorized
+            .expectStatus()
+            .isUnauthorized
             .expectBody()
-            .jsonPath("$.code").isEqualTo("REFRESH_INVALID")
+            .jsonPath("$.code")
+            .isEqualTo("REFRESH_INVALID")
     }
 
     @Test
@@ -436,22 +586,39 @@ class AuthControllerIntegrationTest {
         val emailB = freshEmail("sessB")
         val password = "correct-horse-battery"
 
-        webClient.post().uri("/auth/register").contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(registerBody(emailA, password)).exchange().expectStatus().isCreated
-        webClient.post().uri("/auth/register").contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(registerBody(emailB, password)).exchange().expectStatus().isCreated
+        webClient
+            .post()
+            .uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(emailA, password))
+            .exchange()
+            .expectStatus()
+            .isCreated
+        webClient
+            .post()
+            .uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(emailB, password))
+            .exchange()
+            .expectStatus()
+            .isCreated
 
         val a1 = login(emailA, password, userAgent = "UA-A1", xff = "203.0.113.10")
         login(emailA, password, userAgent = "UA-A2", xff = "203.0.113.11")
         login(emailB, password, userAgent = "UA-B1", xff = "203.0.113.20")
 
         @Suppress("UNCHECKED_CAST")
-        val rows = webClient.get().uri("/auth/sessions")
-            .header("Authorization", "Bearer ${a1["accessToken"]}")
-            .exchange()
-            .expectStatus().isOk
-            .returnResult(List::class.java)
-            .responseBody.blockFirst() as List<Map<String, Any>>
+        val rows =
+            webClient
+                .get()
+                .uri("/auth/sessions")
+                .header("Authorization", "Bearer ${a1["accessToken"]}")
+                .exchange()
+                .expectStatus()
+                .isOk
+                .returnResult(List::class.java)
+                .responseBody
+                .blockFirst() as List<Map<String, Any>>
 
         assertEquals(2, rows.size, "user A should see exactly its two active sessions")
         val agents = rows.mapNotNull { it["userAgent"] as String? }.toSet()
@@ -467,24 +634,39 @@ class AuthControllerIntegrationTest {
     fun `GET sessions hides revoked rows`() {
         val email = freshEmail("seshrev")
         val password = "correct-horse-battery"
-        webClient.post().uri("/auth/register").contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(registerBody(email, password)).exchange().expectStatus().isCreated
+        webClient
+            .post()
+            .uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(email, password))
+            .exchange()
+            .expectStatus()
+            .isCreated
 
         val active = login(email, password, userAgent = "still-here")
         val toRevoke = login(email, password, userAgent = "going-away")
 
-        webClient.post().uri("/auth/logout")
+        webClient
+            .post()
+            .uri("/auth/logout")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(mapOf("refreshToken" to (toRevoke["refreshToken"] as String)))
-            .exchange().expectStatus().isNoContent
+            .exchange()
+            .expectStatus()
+            .isNoContent
 
         @Suppress("UNCHECKED_CAST")
-        val rows = webClient.get().uri("/auth/sessions")
-            .header("Authorization", "Bearer ${active["accessToken"]}")
-            .exchange()
-            .expectStatus().isOk
-            .returnResult(List::class.java)
-            .responseBody.blockFirst() as List<Map<String, Any>>
+        val rows =
+            webClient
+                .get()
+                .uri("/auth/sessions")
+                .header("Authorization", "Bearer ${active["accessToken"]}")
+                .exchange()
+                .expectStatus()
+                .isOk
+                .returnResult(List::class.java)
+                .responseBody
+                .blockFirst() as List<Map<String, Any>>
 
         assertEquals(1, rows.size)
         assertEquals("still-here", rows.single()["userAgent"])
@@ -492,9 +674,12 @@ class AuthControllerIntegrationTest {
 
     @Test
     fun `GET sessions without auth returns 401`() {
-        webClient.get().uri("/auth/sessions")
+        webClient
+            .get()
+            .uri("/auth/sessions")
             .exchange()
-            .expectStatus().isUnauthorized
+            .expectStatus()
+            .isUnauthorized
     }
 
     @Test
@@ -502,64 +687,112 @@ class AuthControllerIntegrationTest {
         val emailA = freshEmail("delA")
         val emailB = freshEmail("delB")
         val password = "correct-horse-battery"
-        webClient.post().uri("/auth/register").contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(registerBody(emailA, password)).exchange().expectStatus().isCreated
-        webClient.post().uri("/auth/register").contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(registerBody(emailB, password)).exchange().expectStatus().isCreated
+        webClient
+            .post()
+            .uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(emailA, password))
+            .exchange()
+            .expectStatus()
+            .isCreated
+        webClient
+            .post()
+            .uri("/auth/register")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(registerBody(emailB, password))
+            .exchange()
+            .expectStatus()
+            .isCreated
 
         val a1 = login(emailA, password)
         val a2 = login(emailA, password)
         val b1 = login(emailB, password)
 
         @Suppress("UNCHECKED_CAST")
-        val sessions = webClient.get().uri("/auth/sessions")
-            .header("Authorization", "Bearer ${a1["accessToken"]}")
-            .exchange().expectStatus().isOk
-            .returnResult(List::class.java)
-            .responseBody.blockFirst() as List<Map<String, Any>>
+        val sessions =
+            webClient
+                .get()
+                .uri("/auth/sessions")
+                .header("Authorization", "Bearer ${a1["accessToken"]}")
+                .exchange()
+                .expectStatus()
+                .isOk
+                .returnResult(List::class.java)
+                .responseBody
+                .blockFirst() as List<Map<String, Any>>
 
         val targetId = sessions.first()["id"] as String
 
         // User A can revoke own session.
-        webClient.delete().uri("/auth/sessions/$targetId")
+        webClient
+            .delete()
+            .uri("/auth/sessions/$targetId")
             .header("Authorization", "Bearer ${a1["accessToken"]}")
-            .exchange().expectStatus().isNoContent
+            .exchange()
+            .expectStatus()
+            .isNoContent
 
         // After revoke, list shows only the other session.
         @Suppress("UNCHECKED_CAST")
-        val remaining = webClient.get().uri("/auth/sessions")
-            .header("Authorization", "Bearer ${a2["accessToken"]}")
-            .exchange().expectStatus().isOk
-            .returnResult(List::class.java)
-            .responseBody.blockFirst() as List<Map<String, Any>>
+        val remaining =
+            webClient
+                .get()
+                .uri("/auth/sessions")
+                .header("Authorization", "Bearer ${a2["accessToken"]}")
+                .exchange()
+                .expectStatus()
+                .isOk
+                .returnResult(List::class.java)
+                .responseBody
+                .blockFirst() as List<Map<String, Any>>
         assertEquals(1, remaining.size)
         assertTrue(remaining.none { (it["id"] as String) == targetId })
 
         // Second revoke on the same id (already revoked) returns 404.
-        webClient.delete().uri("/auth/sessions/$targetId")
+        webClient
+            .delete()
+            .uri("/auth/sessions/$targetId")
             .header("Authorization", "Bearer ${a1["accessToken"]}")
-            .exchange().expectStatus().isNotFound
+            .exchange()
+            .expectStatus()
+            .isNotFound
 
         // User B cannot revoke A's session (even one that was active for A).
         @Suppress("UNCHECKED_CAST")
-        val aRows = webClient.get().uri("/auth/sessions")
-            .header("Authorization", "Bearer ${a2["accessToken"]}")
-            .exchange().expectStatus().isOk
-            .returnResult(List::class.java)
-            .responseBody.blockFirst() as List<Map<String, Any>>
+        val aRows =
+            webClient
+                .get()
+                .uri("/auth/sessions")
+                .header("Authorization", "Bearer ${a2["accessToken"]}")
+                .exchange()
+                .expectStatus()
+                .isOk
+                .returnResult(List::class.java)
+                .responseBody
+                .blockFirst() as List<Map<String, Any>>
         val aSessionId = aRows.single()["id"] as String
 
-        webClient.delete().uri("/auth/sessions/$aSessionId")
+        webClient
+            .delete()
+            .uri("/auth/sessions/$aSessionId")
             .header("Authorization", "Bearer ${b1["accessToken"]}")
-            .exchange().expectStatus().isNotFound
+            .exchange()
+            .expectStatus()
+            .isNotFound
 
         // A's session is still alive — B's attempt did not affect it.
         @Suppress("UNCHECKED_CAST")
-        val aStill = webClient.get().uri("/auth/sessions")
-            .header("Authorization", "Bearer ${a2["accessToken"]}")
-            .exchange().expectStatus().isOk
-            .returnResult(List::class.java)
-            .responseBody.blockFirst() as List<Map<String, Any>>
+        val aStill =
+            webClient
+                .get()
+                .uri("/auth/sessions")
+                .header("Authorization", "Bearer ${a2["accessToken"]}")
+                .exchange()
+                .expectStatus()
+                .isOk
+                .returnResult(List::class.java)
+                .responseBody
+                .blockFirst() as List<Map<String, Any>>
         assertEquals(1, aStill.size)
     }
 
@@ -570,27 +803,34 @@ class AuthControllerIntegrationTest {
         xff: String? = null,
     ): Map<String, Any> {
         @Suppress("UNCHECKED_CAST")
-        return webClient.post().uri("/auth/login")
+        return webClient
+            .post()
+            .uri("/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
             .apply {
                 userAgent?.let { header(HttpHeaders.USER_AGENT, it) }
                 xff?.let { header("X-Forwarded-For", it) }
-            }
-            .bodyValue(mapOf("email" to email, "password" to password))
+            }.bodyValue(mapOf("email" to email, "password" to password))
             .exchange()
-            .expectStatus().isOk
+            .expectStatus()
+            .isOk
             .returnResult(Map::class.java)
-            .responseBody.blockFirst() as Map<String, Any>
+            .responseBody
+            .blockFirst() as Map<String, Any>
     }
 
     @Test
     fun `malformed JSON body returns 400`() {
-        webClient.post().uri("/auth/register")
+        webClient
+            .post()
+            .uri("/auth/register")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue("not json at all")
             .exchange()
-            .expectStatus().isBadRequest
+            .expectStatus()
+            .isBadRequest
             .expectBody()
-            .jsonPath("$.code").isEqualTo("MALFORMED_REQUEST")
+            .jsonPath("$.code")
+            .isEqualTo("MALFORMED_REQUEST")
     }
 }

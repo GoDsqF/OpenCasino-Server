@@ -19,9 +19,11 @@ import reactor.core.publisher.Mono
 @Configuration
 @Profile("!test")
 class JwtAuthenticationConfiguration {
-
     @Bean
-    fun reactiveJwtDecoder(keys: JwtKeyMaterial, props: JwtProperties): ReactiveJwtDecoder {
+    fun reactiveJwtDecoder(
+        keys: JwtKeyMaterial,
+        props: JwtProperties,
+    ): ReactiveJwtDecoder {
         val decoder = NimbusReactiveJwtDecoder.withPublicKey(keys.publicKey).build()
         decoder.setJwtValidator(buildValidator(props.issuer))
         return decoder
@@ -29,10 +31,11 @@ class JwtAuthenticationConfiguration {
 
     @Bean
     fun jwtAuthenticationConverter(): Converter<Jwt, Mono<AbstractAuthenticationToken>> {
-        val authoritiesConverter = JwtGrantedAuthoritiesConverter().apply {
-            setAuthoritiesClaimName(JwtIssuer.CLAIM_ROLES)
-            setAuthorityPrefix("ROLE_")
-        }
+        val authoritiesConverter =
+            JwtGrantedAuthoritiesConverter().apply {
+                setAuthoritiesClaimName(JwtIssuer.CLAIM_ROLES)
+                setAuthorityPrefix("ROLE_")
+            }
         return Converter { jwt ->
             val authorities = authoritiesConverter.convert(jwt) ?: emptyList()
             Mono.just(JwtAuthenticationToken(jwt, authorities, jwt.subject!!))
@@ -42,6 +45,7 @@ class JwtAuthenticationConfiguration {
     private fun buildValidator(issuer: String): OAuth2TokenValidator<Jwt> {
         val defaults = JwtValidators.createDefault()
         val issuerCheck = JwtClaimValidator<String>(JwtClaimNames.ISS) { it == issuer }
-        return org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator(defaults, issuerCheck)
+        return org.springframework.security.oauth2.core
+            .DelegatingOAuth2TokenValidator(defaults, issuerCheck)
     }
 }

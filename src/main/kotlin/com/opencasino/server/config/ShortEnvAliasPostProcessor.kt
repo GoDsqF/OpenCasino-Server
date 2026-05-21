@@ -1,7 +1,7 @@
 package com.opencasino.server.config
 
+import org.springframework.boot.EnvironmentPostProcessor
 import org.springframework.boot.SpringApplication
-import org.springframework.boot.env.EnvironmentPostProcessor
 import org.springframework.core.env.ConfigurableEnvironment
 import org.springframework.core.env.MapPropertySource
 
@@ -22,7 +22,6 @@ import org.springframework.core.env.MapPropertySource
 // Spring Boot's OAuth2 autoconfig refuses to build a registration with blank
 // client-id.
 class ShortEnvAliasPostProcessor : EnvironmentPostProcessor {
-
     override fun postProcessEnvironment(
         environment: ConfigurableEnvironment,
         application: SpringApplication,
@@ -61,35 +60,36 @@ class ShortEnvAliasPostProcessor : EnvironmentPostProcessor {
         out["$base.scope"] = env.lookupNonBlank("${envPrefix}_SCOPE") ?: defaultScopeFor(registrationId)
     }
 
-    private fun defaultScopeFor(registrationId: String): String = when (registrationId) {
-        "google" -> "openid,email,profile"
-        else -> "openid,email,profile"
-    }
+    private fun defaultScopeFor(registrationId: String): String =
+        when (registrationId) {
+            "google" -> "openid,email,profile"
+            else -> "openid,email,profile"
+        }
 
-    private fun ConfigurableEnvironment.lookupNonBlank(key: String): String? =
-        getProperty(key)?.takeIf { it.isNotBlank() }
+    private fun ConfigurableEnvironment.lookupNonBlank(key: String): String? = getProperty(key)?.takeIf { it.isNotBlank() }
 
     companion object {
         const val PROPERTY_SOURCE_NAME = "opencasino-short-env-aliases"
 
-        private val CODE_DEFAULTS: Map<String, String> = mapOf(
-            "app.jwt.issuer" to "opencasino",
-            "app.jwt.accessTtl" to "PT15M",
-            "app.jwt.keyId" to "default",
-            "app.jwt.privateKeyPath" to "/certs/jwt-private.pem",
-            "app.jwt.publicKeyPath" to "/certs/jwt-public.pem",
-            "app.auth.displayNameBlocklist" to "admin,root,system,support,moderator",
-            "server.ssl.enabled" to "false",
-            // Phase 8 — cross-cutting. All defaults are safe-by-default:
-            //  * trusted-proxies empty => XFF is ignored, client IP = TCP peer.
-            //  * cors allowed-origins empty => no cross-origin browser access (server-to-server
-            //    and same-origin still work). Operators opt-in by listing origins.
-            //  * rate-limit enabled — short env APP_RATELIMIT_ENABLED=false to disable globally.
-            "app.security.trusted-proxies" to "",
-            "app.cors.allowed-origins" to "",
-            "app.cors.allow-credentials" to "true",
-            "app.cors.max-age" to "PT1H",
-            "app.ratelimit.enabled" to "true",
-        )
+        private val CODE_DEFAULTS: Map<String, String> =
+            mapOf(
+                "app.jwt.issuer" to "opencasino",
+                "app.jwt.accessTtl" to "PT15M",
+                "app.jwt.keyId" to "default",
+                "app.jwt.privateKeyPath" to "/certs/jwt-private.pem",
+                "app.jwt.publicKeyPath" to "/certs/jwt-public.pem",
+                "app.auth.displayNameBlocklist" to "admin,root,system,support,moderator",
+                "server.ssl.enabled" to "false",
+                // Phase 8 — cross-cutting. All defaults are safe-by-default:
+                //  * trusted-proxies empty => XFF is ignored, client IP = TCP peer.
+                //  * cors allowed-origins empty => no cross-origin browser access (server-to-server
+                //    and same-origin still work). Operators opt-in by listing origins.
+                //  * rate-limit enabled — short env APP_RATELIMIT_ENABLED=false to disable globally.
+                "app.security.trusted-proxies" to "",
+                "app.cors.allowed-origins" to "",
+                "app.cors.allow-credentials" to "true",
+                "app.cors.max-age" to "PT1H",
+                "app.ratelimit.enabled" to "true",
+            )
     }
 }

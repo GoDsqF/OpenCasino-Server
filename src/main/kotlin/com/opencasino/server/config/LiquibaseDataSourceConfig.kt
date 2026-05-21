@@ -12,10 +12,9 @@ import javax.sql.DataSource
 @Configuration
 @ConditionalOnProperty(prefix = "spring.liquibase", name = ["enabled"], matchIfMissing = true)
 @ConditionalOnExpression(
-    "'\${spring.liquibase.url:}'.isEmpty() and '\${spring.r2dbc.url:}'.startsWith('r2dbc:postgresql:')"
+    "'\${spring.liquibase.url:}'.isEmpty() and '\${spring.r2dbc.url:}'.startsWith('r2dbc:postgresql:')",
 )
 class LiquibaseDataSourceConfig {
-
     @Bean
     @LiquibaseDataSource
     fun liquibaseDataSource(

@@ -18,15 +18,15 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 class JwtIssuerTest {
-
     private val now = Instant.parse("2026-05-15T10:00:00Z")
     private val clock = Clock.fixed(now, ZoneOffset.UTC)
     private val keys = generateKeys()
-    private val props = JwtProperties(
-        issuer = "opencasino-test",
-        accessTtl = Duration.ofMinutes(15),
-        keyId = "test-key",
-    )
+    private val props =
+        JwtProperties(
+            issuer = "opencasino-test",
+            accessTtl = Duration.ofMinutes(15),
+            keyId = "test-key",
+        )
     private val issuer = JwtIssuer(props, keys, clock)
 
     @Test
@@ -62,21 +62,23 @@ class JwtIssuerTest {
         val user = sampleUser()
         val (serialized, _) = issuer.issueAccess(user)
         val parts = serialized.split(".")
-        val tamperedPayload = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(
-            """{"sub":"attacker","iss":"opencasino-test"}""".toByteArray()
-        )
+        val tamperedPayload =
+            java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(
+                """{"sub":"attacker","iss":"opencasino-test"}""".toByteArray(),
+            )
         val tampered = "${parts[0]}.$tamperedPayload.${parts[2]}"
 
         val parsed = SignedJWT.parse(tampered)
         assertEquals(false, parsed.verify(RSASSAVerifier(keys.publicKey)))
     }
 
-    private fun sampleUser() = User(
-        id = UUID.fromString("11111111-1111-1111-1111-111111111111"),
-        email = "alice@example.com",
-        displayName = "alice",
-        role = Role.USER,
-    )
+    private fun sampleUser() =
+        User(
+            id = UUID.fromString("11111111-1111-1111-1111-111111111111"),
+            email = "alice@example.com",
+            displayName = "alice",
+            role = Role.USER,
+        )
 
     private fun generateKeys(): JwtKeyMaterial {
         val pair = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()

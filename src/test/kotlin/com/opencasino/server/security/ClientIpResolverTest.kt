@@ -7,7 +7,6 @@ import org.springframework.mock.http.server.reactive.MockServerHttpRequest
 import org.springframework.mock.web.server.MockServerWebExchange
 
 class ClientIpResolverTest {
-
     @Test
     fun `returns remoteAddress when trusted proxies are empty`() {
         val resolver = ClientIpResolver(SecurityNetworkProperties(trustedProxies = emptyList()))
@@ -87,9 +86,14 @@ class ClientIpResolverTest {
         assertEquals("1.1.1.1", resolver.resolve(exchange))
     }
 
-    private fun exchange(remoteHost: String, xff: String?): MockServerWebExchange {
-        val builder = MockServerHttpRequest.get("/auth/login")
-            .remoteAddress(java.net.InetSocketAddress(java.net.InetAddress.getByName(remoteHost), 12345))
+    private fun exchange(
+        remoteHost: String,
+        xff: String?,
+    ): MockServerWebExchange {
+        val builder =
+            MockServerHttpRequest
+                .get("/auth/login")
+                .remoteAddress(java.net.InetSocketAddress(java.net.InetAddress.getByName(remoteHost), 12345))
         if (xff != null) builder.header(ClientIpResolver.X_FORWARDED_FOR, xff)
         return MockServerWebExchange.from(builder.build())
     }

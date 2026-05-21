@@ -12,5 +12,5 @@ data class GameUpdatePack(
     val phase: PokerPhase,
     val currentPosition: Int?,
     val pot: Double,
-    val lastMaxBet: Double
-): UpdatePack
+    val lastMaxBet: Double,
+) : UpdatePack

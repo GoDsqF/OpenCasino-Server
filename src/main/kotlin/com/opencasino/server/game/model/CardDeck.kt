@@ -1,8 +1,6 @@
 package com.opencasino.server.game.model
 
-
-class CardDeck(){
-
+class CardDeck() {
     private var cards: MutableList<Card> = mutableListOf()
     private var visibilities: MutableList<Boolean> = mutableListOf()
 
@@ -18,13 +16,19 @@ class CardDeck(){
         shuffleDeck()
     }
 
-    fun dealCard(to: CardDeck, visibility: Boolean = true) {
+    fun dealCard(
+        to: CardDeck,
+        visibility: Boolean = true,
+    ) {
         val card = cards.removeFirst()
         visibilities.removeFirst()
         to.addCard(card, visibility)
     }
 
-    fun dealCards(count: Int, to: CardDeck) {
+    fun dealCards(
+        count: Int,
+        to: CardDeck,
+    ) {
         repeat(count) {
             val card = cards.removeFirst()
             visibilities.removeFirst()
@@ -38,14 +42,15 @@ class CardDeck(){
         return card
     }
 
-    fun addCard(card: Card, visibility: Boolean = true) {
+    fun addCard(
+        card: Card,
+        visibility: Boolean = true,
+    ) {
         cards.add(card)
         visibilities.add(visibility)
     }
 
-    fun getCards(): List<Card> {
-        return cards
-    }
+    fun getCards(): List<Card> = cards
 
     fun isVisible(index: Int): Boolean = visibilities[index]
 

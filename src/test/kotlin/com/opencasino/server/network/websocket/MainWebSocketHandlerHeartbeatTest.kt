@@ -27,14 +27,14 @@ import java.time.Duration
 import java.util.concurrent.CopyOnWriteArrayList
 
 class MainWebSocketHandlerHeartbeatTest {
-
     private fun newHandler(
         sessionService: WebSocketSessionService = mock(),
-        heartbeat: HeartbeatProperties = HeartbeatProperties(
-            enabled = true,
-            interval = Duration.ofSeconds(30),
-            pongTimeout = Duration.ofSeconds(10),
-        ),
+        heartbeat: HeartbeatProperties =
+            HeartbeatProperties(
+                enabled = true,
+                interval = Duration.ofSeconds(30),
+                pongTimeout = Duration.ofSeconds(10),
+            ),
         scheduler: VirtualTimeScheduler = VirtualTimeScheduler.create(),
     ): MainWebSocketHandler {
         val props = ApplicationProperties(heartbeat = heartbeat)
@@ -96,11 +96,12 @@ class MainWebSocketHandlerHeartbeatTest {
         val sessionService: WebSocketSessionService = mock()
         whenever(sessionService.onActive(any())).thenReturn(Flux.never())
 
-        val handler = newHandler(
-            sessionService = sessionService,
-            heartbeat = HeartbeatProperties(enabled = false),
-            scheduler = scheduler,
-        )
+        val handler =
+            newHandler(
+                sessionService = sessionService,
+                heartbeat = HeartbeatProperties(enabled = false),
+                scheduler = scheduler,
+            )
         val session = stubSession()
 
         handler.handle(session).subscribe()

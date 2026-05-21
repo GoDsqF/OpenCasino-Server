@@ -3,20 +3,23 @@ package com.opencasino.server.game.blackjack.model
 import com.opencasino.server.config.MIN_BLACKJACK_BET
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.network.pack.blackjack.info.PlayerInfoPack
-import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
 import com.opencasino.server.network.pack.blackjack.update.BlackjackHandView
 import com.opencasino.server.network.pack.blackjack.update.PrivatePlayerUpdatePack
 import com.opencasino.server.network.pack.blackjack.update.PublicPlayerUpdatePack
+import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.shared.BlackjackDecision
 import com.opencasino.server.service.shared.FailureCode
 
 open class BlackjackPlayer(
-    id: Long, gameRoom: BlackjackGameRoom, userSession: PlayerSession,
+    id: Long,
+    gameRoom: BlackjackGameRoom,
+    userSession: PlayerSession,
 ) : BlackjackBasePlayer<BlackjackGameRoom, PlayerInfoPack, PlayerHandUpdatePack, PrivatePlayerUpdatePack>(
-    id, gameRoom, userSession
-) {
-
+        id,
+        gameRoom,
+        userSession,
+    ) {
     init {
         bet = MIN_BLACKJACK_BET
         position = 0
@@ -49,7 +52,7 @@ open class BlackjackPlayer(
                     gameRoom.sendFailure(
                         userSession,
                         FailureCode.INVALID_DECISION,
-                        "DOUBLE is not available"
+                        "DOUBLE is not available",
                     )
                     return
                 }
@@ -65,7 +68,7 @@ open class BlackjackPlayer(
                     gameRoom.sendFailure(
                         userSession,
                         FailureCode.INVALID_DECISION,
-                        "SPLIT is not available"
+                        "SPLIT is not available",
                     )
                     return
                 }
@@ -83,7 +86,7 @@ open class BlackjackPlayer(
                 gameRoom.sendFailure(
                     userSession,
                     FailureCode.INVALID_DECISION,
-                    "Decision NONE is not supported"
+                    "Decision NONE is not supported",
                 )
             }
         }
@@ -91,47 +94,48 @@ open class BlackjackPlayer(
 
     private fun canDouble(): Boolean {
         val hand = currentHand()
-        return !hand.resolved
-            && hand.deck.getCards().size == 2
-            && !hand.doubled
-            && balance >= hand.bet
+        return !hand.resolved &&
+            hand.deck.getCards().size == 2 &&
+            !hand.doubled &&
+            balance >= hand.bet
     }
 
     private fun canSplit(): Boolean {
         if (hands.size != 1) return false
         val hand = currentHand()
         val cards = hand.deck.getCards()
-        return !hand.resolved
-            && cards.size == 2
-            && cards[0].rank == cards[1].rank
-            && balance >= hand.bet
+        return !hand.resolved &&
+            cards.size == 2 &&
+            cards[0].rank == cards[1].rank &&
+            balance >= hand.bet
     }
 
-    override fun info(): PlayerInfoPack {
-        return getInfoPack()
-    }
+    override fun info(): PlayerInfoPack = getInfoPack()
 
-    override fun getUpdatePack(): PlayerHandUpdatePack {
-        return PlayerHandUpdatePack(getPublicUpdatePack(), currentHand().deck.getCards())
-    }
+    override fun getUpdatePack(): PlayerHandUpdatePack = PlayerHandUpdatePack(getPublicUpdatePack(), currentHand().deck.getCards())
 
-    override fun getInfoPack(): PlayerInfoPack {
-        return PlayerInfoPack(id, balance)
-    }
+    override fun getInfoPack(): PlayerInfoPack = PlayerInfoPack(id, balance)
 
     override fun getPrivateUpdatePack(): PrivatePlayerUpdatePack {
-        val handViews = hands.map { h ->
-            BlackjackHandView(
-                cards = h.deck.getCards(),
-                bet = h.bet,
-                resolved = h.resolved,
-                doubled = h.doubled,
-                fromSplit = h.fromSplit,
-            )
-        }
+        val handViews =
+            hands.map { h ->
+                BlackjackHandView(
+                    cards = h.deck.getCards(),
+                    bet = h.bet,
+                    resolved = h.resolved,
+                    doubled = h.doubled,
+                    fromSplit = h.fromSplit,
+                )
+            }
         val totalBet = hands.sumOf { it.bet }
         return PrivatePlayerUpdatePack(
-            id, balance, totalBet, lastDecision, availableActions(), handViews, activeHandIndex
+            id,
+            balance,
+            totalBet,
+            lastDecision,
+            availableActions(),
+            handViews,
+            activeHandIndex,
         )
     }
 
@@ -145,9 +149,7 @@ open class BlackjackPlayer(
         return actions
     }
 
-    fun getPublicUpdatePack(): PublicPlayerUpdatePack {
-        return PublicPlayerUpdatePack(id, lastDecision)
-    }
+    fun getPublicUpdatePack(): PublicPlayerUpdatePack = PublicPlayerUpdatePack(id, lastDecision)
 
     fun resetForNewRound() {
         hands.clear()
@@ -160,8 +162,9 @@ open class BlackjackPlayer(
 
     fun advanceToNextHand(): Boolean {
         val next = hands.indexOfFirst { !it.resolved }
-        return if (next == -1) false
-        else {
+        return if (next == -1) {
+            false
+        } else {
             activeHandIndex = next
             true
         }

@@ -5,13 +5,13 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.core.convert.converter.Converter
+import org.springframework.http.HttpMethod
 import org.springframework.security.authentication.AbstractAuthenticationToken
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder
-import org.springframework.http.HttpMethod
 import org.springframework.security.web.server.SecurityWebFilterChain
 import org.springframework.web.cors.reactive.CorsConfigurationSource
 import reactor.core.publisher.Mono
@@ -20,7 +20,6 @@ import reactor.core.publisher.Mono
 @EnableWebFluxSecurity
 @Profile("!test")
 class SecurityConfig {
-
     @Bean
     fun securityWebFilterChain(
         http: ServerHttpSecurity,
@@ -42,7 +41,8 @@ class SecurityConfig {
                     // Spring Security's CorsWebFilter handles it ahead of authorization, but
                     // permit it explicitly so misconfigured CorsConfigurationSource never
                     // surfaces as 403 (it should fail loud at the CORS layer instead).
-                    .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                    .pathMatchers(HttpMethod.OPTIONS, "/**")
+                    .permitAll()
                     .pathMatchers(
                         "/",
                         "/index.html",
@@ -56,9 +56,9 @@ class SecurityConfig {
                         "/oauth2/authorization/*",
                         "/login/oauth2/code/*",
                     ).permitAll()
-                    .anyExchange().authenticated()
-            }
-            .oauth2ResourceServer { rs ->
+                    .anyExchange()
+                    .authenticated()
+            }.oauth2ResourceServer { rs ->
                 rs
                     .bearerTokenConverter(WebSocketBearerTokenAuthenticationConverter())
                     .jwt { jwt ->

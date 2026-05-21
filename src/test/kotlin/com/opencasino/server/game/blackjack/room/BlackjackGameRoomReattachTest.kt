@@ -18,7 +18,6 @@ import java.security.Principal
 import java.util.UUID
 
 class BlackjackGameRoomReattachTest {
-
     private val handshake: HandshakeInfo = mock()
     private val webSocketSessionService: WebSocketSessionService = mock()
     private val ledgerService: BalanceLedgerService = mock()
@@ -26,10 +25,17 @@ class BlackjackGameRoomReattachTest {
     private val appProps = ApplicationProperties()
     private val bjProps: BlackjackRoomProperties = appProps.blackjackRoom
 
-    private fun newRoom(): BlackjackGameRoom = BlackjackGameRoom(
-        BlackjackMap(), UUID.randomUUID(), roomService, webSocketSessionService,
-        VirtualTimeScheduler.create(), appProps.game, bjProps, ledgerService,
-    )
+    private fun newRoom(): BlackjackGameRoom =
+        BlackjackGameRoom(
+            BlackjackMap(),
+            UUID.randomUUID(),
+            roomService,
+            webSocketSessionService,
+            VirtualTimeScheduler.create(),
+            appProps.game,
+            bjProps,
+            ledgerService,
+        )
 
     private fun newSession(userId: UUID? = UUID.randomUUID()): PlayerSession {
         val s = PlayerSession(UUID.randomUUID().toString(), handshake)
@@ -37,7 +43,10 @@ class BlackjackGameRoomReattachTest {
         return s
     }
 
-    private fun seatPlayer(room: BlackjackGameRoom, session: PlayerSession): BlackjackPlayer {
+    private fun seatPlayer(
+        room: BlackjackGameRoom,
+        session: PlayerSession,
+    ): BlackjackPlayer {
         val player = BlackjackPlayer(1L, room, session)
         player.balance = 1000.0
         player.hands.clear()

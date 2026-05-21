@@ -10,14 +10,17 @@ import reactor.core.publisher.Mono
 import java.time.Duration
 
 @Component
-class MenuWebSocketHandler(private val menuService: MenuService) : WebSocketHandler {
-
+class MenuWebSocketHandler(
+    private val menuService: MenuService,
+) : WebSocketHandler {
     private val gson = Gson()
 
     override fun handle(session: WebSocketSession): Mono<Void> {
-        val snapshots = Flux.interval(Duration.ZERO, PUSH_INTERVAL)
-            .map { menuService.getMenuSnapshot() }
-            .map { session.textMessage(gson.toJson(it)) }
+        val snapshots =
+            Flux
+                .interval(Duration.ZERO, PUSH_INTERVAL)
+                .map { menuService.getMenuSnapshot() }
+                .map { session.textMessage(gson.toJson(it)) }
         return session.send(snapshots)
     }
 

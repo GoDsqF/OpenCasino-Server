@@ -4,9 +4,7 @@ import com.opencasino.server.config.MAX_POKER_PLAYERS
 import com.opencasino.server.game.poker.holdem.model.PokerPlayer
 import java.util.concurrent.atomic.AtomicLong
 
-
 class PokerMap {
-
     companion object {
         private val idCounter = AtomicLong(System.currentTimeMillis())
     }
@@ -15,8 +13,11 @@ class PokerMap {
     private var isHoldem: Boolean = true
 
     fun getPlayerById(id: Long): PokerPlayer? = players[id]
+
     fun getPlayers(): Collection<PokerPlayer> = players.values
+
     fun getPlayerByPosition(pos: Int): PokerPlayer? = players.values.firstOrNull { it.position == pos }
+
     fun addPlayer(player: PokerPlayer) {
         if (players.size < MAX_POKER_PLAYERS) {
             player.position = players.size
@@ -27,17 +28,20 @@ class PokerMap {
     fun setHoldem() {
         isHoldem = true
     }
+
     fun setOmaha() {
         isHoldem = false
     }
 
-    fun getIsHoldem(): Boolean {
-        return isHoldem
-    }
+    fun getIsHoldem(): Boolean = isHoldem
 
     fun removePlayer(player: PokerPlayer) = players.remove(player.id)
 
     fun nextPlayerId(): Long = idCounter.incrementAndGet()
 
-    fun alivePlayers(): Long = players.values.stream().filter { it.isAlive }.count()
+    fun alivePlayers(): Long =
+        players.values
+            .stream()
+            .filter { it.isAlive }
+            .count()
 }

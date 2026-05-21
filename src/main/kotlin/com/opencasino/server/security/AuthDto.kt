@@ -8,9 +8,17 @@ data class RegisterRequest(
     val password: String? = null,
     val displayName: String? = null,
 )
-data class LoginRequest(val email: String? = null, val password: String? = null)
 
-data class RegisterResponse(val userId: UUID, val email: String, val displayName: String)
+data class LoginRequest(
+    val email: String? = null,
+    val password: String? = null,
+)
+
+data class RegisterResponse(
+    val userId: UUID,
+    val email: String,
+    val displayName: String,
+)
 
 data class LoginResponse(
     val userId: UUID,
@@ -21,8 +29,13 @@ data class LoginResponse(
     val tokenType: String = "Bearer",
 )
 
-data class RefreshRequest(val refreshToken: String? = null)
-data class LogoutRequest(val refreshToken: String? = null)
+data class RefreshRequest(
+    val refreshToken: String? = null,
+)
+
+data class LogoutRequest(
+    val refreshToken: String? = null,
+)
 
 data class MeResponse(
     val userId: UUID,

@@ -11,7 +11,6 @@ import org.springframework.security.web.server.SecurityWebFilterChain
 @EnableWebFluxSecurity
 @Profile("test")
 class TestSecurityConfig {
-
     @Bean
     fun testSecurityWebFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain =
         http

@@ -21,7 +21,6 @@ import java.util.Optional
 import java.util.UUID
 
 class WebSocketSessionServiceReattachTest {
-
     private lateinit var scheduler: VirtualTimeScheduler
     private lateinit var blackjackService: RoomService
     private lateinit var pokerService: RoomService
@@ -35,15 +34,19 @@ class WebSocketSessionServiceReattachTest {
         scheduler = VirtualTimeScheduler.create()
         blackjackService = mock()
         pokerService = mock()
-        service = WebSocketSessionServiceImpl().also {
-            it.setBlackjackGameRoomManagementService(blackjackService)
-            it.setPokerGameRoomManagementService(pokerService)
-            it.overrideSchedulerForTests(scheduler)
-            it.disconnectGraceMs = graceMs
-        }
+        service =
+            WebSocketSessionServiceImpl().also {
+                it.setBlackjackGameRoomManagementService(blackjackService)
+                it.setPokerGameRoomManagementService(pokerService)
+                it.overrideSchedulerForTests(scheduler)
+                it.disconnectGraceMs = graceMs
+            }
     }
 
-    private fun session(id: String, userId: UUID? = null): PlayerSession {
+    private fun session(
+        id: String,
+        userId: UUID? = null,
+    ): PlayerSession {
         val s = PlayerSession(id, handshake)
         if (userId != null) s.principal = Principal { userId.toString() }
         return s

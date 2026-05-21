@@ -6,5 +6,5 @@ data class GameSettingsUpdateEvent(
     val betType: String?,
     val bet: Double,
     val minLimit: Double?,
-    val maxLimit: Double?
+    val maxLimit: Double?,
 ) : AbstractEvent()

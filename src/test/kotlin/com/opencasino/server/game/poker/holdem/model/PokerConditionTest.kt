@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class PokerConditionTest {
-
     @Test
     fun `three conditions exist`() {
         assertEquals(3, PokerCondition.entries.size)
