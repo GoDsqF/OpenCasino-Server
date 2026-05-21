@@ -1,6 +1,7 @@
 package com.opencasino.server.service.impl
 
 import com.opencasino.server.config.ApplicationProperties
+import com.opencasino.server.config.GAME_ROOM_JOIN_SUCCESS
 import com.opencasino.server.config.GAME_ROOM_JOIN_WAIT
 import com.opencasino.server.event.AbstractEvent
 import com.opencasino.server.event.GameRoomJoinEvent
@@ -13,6 +14,7 @@ import com.opencasino.server.game.poker.holdem.model.PokerPlayer
 import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
 import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.pack.menu.update.PokerRoomSummary
+import com.opencasino.server.network.pack.poker.shared.GameSettingsPack
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.PokerLobbyService
@@ -83,6 +85,27 @@ class PokerRoomServiceImpl(
         userSession: PlayerSession,
         initialData: AbstractEvent,
     ) {
+        // Reattach-короткое-замыкание: WebSocketSessionServiceImpl.reattach()
+        // уже привязал нового PlayerSession к старому PokerPlayer (см.
+        // newSession.player = oldSession.player) и переподписал нас в
+        // sessions-map комнаты через onReattach. На этом этапе FE всё равно
+        // повторно шлёт GAME_ROOM_CREATE / GAME_ROOM_JOIN (URL после refresh-а
+        // не различает «первый join» и «refresh»). Не создаём нового
+        // PokerPlayer и не добавляем в map дубль — иначе у обоих игроков
+        // на столе появляется призрак, а старая сессия остаётся без апдейтов.
+        if (userSession.player is PokerPlayer && userSession.roomKey != null) {
+            val existing = gameRoomMap[userSession.roomKey]
+            if (existing != null) {
+                webSocketSessionService.send(
+                    userSession,
+                    Message(
+                        GAME_ROOM_JOIN_SUCCESS,
+                        GameSettingsPack(existing.gameRoomId.toString(), existing.roomProperties.loopRate),
+                    ),
+                )
+                return
+            }
+        }
         when (initialData) {
             is GameRoomCreateEvent -> {
                 webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))

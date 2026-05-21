@@ -462,11 +462,13 @@ open class PokerGameRoom(
         event: BetEvent,
     ) {
         val player = userSession.player as PokerPlayer
+        val buyIn = event.bet
+        // Идемпотентный путь для повторных BET-ов (FE авто-buy-in после reattach):
+        // вместо BET_FAILURE отвечаем INFO с актуальным балансом, чтобы клиент
+        // не выводил красный тост на штатном refresh-е.
         if (player.boughtIn) {
-            sendBetFailure(userSession, FailureCode.INVALID_BET, "Already bought in")
             return
         }
-        val buyIn = event.bet
         if (buyIn <= 0.0) {
             sendBetFailure(userSession, FailureCode.INVALID_BET, "Buy-in must be positive")
             return
@@ -479,26 +481,35 @@ open class PokerGameRoom(
             sendBetFailure(userSession, FailureCode.INSUFFICIENT_FUNDS, "Insufficient balance")
             return
         }
-        player.bet = buyIn
-        player.balance -= buyIn
-        player.stack = buyIn
-        player.boughtIn = true
+        // Buy-in от нескольких сессий приходит по разным WS-стримам, у Reactor
+        // нет per-room single-thread гарантии — без synchronized два BET-а от
+        // P1/P2 гоняются за чтением `boughtIn` соседа и либо оба ловят false и
+        // НЕ стартуют игру, либо оба стартуют (двойной initialTurn). Лочимся на
+        // комнате, потому что весь mutable state раунда — здесь же.
+        val startNow: Boolean
+        synchronized(this) {
+            if (player.boughtIn) return
+            player.bet = buyIn
+            player.balance -= buyIn
+            player.stack = buyIn
+            player.boughtIn = true
+            if (gameStarted.get()) {
+                // Late buy-in: seat is funded, but the player sits out the in-progress
+                // round. resetTable() unfolds them at round end so they play next hand.
+                player.folded = true
+                startNow = false
+            } else {
+                startNow = map.getPlayers().all { it.boughtIn } && gameStarted.compareAndSet(false, true)
+            }
+        }
         userSession.userId?.let { uid ->
             ledgerService
                 ?.applyDelta(uid, UUID.randomUUID(), -buyIn, BalanceLedgerReason.POKER_BUY_IN)
                 ?.subscribe()
         }
-        if (gameStarted.get()) {
-            // Late buy-in: seat is funded, but the player sits out the in-progress
-            // round. resetTable() unfolds them at round end so they play next hand.
-            player.folded = true
-            return
+        if (startNow) {
+            initialTurn()
         }
-        map.getPlayers().forEach {
-            if (!it.boughtIn) return
-        }
-        gameStarted.set(true)
-        initialTurn()
     }
 
     private fun resetBets() {
