@@ -28,10 +28,12 @@ repositories {
 
 // Spring Boot 4 / reactor-netty 4.2 pulls HTTP/3 QUIC native libs for five
 // OS/arch combos (~12 MB total). The server speaks WebSocket over TCP and has
-// no QUIC code path, so the binaries are dead weight in the fat jar / image.
+// no QUIC code path, so the native binaries are dead weight in the fat jar.
+// The companion `netty-codec-classes-quic` jar must stay — reactor-netty
+// references io.netty.handler.codec.quic.Quic on the bootstrap path and
+// excluding it causes NoClassDefFoundError at runtime under load.
 configurations.all {
     exclude(group = "io.netty", module = "netty-codec-native-quic")
-    exclude(group = "io.netty", module = "netty-codec-classes-quic")
 }
 
 dependencies {

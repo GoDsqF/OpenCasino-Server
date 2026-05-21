@@ -15,7 +15,7 @@ application.blackjack-room.min-bet=20.00
 application.blackjack-room.deck-stacks=8
 application.blackjack-room.reshuffle-threshold=64
 
-# Poker room (Hold'em)
+# Poker room (Hold'em)cla
 application.poker-room.loop-rate=300
 application.poker-room.init-delay=5000
 application.poker-room.start-delay=5000
