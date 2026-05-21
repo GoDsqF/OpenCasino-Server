@@ -139,7 +139,16 @@ class PokerRoomServiceImpl(
     }
 
     override fun removePlayerFromWaitQueue(session: PlayerSession) {
-        sessionQueue[session.roomKey]?.removeIf { waitingPlayerSession: WaitingPlayerSession -> waitingPlayerSession.playerSession == session }
+        val roomKey = session.roomKey ?: return
+        val queue = sessionQueue[roomKey] ?: return
+        queue.removeIf { it.playerSession == session }
+        if (queue.isEmpty()) {
+            sessionQueue.remove(roomKey)
+            // Poker создаёт PokerGameRoom сразу на CREATE (в отличие от Blackjack),
+            // поэтому при опустевшей pre-launch-очереди надо снять комнату,
+            // иначе она навсегда остаётся в gameRoomMap и засоряет лобби.
+            gameRoomMap[roomKey]?.takeIf { it.sessions().isEmpty() }?.let { onGameEnd(it) }
+        }
     }
 
     private fun createRoom(gameMap: PokerMap): PokerGameRoom {

@@ -84,6 +84,7 @@ class WebSocketSessionServiceReattachTest {
         s.roomKey = roomKey
         s.serviceId = "Poker"
         whenever(pokerService.getRoomByKey(roomKey)).thenReturn(Optional.of(room))
+        whenever(room.sessions()).thenReturn(listOf(s))
         service.onActive(s)
 
         service.onInactive(s)
@@ -101,6 +102,7 @@ class WebSocketSessionServiceReattachTest {
         s.roomKey = roomKey
         s.serviceId = "Poker"
         whenever(pokerService.getRoomByKey(roomKey)).thenReturn(Optional.of(room))
+        whenever(room.sessions()).thenReturn(listOf(s))
         service.onActive(s)
         service.onInactive(s)
 
@@ -118,6 +120,7 @@ class WebSocketSessionServiceReattachTest {
         oldSession.roomKey = roomKey
         oldSession.serviceId = "Blackjack"
         whenever(blackjackService.getRoomByKey(roomKey)).thenReturn(Optional.of(room))
+        whenever(room.sessions()).thenReturn(listOf(oldSession))
         service.onActive(oldSession)
         service.onInactive(oldSession)
 
@@ -166,6 +169,30 @@ class WebSocketSessionServiceReattachTest {
     }
 
     @Test
+    fun `pre-launch wait-queue disconnect skips grace and asks room service to clean up`() {
+        // Poker создаёт комнату сразу на CREATE, но игрок ещё не в room.sessions()
+        // до launch. На дисконнект пред-старта реаттачить нечего — chистим сразу,
+        // без 60-с grace, чтобы не оставлять orphan-комнат.
+        val userId = UUID.randomUUID()
+        val s = session("ws-1", userId = userId)
+        val room: PokerGameRoom = mock()
+        val roomKey = UUID.randomUUID()
+        s.roomKey = roomKey
+        s.serviceId = "Poker"
+        whenever(pokerService.getRoomByKey(roomKey)).thenReturn(Optional.of(room))
+        whenever(room.sessions()).thenReturn(emptyList())
+        service.onActive(s)
+
+        service.onInactive(s)
+
+        verify(pokerService).removePlayerFromWaitQueue(s)
+        verify(room, never()).onGraceStart(any())
+        verify(room, never()).onDisconnect(any())
+        scheduler.advanceTimeBy(Duration.ofMillis(graceMs))
+        verify(room, never()).onDisconnect(any())
+    }
+
+    @Test
     fun `expiry honors session-id even after second reconnect-then-disconnect for same user`() {
         // Edge case: user A disconnects (grace #1), reconnects, disconnects again (grace #2).
         // The first expiry must not run any callbacks tied to the stale session.
@@ -176,12 +203,14 @@ class WebSocketSessionServiceReattachTest {
         firstOld.serviceId = "Poker"
         val room: PokerGameRoom = mock()
         whenever(pokerService.getRoomByKey(roomKey)).thenReturn(Optional.of(room))
+        whenever(room.sessions()).thenReturn(listOf(firstOld))
         service.onActive(firstOld)
         service.onInactive(firstOld)
 
         val second = PlayerSession("ws-2", handshake)
         service.onActive(second)
         service.onPrincipalInit(second, Principal { userId.toString() })
+        whenever(room.sessions()).thenReturn(listOf(second))
         service.onInactive(second)
 
         scheduler.advanceTimeBy(Duration.ofMillis(graceMs))

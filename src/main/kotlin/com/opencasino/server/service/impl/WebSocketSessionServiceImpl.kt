@@ -193,6 +193,15 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
             return
         }
 
+        // Pre-launch wait-queue: реаттачить нечего, реконнект прилетит новой
+        // CREATE/JOIN. Чистим очередь сейчас, без grace, иначе Poker-комната
+        // остаётся orphan-ом в gameRoomMap (см. PokerRoomServiceImpl).
+        if (room.sessions().none { it.id == playerSession.id }) {
+            sessions.remove(playerSession.id)
+            service?.let { roomServiceFor(it)?.removePlayerFromWaitQueue(playerSession) }
+            return
+        }
+
         // Cancel any earlier pending for the same user (rapid reconnect-then-disconnect).
         pendingDisconnects.remove(userId)?.task?.dispose()
 
@@ -221,6 +230,12 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
     private fun lookupRoom(service: String, roomKey: UUID): GameRoom? = when (service) {
         "Blackjack" -> blackjackRoomService.getRoomByKey(roomKey).orElse(null)
         "Poker" -> pokerRoomService.getRoomByKey(roomKey).orElse(null)
+        else -> null
+    }
+
+    private fun roomServiceFor(service: String): RoomService? = when (service) {
+        "Blackjack" -> blackjackRoomService
+        "Poker" -> pokerRoomService
         else -> null
     }
 
