@@ -38,8 +38,9 @@ class PokerRoomServiceImpl(
     private val schedulerService: Scheduler,
     private val ledgerService: BalanceLedgerService,
     private val userRepository: UserRepository,
-) : RoomService, PokerLobbyService {
-
+) : RoomService,
+    PokerLobbyService
+{
     private lateinit var webSocketSessionService: WebSocketSessionService
 
     companion object {
