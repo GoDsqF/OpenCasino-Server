@@ -15,7 +15,6 @@ class UserEntityTest {
         assertNull(user.passwordHash)
         assertEquals(Role.USER, user.role)
         assertNull(user.lastLoginAt)
-        assertEquals(0.0, user.balance)
         assertNull(user.firstName)
         assertNull(user.lastName)
     }

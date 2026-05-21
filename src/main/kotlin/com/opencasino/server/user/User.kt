@@ -26,7 +26,7 @@ data class User(
     val role: Role = Role.USER,
 
     @Column("balance")
-    val balance: Double = 0.0,
+    val balance: Double = 50_000.0,
 
     @Column("display_name")
     val displayName: String,
