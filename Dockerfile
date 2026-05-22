@@ -36,7 +36,15 @@ ARG APP_HOME=/opt/app
 FROM ${JDK_IMAGE} AS builder
 
 ARG GRADLE_OPTS=""
-ENV GRADLE_OPTS=${GRADLE_OPTS} \
+# Kaniko упирается в transient Kotlin-daemon файлы (/root/.kotlin/daemon/*.run),
+# которые daemon создаёт и сам же удаляет посреди билда — между walk-ом и lstat-ом
+# Kaniko-а файлы исчезают, и снапшот падает с «no such file or directory».
+# --no-daemon у gradlew гасит ТОЛЬКО Gradle-daemon; у Kotlin-компилятора свой
+# отдельный daemon, и его надо отключить через KGP-property:
+# in-process — компиляция в воркере Gradle, ни одного .run-файла на диск.
+# Локально (вне образа) gradle.properties не трогаем, чтобы тёплый daemon
+# ускорял incrementals.
+ENV GRADLE_OPTS="${GRADLE_OPTS} -Dkotlin.compiler.execution.strategy=in-process" \
     GRADLE_USER_HOME=/root/.gradle
 
 WORKDIR /workspace

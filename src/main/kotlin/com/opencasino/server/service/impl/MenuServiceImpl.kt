@@ -17,6 +17,8 @@ class MenuServiceImpl(
     @Lazy private val pokerLobbyService: PokerLobbyService,
 ) : MenuService {
     override fun getMenuSnapshot(): MenuUpdatePack {
+        val pokerRooms = pokerLobbyService.listJoinableRooms()
+        val pokerWaitingPlayers = pokerRooms.sumOf { it.currentPlayers }
         val games =
             AvailableGames.entries.map { game ->
                 val service =
@@ -25,16 +27,31 @@ class MenuServiceImpl(
                         AvailableGames.Poker -> pokerRoomService
                     }
                 val rooms = service.getRooms()
+                // У Poker до launchRoom() игроки сидят в sessionQueue, поэтому
+                // currentPlayersCount() возвращает 0 для свежесозданной комнаты.
+                // Берём счётчик из listJoinableRooms() (учитывает очередь) для
+                // joinable-комнат + currentPlayersCount() для уже запущенных,
+                // чтобы создатель отображался в счётчике сразу.
+                val activePlayers =
+                    when (game) {
+                        AvailableGames.Poker -> {
+                            val running = rooms.filter {
+                                pokerRooms.none { jr -> jr.roomId == it.key().toString() }
+                            }
+                            pokerWaitingPlayers + running.sumOf { it.currentPlayersCount() }
+                        }
+                        else -> rooms.sumOf { it.currentPlayersCount() }
+                    }
                 GameMetadata(
                     name = game.name,
                     activeRooms = rooms.size,
-                    activePlayers = rooms.sumOf { it.currentPlayersCount() },
+                    activePlayers = activePlayers,
                 )
             }
         return MenuUpdatePack(
             games = games,
             totalActivePlayers = games.sumOf { it.activePlayers },
-            pokerRooms = pokerLobbyService.listJoinableRooms(),
+            pokerRooms = pokerRooms,
         )
     }
 }

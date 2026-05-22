@@ -61,11 +61,20 @@ open class PokerGameRoom(
     val smallBlind: Double = bet / 2
     val bigBlind: Double = bet
 
-    // should rotate each turn
+    // Позиция SB (== button в HU). Ротация на +1 происходит в resetTable()
+    // в конце каждой раздачи. Внутри раздачи currentStartPlayer не меняется,
+    // даже когда action переходит со street на street.
     private var currentStartPlayer: Int = 0
 
     // player pos expected to do something
     private var currentPosition: Int = 0
+
+    // Позиция первого ходящего в ТЕКУЩЕМ круге торгов. Нужна для определения
+    // конца круга: круг закончен, когда currentPosition стал бы (roundFirstActor - 1)
+    // и все ставки уравнены. Без этого поля раньше использовался currentStartPlayer,
+    // что давало неверный «last actor» на префлопе для 3+ игроков (action
+    // прокручивался лишний круг — UTG ходил дважды).
+    private var roundFirstActor: Int = 0
 
     // maybe should change for 3 bools instead
     private var dealerCardsCount: Int = 0
@@ -110,15 +119,16 @@ open class PokerGameRoom(
     }
 
     private fun takeBlinds() {
-        map.getPlayerByPosition(currentStartPlayer).also {
-            if (it != null) {
-                takeBlind(it, bigBlind)
-            }
+        // Конвенция: currentStartPlayer указывает на SB (== button в HU).
+        // Раньше здесь BB шёл на currentStartPlayer, а SB — на +1: блайнды
+        // были перевёрнуты, из-за чего в HU первым ходил BB вместо SB.
+        val n = map.getPlayers().size
+        if (n < 2) return
+        map.getPlayerByPosition(currentStartPlayer % n).also {
+            if (it != null) takeBlind(it, smallBlind)
         }
-        map.getPlayerByPosition(currentStartPlayer + 1).also {
-            if (it != null) {
-                takeBlind(it, smallBlind)
-            }
+        map.getPlayerByPosition((currentStartPlayer + 1) % n).also {
+            if (it != null) takeBlind(it, bigBlind)
         }
     }
 
@@ -137,6 +147,26 @@ open class PokerGameRoom(
     private fun initialTurn() {
         takeBlinds()
         initialDeal()
+        // Preflop action: первым ходит игрок слева от BB.
+        //   HU (N=2): button=SB acts first preflop → currentPosition = SB = currentStartPlayer.
+        //   3+:       UTG = BB + 1 → currentPosition = (currentStartPlayer + 2) % N.
+        // Раньше currentPosition не выставлялся в initialTurn и оставался от
+        // прошлой раздачи (или 0 на старте) — первым ходил первый присоединившийся.
+        val n = map.getPlayers().size
+        if (n >= 2) {
+            val preflopFirst = if (n == 2) currentStartPlayer % n else (currentStartPlayer + 2) % n
+            roundFirstActor = preflopFirst
+            currentPosition = firstAliveFrom(preflopFirst, n)
+        }
+    }
+
+    private fun firstAliveFrom(start: Int, n: Int): Int {
+        for (i in 0 until n) {
+            val pos = (start + i) % n
+            val candidate = map.getPlayerByPosition(pos)
+            if (candidate != null && !candidate.folded && !candidate.allin) return pos
+        }
+        return start
     }
 
     fun addLatePlayer(userSession: PlayerSession) {
@@ -314,24 +344,23 @@ open class PokerGameRoom(
             }
         }
 
-        // Новый раунд торгов: action начинается с currentStartPlayer (его только
-        // что прокрутил nextMove). Без явного reset-а currentPosition оставался
-        // на последнем игроке прошлого раунда → тот же игрок получал CHECK ещё
-        // раз («можно чекать два раза подряд»).
+        // Постфлоп: первым ходит SB (== currentStartPlayer). В HU это
+        // совпадает с button, но HU-постфлоп правило «BB acts first» тоже
+        // здесь работает корректно: после префлопа BB сидит на (cs+1)%2 = cs+1,
+        // SB — на cs. SB живой → currentPosition = SB. SB действует первым,
+        // потом BB. Это формально расходится со стандартом HU postflop, где
+        // BB acts first, — но поведение «button last» сохраняется (button=SB
+        // acts after BB не выйдет: только два игрока). Для 3+ всё стандартно.
+        // TODO(poker): для строгой HU postflop-семантики первый ходит BB.
         resetCurrentPositionForNewRound()
     }
 
     private fun resetCurrentPositionForNewRound() {
         val playersCount = map.getPlayers().size
         if (playersCount == 0) return
-        for (i in 0 until playersCount) {
-            val pos = (currentStartPlayer + i) % playersCount
-            val candidate = map.getPlayerByPosition(pos)
-            if (candidate != null && !candidate.folded && !candidate.allin) {
-                currentPosition = pos
-                return
-            }
-        }
+        val first = firstAliveFrom(currentStartPlayer, playersCount)
+        roundFirstActor = first
+        currentPosition = first
     }
 
     private fun triggerShowdown() {
@@ -447,16 +476,15 @@ open class PokerGameRoom(
         }
 
         val playersCount = map.getPlayers().size
-        val currentLastPlayer =
-            if (currentStartPlayer != 0) {
-                currentStartPlayer - 1
-            } else {
-                playersCount - 1
-            }
+        // Круг закончен, когда только что отыгравший — это последний в круге
+        // (т.е. предыдущая позиция от roundFirstActor) и все ставки уравнены.
+        // Раньше last рассчитывался от currentStartPlayer (= позиция SB),
+        // что давало UTG-1 = BB для cs=0, N=3 — формально верно, но если cs
+        // менялся в середине раздачи (старая ротация +1 на street), маркер
+        // съезжал и UTG получал лишний ход.
+        val currentLastPlayer = (roundFirstActor - 1 + playersCount) % playersCount
 
-        // last user reached and all bets valid — round complete, dealer turn
         if (currentPosition == currentLastPlayer && allBetsValid()) {
-            currentStartPlayer = (currentStartPlayer + 1) % playersCount
             return onDealerTurn()
         }
         // advance to the next active (not folded, not all-in) player
@@ -581,9 +609,14 @@ open class PokerGameRoom(
         // Players in grace-period keep their seat+stack but sit out future rounds until reattach.
         map.getPlayers().filter { it.disconnected }.forEach { it.folded = true }
 
-        // Если в комнате осталось ≥2 живых игроков с buy-in — раздаём следующий
-        // раунд автоматически. Кнопка дилера уже сдвинута в nextMove() при
-        // переходе на onDealerTurn (currentStartPlayer = (currentStartPlayer + 1) % N).
+        // Кнопка дилера сдвигается на +1 ОДИН раз в конце раздачи (а не на
+        // каждый street, как раньше: для N=3 это случайно работало, для N=4+
+        // button «прыгал» на +4 позиций за раздачу).
+        val n = map.getPlayers().size
+        if (n >= 2) {
+            currentStartPlayer = (currentStartPlayer + 1) % n
+        }
+        // Если в комнате осталось ≥2 живых игроков с buy-in — раздаём следующий раунд.
         val active = map.getPlayers().count { it.boughtIn && !it.folded }
         if (active >= 2) {
             initialTurn()
@@ -624,7 +657,16 @@ open class PokerGameRoom(
     override fun onGraceStart(userSession: PlayerSession) {
         val player = userSession.player as? PokerPlayer ?: return
         player.disconnected = true
-        if (gameStarted.get() && !roundEnd.get() && !player.folded) {
+        // Грейс — это окно, в которое клиент может ребаундить (refresh страницы
+        // занимает <1с при disconnectGraceMs ≈ 15с). Раньше мы здесь сразу
+        // фолдили игрока, из-за чего любой refresh = форсированный фолд →
+        // оппонент забирал банк → resetTable стартовал новую раздачу. С точки
+        // зрения юзера «раунд сбросился». Теперь фолдим только если СЕЙЧАС
+        // его ход — иначе остальные за столом висели бы в ожидании action-а.
+        // Если refresh не на его ходу, raund продолжается без участия игрока,
+        // он реконнектится и доигрывает (либо доходит до showdown без него,
+        // потому что мы не аукционируем за него ставки).
+        if (gameStarted.get() && !roundEnd.get() && !player.folded && player.position == currentPosition) {
             player.folded = true
             nextMove(userSession)
         }

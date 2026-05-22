@@ -67,15 +67,20 @@ class PokerRoomServiceImpl(
     override fun listJoinableRooms(): List<PokerRoomSummary> {
         val maxPlayers = applicationProperties.pokerRoom.maxPlayers
         return gameRoomMap.values
-            .filter { it.currentPlayersCount() < maxPlayers }
-            .map { room ->
+            .mapNotNull { room ->
+                // До launchRoom() создатель/первые игроки сидят в sessionQueue,
+                // а room.sessions() пустой. Без queue лобби показывало 0/N до
+                // прихода второго игрока — стол выглядел заброшенным.
+                val queued = sessionQueue[room.key()]?.size ?: 0
+                val current = room.currentPlayersCount() + queued
+                if (current >= maxPlayers) return@mapNotNull null
                 PokerRoomSummary(
                     roomId = room.key().toString(),
                     betType = room.betType.name,
                     bet = room.bet,
                     smallBlind = room.smallBlind,
                     bigBlind = room.bigBlind,
-                    currentPlayers = room.currentPlayersCount(),
+                    currentPlayers = current,
                     maxPlayers = maxPlayers,
                     phase = if (room.isGameStarted()) "IN_GAME" else "WAITING",
                 )
