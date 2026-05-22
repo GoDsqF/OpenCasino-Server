@@ -63,7 +63,9 @@ open class PokerGameRoom(
 
     /** Settings можно проставлять только один раз (на CREATE). После — игнорировать. */
     private val settingsLocked = AtomicBoolean(false)
+
     fun lockSettings(): Boolean = settingsLocked.compareAndSet(false, true)
+
     fun settingsAreLocked(): Boolean = settingsLocked.get()
 
     // explains itself

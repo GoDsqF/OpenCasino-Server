@@ -4,7 +4,7 @@ import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.RoomService
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
