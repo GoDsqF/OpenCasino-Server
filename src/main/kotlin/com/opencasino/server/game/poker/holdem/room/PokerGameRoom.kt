@@ -366,6 +366,14 @@ open class PokerGameRoom(
         currentPosition = first
     }
 
+    // Рейз перезапускает круг торгов: action завершается, когда обратно дойдёт
+    // до рейзера, а не до изначального firstActor. Без этого после раннего
+    // call'а + поздний raise круг считался по старому маркеру и action делал
+    // лишний оборот, возвращаясь на самого рейзера (HU postflop, 3+ постфлоп).
+    internal fun markRaiser(position: Int) {
+        roundFirstActor = position
+    }
+
     private fun triggerShowdown() {
         if (roundEnd.get()) return
         val nonFolded = map.getPlayers().filter { !it.folded }

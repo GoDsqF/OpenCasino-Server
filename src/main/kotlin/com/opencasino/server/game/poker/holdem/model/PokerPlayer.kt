@@ -91,8 +91,17 @@ class PokerPlayer(
         stack -= taken
         currentBet = (currentBet ?: 0.0) + taken
         totalContribution += taken
-        if ((currentBet ?: 0.0) > gameRoom.lastMaxBet) {
-            gameRoom.lastMaxBet = currentBet!!
+        val newBet = currentBet ?: 0.0
+        val previousMax = gameRoom.lastMaxBet
+        if (newBet > previousMax) {
+            gameRoom.lastMaxBet = newBet
+            // Полный рейз (≥ previousMax + bigBlind) переоткрывает торги — отмечаем
+            // позицию рейзера как новый "first actor". Short all-in (под-рейз)
+            // повышает lastMaxBet, но по стандартному правилу action для уже
+            // отыгравших не переоткрывается, поэтому маркер не двигаем.
+            if (newBet >= previousMax + gameRoom.bigBlind) {
+                gameRoom.markRaiser(this.position)
+            }
         }
     }
 
