@@ -506,8 +506,9 @@ open class PokerGameRoom(
             // откладываем. Иначе FE при loopRate=300ms успевает получить
             // GAME_ROOM_STATUS и отменить reveal-таймеры (350ms) до их срабатывания.
             val revealedAt = showdownEndedAt
-            val revealStillOpen = revealedAt != null &&
-                (currentTimeMillis() - revealedAt) < roomProperties.showdownRevealMs
+            val revealStillOpen =
+                revealedAt != null &&
+                    (currentTimeMillis() - revealedAt) < roomProperties.showdownRevealMs
             for (currentPlayer in map.getPlayers()) {
                 send(currentPlayer.userSession, collectUpdate(currentPlayer))
                 if (!revealStillOpen) {

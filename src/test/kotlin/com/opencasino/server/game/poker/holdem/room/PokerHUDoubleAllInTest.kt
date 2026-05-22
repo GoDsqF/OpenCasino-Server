@@ -4,7 +4,6 @@ import com.opencasino.server.config.ApplicationProperties
 import com.opencasino.server.config.GAME_ROOM_CLOSE
 import com.opencasino.server.config.GAME_ROOM_STATUS
 import com.opencasino.server.config.SHOWDOWN_RESULT
-import com.opencasino.server.config.UPDATE
 import com.opencasino.server.event.BetEvent
 import com.opencasino.server.event.poker.PokerPlayerDecisionEvent
 import com.opencasino.server.game.poker.holdem.map.PokerMap
@@ -16,7 +15,6 @@ import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.PokerDecision
 import com.opencasino.server.user.BalanceLedgerService
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -55,7 +53,9 @@ class PokerHUDoubleAllInTest {
             override fun currentTimeMillis(): Long = fakeNow
         }
 
-    private fun advance(ms: Long) { fakeNow += ms }
+    private fun advance(ms: Long) {
+        fakeNow += ms
+    }
 
     private fun newSession(): PlayerSession {
         val s = PlayerSession(UUID.randomUUID().toString(), handshake)
@@ -63,7 +63,11 @@ class PokerHUDoubleAllInTest {
         return s
     }
 
-    private fun seatFresh(room: PokerGameRoom, session: PlayerSession, id: Long): PokerPlayer {
+    private fun seatFresh(
+        room: PokerGameRoom,
+        session: PlayerSession,
+        id: Long,
+    ): PokerPlayer {
         val player = PokerPlayer(id, room, session)
         player.balance = 100_000.0
         session.player = player
@@ -109,17 +113,21 @@ class PokerHUDoubleAllInTest {
         val bcastCaptor = argumentCaptor<Any>()
         verify(webSocketSessionService, atLeastOnce())
             .sendBroadcast(any<Collection<PlayerSession>>(), bcastCaptor.capture())
-        val showdownBroadcasts = bcastCaptor.allValues
-            .mapNotNull { it as? Message }
-            .count { it.type == SHOWDOWN_RESULT }
+        val showdownBroadcasts =
+            bcastCaptor.allValues
+                .mapNotNull { it as? Message }
+                .count { it.type == SHOWDOWN_RESULT }
         assertEquals(1, showdownBroadcasts, "ровно один SHOWDOWN_RESULT broadcast")
 
         // 3) Reveal-окно открыто. Тик в else-ветке должен слать UPDATE, но
         //    НЕ GAME_ROOM_STATUS и НЕ запускать resetTable (board остаётся 5).
         advance(1000) // 1с < 3.5с showdownRevealMs
         room.update()
-        assertEquals(5, room.dealerHand.getCards().size,
-            "пока окно reveal открыто — resetTable не должен сработать")
+        assertEquals(
+            5,
+            room.dealerHand.getCards().size,
+            "пока окно reveal открыто — resetTable не должен сработать",
+        )
 
         // 4) Окно reveal закрылось → resetTable + GAME_ROOM_STATUS на следующем тике.
         advance(pokerProps.showdownRevealMs)
@@ -127,8 +135,10 @@ class PokerHUDoubleAllInTest {
         assertEquals(0, room.dealerHand.getCards().size, "после окна — board сброшен")
 
         val allTypes = typesSentOn(sb)
-        assertTrue(allTypes.contains(GAME_ROOM_STATUS),
-            "GAME_ROOM_STATUS должен прилететь ПОСЛЕ окна reveal, не до")
+        assertTrue(
+            allTypes.contains(GAME_ROOM_STATUS),
+            "GAME_ROOM_STATUS должен прилететь ПОСЛЕ окна reveal, не до",
+        )
     }
 
     @Test
@@ -155,8 +165,11 @@ class PokerHUDoubleAllInTest {
 
         // У одного игрока stack=0 (проигравший) — он должен быть удалён.
         // У другого остался ненулевой банк.
-        assertEquals(1, room.map.getPlayers().size,
-            "проигравший с stack=0 должен быть удалён в resetTable")
+        assertEquals(
+            1,
+            room.map.getPlayers().size,
+            "проигравший с stack=0 должен быть удалён в resetTable",
+        )
 
         val captor = argumentCaptor<Any>()
         verify(webSocketSessionService, atLeastOnce()).send(any<PlayerSession>(), captor.capture())
