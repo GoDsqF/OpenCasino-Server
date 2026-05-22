@@ -75,7 +75,7 @@ class PokerHUDoubleAllInTest {
         return player
     }
 
-    private fun typesSentOn(session: PlayerSession): List<Int> {
+    private fun typesSent(): List<Int> {
         val captor = argumentCaptor<Any>()
         verify(webSocketSessionService, atLeastOnce()).send(any<PlayerSession>(), captor.capture())
         // Без фильтрации по конкретной сессии — sendBroadcast в WebSocketSessionServiceImpl
@@ -134,7 +134,7 @@ class PokerHUDoubleAllInTest {
         room.update()
         assertEquals(0, room.dealerHand.getCards().size, "после окна — board сброшен")
 
-        val allTypes = typesSentOn(sb)
+        val allTypes = typesSent()
         assertTrue(
             allTypes.contains(GAME_ROOM_STATUS),
             "GAME_ROOM_STATUS должен прилететь ПОСЛЕ окна reveal, не до",
