@@ -36,15 +36,7 @@ ARG APP_HOME=/opt/app
 FROM ${JDK_IMAGE} AS builder
 
 ARG GRADLE_OPTS=""
-# Kaniko упирается в transient Kotlin-daemon файлы (/root/.kotlin/daemon/*.run),
-# которые daemon создаёт и сам же удаляет посреди билда — между walk-ом и lstat-ом
-# Kaniko-а файлы исчезают, и снапшот падает с «no such file or directory».
-# --no-daemon у gradlew гасит ТОЛЬКО Gradle-daemon; у Kotlin-компилятора свой
-# отдельный daemon, и его надо отключить через KGP-property:
-# in-process — компиляция в воркере Gradle, ни одного .run-файла на диск.
-# Локально (вне образа) gradle.properties не трогаем, чтобы тёплый daemon
-# ускорял incrementals.
-ENV GRADLE_OPTS="${GRADLE_OPTS} -Dkotlin.compiler.execution.strategy=in-process" \
+ENV GRADLE_OPTS="${GRADLE_OPTS}" \
     GRADLE_USER_HOME=/root/.gradle
 
 WORKDIR /workspace
@@ -66,8 +58,20 @@ COPY src ./src
 
 # Build the Spring Boot executable JAR. Tests are skipped on purpose: CI runs
 # them in a dedicated job; the image build should not duplicate work.
+#
+# Kaniko упирается в transient Kotlin-daemon файлы (/root/.kotlin/daemon/*.run):
+# daemon создаёт их и сам же удаляет, и между filewalk-ом и lstat-ом Kaniko они
+# исчезают → снапшот падает «no such file or directory». --no-daemon у gradlew
+# гасит ТОЛЬКО Gradle-daemon; у Kotlin-компилятора свой. Защита в два слоя:
+#   1) -Pkotlin.compiler.execution.strategy=in-process — KGP читает именно как
+#      Gradle-property, -D system-prop в 2.x не подхватывает.
+#   2) rm -rf /root/.kotlin в том же RUN — гарантирует, что к моменту kaniko-
+#      снапшота слоя ни одного .run-файла на диске нет, даже если что-то их
+#      создало (например, builder-tooling/incremental).
 RUN --mount=type=cache,target=/root/.gradle \
-    ./gradlew --no-daemon clean bootJar -x test
+    ./gradlew --no-daemon clean bootJar -x test \
+      -Pkotlin.compiler.execution.strategy=in-process \
+ && rm -rf /root/.kotlin
 
 # Normalize the artifact name so the runtime stage doesn't depend on version.
 RUN cp build/libs/openCasino_server-*.jar /workspace/app.jar

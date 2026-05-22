@@ -160,7 +160,10 @@ open class PokerGameRoom(
         }
     }
 
-    private fun firstAliveFrom(start: Int, n: Int): Int {
+    private fun firstAliveFrom(
+        start: Int,
+        n: Int,
+    ): Int {
         for (i in 0 until n) {
             val pos = (start + i) % n
             val candidate = map.getPlayerByPosition(pos)
@@ -666,7 +669,9 @@ open class PokerGameRoom(
         // Если refresh не на его ходу, raund продолжается без участия игрока,
         // он реконнектится и доигрывает (либо доходит до showdown без него,
         // потому что мы не аукционируем за него ставки).
-        if (gameStarted.get() && !roundEnd.get() && !player.folded && player.position == currentPosition) {
+        val isPlayersTurn = gameStarted.get() && !roundEnd.get()
+        val canFold = isPlayersTurn && !player.folded && player.position == currentPosition
+        if (canFold) {
             player.folded = true
             nextMove(userSession)
         }

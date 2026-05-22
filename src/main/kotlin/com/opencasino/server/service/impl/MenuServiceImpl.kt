@@ -35,9 +35,10 @@ class MenuServiceImpl(
                 val activePlayers =
                     when (game) {
                         AvailableGames.Poker -> {
-                            val running = rooms.filter {
-                                pokerRooms.none { jr -> jr.roomId == it.key().toString() }
-                            }
+                            val running =
+                                rooms.filter {
+                                    pokerRooms.none { jr -> jr.roomId == it.key().toString() }
+                                }
                             pokerWaitingPlayers + running.sumOf { it.currentPlayersCount() }
                         }
                         else -> rooms.sumOf { it.currentPlayersCount() }
