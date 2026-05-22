@@ -120,6 +120,15 @@ open class PokerGameRoom(
     private val dealerTurn = AtomicBoolean(false)
     private val roundEnd = AtomicBoolean(false)
 
+    // Время триггера showdown — для отложенного resetTable. Пока окно
+    // `showdownRevealMs` не истекло, doUpdate шлёт UPDATE с post-showdown
+    // state-ом, но НЕ GAME_ROOM_STATUS и НЕ запускает resetTable. Это даёт FE
+    // окно проиграть staggered hole-reveal, combo-highlight и chip-fly.
+    // null = нет активного showdown окна. Внутренний — null после resetTable.
+    // Использовать System.currentTimeMillis(), а не nanoTime — на тиках важна
+    // разница в миллисекундах, не монотонность.
+    @Volatile private var showdownEndedAt: Long? = null
+
     var deck = CardDeck(roomProperties.deckStacks)
 
     var dealerHand = CardDeck()
@@ -421,7 +430,17 @@ open class PokerGameRoom(
         pot = 0.0
         broadcastShowdown(distribution, canEvaluate && nonFolded.size > 1)
         roundEnd.set(true)
+        // Открываем reveal-окно: doUpdate видит roundEnd=true и пока
+        // (now - showdownEndedAt) < showdownRevealMs — НЕ шлёт GAME_ROOM_STATUS
+        // и НЕ делает resetTable. Только UPDATE-ы (с post-showdown стеками,
+        // phase=SHOWDOWN). По истечении окна — нормальный cleanup.
+        showdownEndedAt = currentTimeMillis()
     }
+
+    // Эксплицитная обёртка, чтобы её можно было замокать в тестах
+    // (см. PokerHUDoubleAllInTest, который дёргает время руками через
+    // VirtualTimeScheduler — `System.currentTimeMillis` оттуда не управляется).
+    internal open fun currentTimeMillis(): Long = System.currentTimeMillis()
 
     private val uncontestedHand: PokerHand by lazy {
         PokerHand.fromString("2H 3D 4S 5C 7H")
@@ -481,19 +500,24 @@ open class PokerGameRoom(
                 }
             }
         } else {
+            // Reveal-фаза: после triggerShowdown окно showdownRevealMs.
+            // Пока оно открыто — шлём только UPDATE (post-showdown state с
+            // 5 картами и обновлёнными стеками), но GAME_ROOM_STATUS+resetTable
+            // откладываем. Иначе FE при loopRate=300ms успевает получить
+            // GAME_ROOM_STATUS и отменить reveal-таймеры (350ms) до их срабатывания.
+            val revealedAt = showdownEndedAt
+            val revealStillOpen = revealedAt != null &&
+                (currentTimeMillis() - revealedAt) < roomProperties.showdownRevealMs
             for (currentPlayer in map.getPlayers()) {
-                send(
-                    currentPlayer.userSession,
-                    collectUpdate(currentPlayer),
-                )
-                send(
-                    currentPlayer.userSession,
-                    Message(
-                        GAME_ROOM_STATUS,
-                    ),
-                )
+                send(currentPlayer.userSession, collectUpdate(currentPlayer))
+                if (!revealStillOpen) {
+                    send(currentPlayer.userSession, Message(GAME_ROOM_STATUS))
+                }
             }
-            resetTable()
+            if (!revealStillOpen) {
+                showdownEndedAt = null
+                resetTable()
+            }
         }
     }
 
@@ -619,9 +643,20 @@ open class PokerGameRoom(
     }
 
     private fun resetTable() {
-        // Drop players who have no stack left and aren't all-in (busted out)
-        val broke = map.getPlayers().filter { it.stack <= 0.0 && !it.allin }.toList()
-        broke.forEach { map.removePlayer(it) }
+        // Drop players who have no stack left. На момент resetTable раздача
+        // уже закончилась (triggerShowdown сбросил pot и применил payouts),
+        // поэтому флаг `allin` тут — стейл от только что закончившегося раунда.
+        // Раньше фильтр пропускал allin-busted игрока («stack<=0 && !allin» был
+        // false), он оставался в комнате с 0 чипов, в следующем раунде
+        // auto-allin'ился через блайнд без реального вклада и блокировал
+        // нормальную раздачу. Теперь bust-out по факту stack<=0.
+        val broke = map.getPlayers().filter { it.stack <= 0.0 }.toList()
+        broke.forEach {
+            send(it.userSession, Message(GAME_ROOM_CLOSE))
+            map.removePlayer(it)
+        }
+        // Окно showdown reveal закрыто к моменту resetTable — гасим маркер.
+        showdownEndedAt = null
 
         // Clear table cards
         dealerHand.clear()
@@ -724,6 +759,20 @@ open class PokerGameRoom(
         player.userSession = newSession
         player.disconnected = false
         lastUpdateBySession.remove(oldSession.id)
+
+        // Если игра приостановилась пока игрок был в grace (active<2 в resetTable
+        // из-за disconnect→folded), и теперь у нас снова достаточно живых
+        // игроков — снимаем disconnect-фолд и запускаем следующую раздачу.
+        // Voluntary folds на этом этапе уже сброшены в resetTable.forEach,
+        // так что player.folded=true тут означает именно "отсижен disconnect-ом".
+        if (!gameStarted.get()) {
+            player.folded = false
+            val active = map.getPlayers().count { it.boughtIn && !it.folded && !it.disconnected }
+            if (active >= roomProperties.minPlayers) {
+                gameStarted.set(true)
+                initialTurn()
+            }
+        }
     }
 
     override fun onDisconnect(userSession: PlayerSession): PlayerSession {

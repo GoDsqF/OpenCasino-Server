@@ -19,4 +19,11 @@ const val MAX_POKER_BET = 100.00
 const val POKER_BUY_IN = 2000
 const val POKER_DECK_STACKS = 8
 
+// Сколько комната держит post-showdown состояние перед resetTable: даёт FE время
+// проиграть staggered reveal оппонента, подсветку combo и chip-fly. Меньше — у FE
+// не успевают сработать reveal-таймеры (350ms + flip 420ms + chip-fly ~850ms),
+// и игрок видит только то, что 5 карт лежат, а раунд «пропал». 3.5с — достаточно
+// для текущей FE-анимации и не перегружает темп игры.
+const val SHOWDOWN_REVEAL_MS = 3500L
+
 const val DISCONNECT_GRACE_MS = 60_000L
