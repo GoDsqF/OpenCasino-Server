@@ -103,6 +103,10 @@ class PokerPlayer(
                 gameRoom.markRaiser(this.position)
             }
         }
+        // Колл/рейз последними фишками == олл-ин. Без этого следующая улица
+        // выбирает drained-стек как актора (firstAliveFrom пропускает только
+        // folded/allin), а availableActions() возвращает empty → цикл встаёт.
+        if (stack <= 0.0) allin = true
     }
 
     fun commitBet() {

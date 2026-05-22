@@ -69,6 +69,8 @@ class MenuServiceImplTest {
                 bigBlind = 100.0,
                 currentPlayers = 1,
                 maxPlayers = 6,
+                minBuyIn = 2000.0,
+                maxBuyIn = null,
                 phase = "WAITING",
             )
         whenever(pokerLobbyService.listJoinableRooms()).thenReturn(listOf(summary))

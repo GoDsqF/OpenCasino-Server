@@ -252,6 +252,45 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
         }
     }
 
+    override fun onPlayerLeave(playerSession: PlayerSession) {
+        log.debug("Client ${playerSession.id} leaving table explicitly")
+        val userId = playerSession.userId
+        val roomKey = playerSession.roomKey
+        val service = playerSession.serviceId
+        val room = if (roomKey != null && service != null) lookupRoom(service, roomKey) else null
+
+        // Если игрок дисконнектился со старой сессии и сейчас в grace — но
+        // прислал LEAVE с новой сессии без реаттача — сначала снимаем pending,
+        // чтобы grace-expiry не вызвал onDisconnect повторно после нашего leave.
+        if (userId != null) {
+            pendingDisconnects.remove(userId)?.task?.dispose()
+        }
+
+        if (room == null) {
+            clearRoomBinding(playerSession)
+            return
+        }
+
+        if (room.sessions().none { it.id == playerSession.id }) {
+            // Pre-launch wait-queue: то же поведение, что и в onInactive (см. там).
+            roomServiceFor(service!!)?.removePlayerFromWaitQueue(playerSession)
+        } else {
+            try {
+                room.onPlayerLeave(playerSession)
+            } catch (e: Exception) {
+                log.error("onPlayerLeave failed for {}", playerSession.id, e)
+            }
+        }
+
+        clearRoomBinding(playerSession)
+    }
+
+    private fun clearRoomBinding(playerSession: PlayerSession) {
+        playerSession.roomKey = null
+        playerSession.serviceId = null
+        playerSession.player = null
+    }
+
     private fun expireDisconnect(
         oldSession: PlayerSession,
         userId: UUID,

@@ -53,6 +53,19 @@ open class PokerGameRoom(
     var betType: PokerBetType = PokerBetType.PotLimit
     var bet: Double = 100.00
 
+    // Per-room overrides — заполняются один раз в PokerRoomServiceImpl.applyInitialSettings()
+    // при создании стола. Null = брать значение из PokerRoomProperties.
+    // maxPlayers — capacity, ограниченный сверху глобальным MAX_POKER_PLAYERS,
+    // снизу — MIN_POKER_PLAYERS (см. service-validation).
+    var maxPlayers: Int = roomProperties.maxPlayers
+    var minBuyIn: Double = roomProperties.buyIn.toDouble()
+    var maxBuyIn: Double? = null
+
+    /** Settings можно проставлять только один раз (на CREATE). После — игнорировать. */
+    private val settingsLocked = AtomicBoolean(false)
+    fun lockSettings(): Boolean = settingsLocked.compareAndSet(false, true)
+    fun settingsAreLocked(): Boolean = settingsLocked.get()
+
     // explains itself
     var pot: Double = 0.00
     var lastMaxBet: Double = 0.00
@@ -356,7 +369,16 @@ open class PokerGameRoom(
         // acts after BB не выйдет: только два игрока). Для 3+ всё стандартно.
         // TODO(poker): для строгой HU postflop-семантики первый ходит BB.
         resetCurrentPositionForNewRound()
+
+        // Никто не может действовать (все оставшиеся в раздаче — all-in) —
+        // дораздаём оставшиеся улицы и идём в showdown. Без этого FE-актор
+        // встаёт на all-in игрока с пустым availableActions и цикл замирает.
+        if (!hasActiveActor()) {
+            onDealerTurn()
+        }
     }
+
+    private fun hasActiveActor(): Boolean = map.getPlayers().any { !it.folded && !it.allin }
 
     private fun resetCurrentPositionForNewRound() {
         val playersCount = map.getPlayers().size
@@ -542,9 +564,15 @@ open class PokerGameRoom(
             sendBetFailure(userSession, FailureCode.INVALID_BET, "Buy-in must be positive")
             return
         }
-        if (buyIn < roomProperties.buyIn) {
-            sendBetFailure(userSession, FailureCode.BET_BELOW_MIN, "Buy-in below table minimum ${roomProperties.buyIn}")
+        if (buyIn < minBuyIn) {
+            sendBetFailure(userSession, FailureCode.BET_BELOW_MIN, "Buy-in below table minimum $minBuyIn")
             return
+        }
+        maxBuyIn?.let { cap ->
+            if (buyIn > cap) {
+                sendBetFailure(userSession, FailureCode.INVALID_BET, "Buy-in above table maximum $cap")
+                return
+            }
         }
         if (buyIn > player.balance) {
             sendBetFailure(userSession, FailureCode.INSUFFICIENT_FUNDS, "Insufficient balance")

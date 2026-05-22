@@ -25,6 +25,14 @@ interface WebSocketSessionService : WebSocketMessagePublisher {
 
     fun onInactive(playerSession: PlayerSession)
 
+    /**
+     * Player asked to leave the table explicitly (GAME_ROOM_LEAVE, type=22).
+     * The WS stays open — only the room binding is cleared so the same socket
+     * can be used to join another table. Bypasses the 60s reconnect grace:
+     * the leaver has signalled intent, so settle/cash-out happens immediately.
+     */
+    fun onPlayerLeave(playerSession: PlayerSession)
+
     fun close(playerSession: PlayerSession): Mono<Void>
 
     fun close(userSessionId: String): Mono<Void>

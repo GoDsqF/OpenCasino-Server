@@ -64,16 +64,16 @@ class PokerRoomServiceImpl(
 
     override fun getRooms(): Collection<PokerGameRoom> = gameRoomMap.values.toList()
 
-    override fun listJoinableRooms(): List<PokerRoomSummary> {
-        val maxPlayers = applicationProperties.pokerRoom.maxPlayers
-        return gameRoomMap.values
+    override fun listJoinableRooms(): List<PokerRoomSummary> =
+        gameRoomMap.values
             .mapNotNull { room ->
                 // До launchRoom() создатель/первые игроки сидят в sessionQueue,
                 // а room.sessions() пустой. Без queue лобби показывало 0/N до
                 // прихода второго игрока — стол выглядел заброшенным.
                 val queued = sessionQueue[room.key()]?.size ?: 0
                 val current = room.currentPlayersCount() + queued
-                if (current >= maxPlayers) return@mapNotNull null
+                val cap = room.maxPlayers
+                if (current >= cap) return@mapNotNull null
                 PokerRoomSummary(
                     roomId = room.key().toString(),
                     betType = room.betType.name,
@@ -81,11 +81,12 @@ class PokerRoomServiceImpl(
                     smallBlind = room.smallBlind,
                     bigBlind = room.bigBlind,
                     currentPlayers = current,
-                    maxPlayers = maxPlayers,
+                    maxPlayers = cap,
+                    minBuyIn = room.minBuyIn,
+                    maxBuyIn = room.maxBuyIn,
                     phase = if (room.isGameStarted()) "IN_GAME" else "WAITING",
                 )
             }
-    }
 
     override fun getRoomByKey(key: UUID?): Optional<GameRoom> = if (key != null) Optional.ofNullable(gameRoomMap[key]) else Optional.empty()
 
@@ -210,7 +211,7 @@ class PokerRoomServiceImpl(
         initialData: GameRoomJoinEvent,
     ) {
         val room = getRoomByKey(UUID.fromString(initialData.reconnectKey)).get() as PokerGameRoom
-        if (room.currentPlayersCount() >= applicationProperties.pokerRoom.maxPlayers) {
+        if (room.currentPlayersCount() >= room.maxPlayers) {
             webSocketSessionService.sendJoinFailure(
                 userSession,
                 FailureCode.INVALID_DECISION,
@@ -271,10 +272,24 @@ class PokerRoomServiceImpl(
         event: GameSettingsUpdateEvent,
     ) {
         val room = getRoomByKey(userSession.roomKey).get() as PokerGameRoom
+        // Гвоздь: только первый вызов на CREATE имеет право менять settings.
+        // FE может потом ретраить CREATE на reattach — мы должны no-op-ить,
+        // чтобы поведение комнаты не дрейфовало под существующими игроками.
+        if (!room.lockSettings()) return
         room.betType = event.betType?.let { PokerBetType.valueOf(it) }!!
         room.minLimit = event.minLimit
         room.maxLimit = event.maxLimit
         room.bet = event.bet
+        // Capacity: глобальные MIN_POKER_PLAYERS..MAX_POKER_PLAYERS — жёсткие гарды,
+        // null = берём дефолт. Запрос вне диапазона зажимаем в допустимый.
+        val globalMax = applicationProperties.pokerRoom.maxPlayers
+        val globalMin = applicationProperties.pokerRoom.minPlayers
+        event.maxPlayers?.let { requested ->
+            room.maxPlayers = requested.coerceIn(globalMin, globalMax)
+        }
+        // Buy-in: minBuyIn по умолчанию = дефолтному buyIn. maxBuyIn null = без потолка.
+        event.minBuyIn?.let { room.minBuyIn = it.coerceAtLeast(0.0) }
+        event.maxBuyIn?.let { room.maxBuyIn = it.coerceAtLeast(room.minBuyIn) }
     }
 
     fun launchRoom(

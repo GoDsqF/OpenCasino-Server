@@ -22,6 +22,7 @@ const val GAME_ROOM_STATUS = 14
 
 const val GAME_ROOM_START = 20
 const val GAME_ROOM_CLOSE = 21
+const val GAME_ROOM_LEAVE = 22
 
 const val FAILURE = 40
 

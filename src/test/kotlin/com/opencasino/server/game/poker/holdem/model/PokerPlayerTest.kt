@@ -138,6 +138,21 @@ class PokerPlayerTest {
             assertEquals(200.0, player.currentBet)
             verify(mockRoom).nextMove(mockSession)
         }
+
+        @Test
+        fun `call that drains the stack marks player as allin`() {
+            // Регрессия: после CALL последними фишками stack=0, но allin
+            // оставался false → firstAliveFrom на новой улице выбирал такого
+            // игрока актором, availableActions возвращал empty, цикл висел.
+            `when`(mockRoom.lastMaxBet).thenReturn(1000.0)
+            player.currentBet = 10.0
+            player.stack = 990.0
+            player.updateState(PokerDecision.CALL, 990.0)
+            player.update()
+            assertEquals(0.0, player.stack)
+            assertTrue(player.allin, "CALL для всего стека == олл-ин")
+            verify(mockRoom).nextMove(mockSession)
+        }
     }
 
     @Nested

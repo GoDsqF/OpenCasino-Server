@@ -34,6 +34,14 @@ class UserSessionWebSocketHandler(
             log.warn("Dropping {} from unauthenticated session {}", message.type, userSession.id)
             return
         }
+        // LEAVE: room-binding source-of-truth — это session (roomKey + serviceId),
+        // не message.serviceId. Обрабатываем до switch-а, чтобы клиент мог
+        // (но не обязан) проставлять serviceId — серверу он не нужен.
+        if (message.type == GAME_ROOM_LEAVE) {
+            log.debug("Explicit LEAVE from {}", userSession.id)
+            webSocketSessionService.onPlayerLeave(userSession)
+            return
+        }
         val messageData = if (message.data != null) message.data as Map<*, *> else null
 
         when (message.serviceId) {
