@@ -8,4 +8,8 @@ data class PublicPlayerUpdatePack(
     val position: Int,
     val displayName: String,
     val lastDecision: PokerDecision,
+    val stack: Double,
+    val currentBet: Double,
+    val folded: Boolean,
+    val allin: Boolean,
 ) : PublicUpdatePack

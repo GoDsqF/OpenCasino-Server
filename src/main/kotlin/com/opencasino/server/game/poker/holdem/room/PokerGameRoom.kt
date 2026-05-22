@@ -302,12 +302,36 @@ open class PokerGameRoom(
         }
         lastMaxBet = 0.0
 
-        // Texas Hold'em: 5 community cards is the river — next dealer event is showdown.
-        if (dealerHand.getCards().size >= 5) {
-            triggerShowdown()
-            return
+        // Texas Hold'em улицы: 0 → flop (раздать 3), 3 → turn (1), 4 → river (1),
+        // 5 → showdown. Раньше всегда раздавалась 1 карта, поэтому флоп выезжал
+        // по одной карте за раз и в FE казалось, что «дали одну карту на префлопе».
+        when (dealerHand.getCards().size) {
+            0 -> repeat(3) { deck.dealCard(dealerHand) }
+            3, 4 -> deck.dealCard(dealerHand)
+            else -> {
+                triggerShowdown()
+                return
+            }
         }
-        deck.dealCard(dealerHand)
+
+        // Новый раунд торгов: action начинается с currentStartPlayer (его только
+        // что прокрутил nextMove). Без явного reset-а currentPosition оставался
+        // на последнем игроке прошлого раунда → тот же игрок получал CHECK ещё
+        // раз («можно чекать два раза подряд»).
+        resetCurrentPositionForNewRound()
+    }
+
+    private fun resetCurrentPositionForNewRound() {
+        val playersCount = map.getPlayers().size
+        if (playersCount == 0) return
+        for (i in 0 until playersCount) {
+            val pos = (currentStartPlayer + i) % playersCount
+            val candidate = map.getPlayerByPosition(pos)
+            if (candidate != null && !candidate.folded && !candidate.allin) {
+                currentPosition = pos
+                return
+            }
+        }
     }
 
     private fun triggerShowdown() {
@@ -374,7 +398,13 @@ open class PokerGameRoom(
         sendBroadcast(Message(SHOWDOWN_RESULT, PokerShowdownPack(entries, pots)))
     }
 
-    override fun update() {
+    override fun update() = synchronized(this) { doUpdate() }
+
+    // Лочимся на том же мониторе, что и onBuyIn / nextMove (через PokerPlayer.update),
+    // чтобы тик не успевал прочитать playerDeck посередине initialDeal-а
+    // (раньше первый UPDATE мог уехать с 0/1 hole-картой). Все мутации состояния
+    // раунда — здесь же, так что serialization дешёвая.
+    private fun doUpdate() {
         if (!gameStarted.get()) return
         if (!roundEnd.get()) {
             for (currentPlayer in map.getPlayers()) {

@@ -250,7 +250,7 @@ class PacksTest {
 
         @Test
         fun `PlayerHandUpdatePack with hidden cards (nulls)`() {
-            val publicUpdate = PokerPublicPlayerUpdatePack(2L, 1, "p2", PokerDecision.CHECK)
+            val publicUpdate = PokerPublicPlayerUpdatePack(2L, 1, "p2", PokerDecision.CHECK, 0.0, 0.0, false, false)
             val cards: List<Card?> = listOf(null, null)
             val pack = PlayerHandUpdatePack(publicUpdate, cards)
             assertEquals(2, pack.cards.size)

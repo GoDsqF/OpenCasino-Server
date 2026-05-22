@@ -165,5 +165,15 @@ class PokerPlayer(
         return actions
     }
 
-    fun getPublicUpdatePack(): PublicPlayerUpdatePack = PublicPlayerUpdatePack(id, this.position, displayName, lastDecision)
+    fun getPublicUpdatePack(): PublicPlayerUpdatePack =
+        PublicPlayerUpdatePack(
+            id,
+            this.position,
+            displayName,
+            lastDecision,
+            stack,
+            currentBet ?: 0.0,
+            folded,
+            allin,
+        )
 }
