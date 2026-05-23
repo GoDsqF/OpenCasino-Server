@@ -36,6 +36,12 @@ abstract class PokerBasePlayer<GR, IP : InitPack, UP : UpdatePack, PUP : Private
 
     var disconnected: Boolean = false
 
+    // Игрок прислал LEAVE/истёк grace посреди активного раунда. Seat нельзя
+    // снять сразу (позиции — индексы по модулю размера стола, удаление в
+    // середине раздачи их разрежает и ломает арифметику кругов), поэтому
+    // помечаем и физически убираем в resetTable, где удаление уже безопасно.
+    var leaving: Boolean = false
+
     var stack by Delegates.notNull<Double>()
 
     var totalContribution: Double = 0.0

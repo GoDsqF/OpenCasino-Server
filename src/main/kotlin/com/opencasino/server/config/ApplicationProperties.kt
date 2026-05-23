@@ -39,6 +39,7 @@ data class PokerRoomProperties(
     val buyIn: Int = POKER_BUY_IN,
     val deckStacks: Int = POKER_DECK_STACKS,
     val showdownRevealMs: Long = SHOWDOWN_REVEAL_MS,
+    val observerGraceMs: Long = OBSERVER_GRACE_MS,
 )
 
 data class DatabaseProperties(

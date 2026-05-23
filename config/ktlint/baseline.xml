@@ -23,7 +23,7 @@
     </file>
     <file name="src/main/kotlin/com/opencasino/server/game/poker/holdem/room/PokerGameRoom.kt">
         <error line="3" column="1" source="standard:no-wildcard-imports" />
-        <error line="35" column="1" source="standard:no-wildcard-imports" />
+        <error line="36" column="1" source="standard:no-wildcard-imports" />
     </file>
     <file name="src/main/kotlin/com/opencasino/server/game/room/GameRoom.kt">
         <error line="6" column="1" source="standard:no-wildcard-imports" />
