@@ -20,9 +20,21 @@ class PokerMap {
 
     fun addPlayer(player: PokerPlayer) {
         if (players.size < MAX_POKER_PLAYERS) {
-            player.position = players.size
+            // Берём наименьшую свободную позицию, а не players.size. Размер
+            // не отражает занятые слоты после выхода игрока: например, при
+            // {pos0, pos1} → выходит pos0 → size=1 → новому снова дали бы
+            // position=1, что коллизит с оставшимся игроком (двое на одном
+            // месте, на FE второй садится поверх центрального «моего» места).
+            player.position = lowestFreePosition()
             players[player.id] = player
         }
+    }
+
+    private fun lowestFreePosition(): Int {
+        val taken = players.values.mapTo(HashSet()) { it.position }
+        var pos = 0
+        while (pos in taken) pos++
+        return pos
     }
 
     fun setHoldem() {

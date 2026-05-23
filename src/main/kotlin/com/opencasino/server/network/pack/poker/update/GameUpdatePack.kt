@@ -13,4 +13,9 @@ data class GameUpdatePack(
     val currentPosition: Int?,
     val pot: Double,
     val lastMaxBet: Double,
+    // Big blind стола — клиенту нужен для корректного минимального рейза
+    // (min raise-to = lastMaxBet + bigBlind). Раньше FE хардкодил это значение
+    // и при кастомном bet-е допускал под-рейз, который сервер молча отклонял
+    // → ход застревал, выглядело как «комната сломалась».
+    val bigBlind: Double,
 ) : UpdatePack

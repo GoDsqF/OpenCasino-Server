@@ -307,6 +307,7 @@ open class PokerGameRoom(
                 actorPosition(),
                 pot,
                 lastMaxBet,
+                bigBlind,
             ),
         )
     }
@@ -409,6 +410,19 @@ open class PokerGameRoom(
 
     private fun triggerShowdown() {
         if (roundEnd.get()) return
+        // Свести ставки последнего круга в банк. Через nextMove → triggerShowdown
+        // (все сфолдили, кроме одного) последняя улица в onDealerTurn не проходит,
+        // поэтому её ставки иначе «висят» перед игроками. На distribution не
+        // влияет (она считает по totalContribution) — это чисто для отображения:
+        // FE покажет собранный pot в центре, а не зависшие фишки у мест.
+        map.getPlayers().forEach {
+            val bet = it.currentBet ?: 0.0
+            if (bet > 0.0) {
+                pot += bet
+                it.currentBet = 0.0
+            }
+        }
+        lastMaxBet = 0.0
         val nonFolded = map.getPlayers().filter { !it.folded }
         val canEvaluate = (dealerHand.getCards().size + 2) >= 5
         val contestants =
@@ -548,19 +562,40 @@ open class PokerGameRoom(
         }
 
         val playersCount = map.getPlayers().size
-        // Круг закончен, когда только что отыгравший — это последний в круге
-        // (т.е. предыдущая позиция от roundFirstActor) и все ставки уравнены.
-        // Раньше last рассчитывался от currentStartPlayer (= позиция SB),
-        // что давало UTG-1 = BB для cs=0, N=3 — формально верно, но если cs
-        // менялся в середине раздачи (старая ротация +1 на street), маркер
-        // съезжал и UTG получал лишний ход.
-        val currentLastPlayer = (roundFirstActor - 1 + playersCount) % playersCount
-
-        if (currentPosition == currentLastPlayer && allBetsValid()) {
-            return onDealerTurn()
+        // Круг торгов закрывается, когда все ставки уравнены И action
+        // возвращается к первому ходившему в круге (== последнему агрессору
+        // после рейза). Раньше "последний в круге" вычислялся как
+        // (roundFirstActor-1) БЕЗ учёта folded/all-in игроков: если этот игрок
+        // сфолдил (частый случай после ре-рейза — агрессор сидит сразу за
+        // выбывшим), то currentPosition никогда с ним не совпадал, круг не
+        // закрывался и стол замерзал — всех оставшихся активных бесконечно
+        // просили "чекать". Теперь смотрим на следующего РЕАЛЬНО активного
+        // игрока: если им оказался бы roundFirstActor (или активных больше
+        // не осталось) — круг закрыт.
+        if (allBetsValid()) {
+            val nextActor = nextActiveActorAfter(currentPosition, playersCount)
+            if (nextActor == null || nextActor == roundFirstActor) {
+                return onDealerTurn()
+            }
         }
         // advance to the next active (not folded, not all-in) player
         advanceToNextActivePosition(playersCount)
+    }
+
+    /** Следующая позиция активного (не folded, не all-in) игрока строго после
+     *  [from], обходя стол по кругу. null — если другого активного игрока в
+     *  круге не осталось (только сам [from] либо вообще никого). */
+    private fun nextActiveActorAfter(
+        from: Int,
+        n: Int,
+    ): Int? {
+        if (n == 0) return null
+        for (i in 1 until n) {
+            val pos = (from + i) % n
+            val candidate = map.getPlayerByPosition(pos)
+            if (candidate != null && !candidate.folded && !candidate.allin) return pos
+        }
+        return null
     }
 
     private fun advanceToNextActivePosition(playersCount: Int) {
@@ -676,7 +711,10 @@ open class PokerGameRoom(
         map.getPlayers().forEach { it.playerDeck.clear() }
         deck = CardDeck(roomProperties.deckStacks)
 
-        // Reset round-level state
+        // Reset round-level state. pot обнуляется именно здесь (а не в
+        // triggerShowdown), чтобы во время reveal-окна FE видел собранный банк
+        // в центре и успел проиграть «pot → winner».
+        pot = 0.00
         lastMaxBet = 0.00
         currentPosition = 0
         dealerCardsCount = 0

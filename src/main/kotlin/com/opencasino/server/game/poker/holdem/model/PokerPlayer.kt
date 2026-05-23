@@ -52,6 +52,8 @@ class PokerPlayer(
                     if (lastBet.isValidBet(lastDecision)) {
                         commitToStake(lastBet!!)
                         gameRoom.nextMove(this.userSession)
+                    } else {
+                        rejectBet("Invalid call: must match current bet of ${gameRoom.lastMaxBet}")
                     }
                 }
                 PokerDecision.RAISE -> {
@@ -59,6 +61,8 @@ class PokerPlayer(
                     if (lastBet.isValidBet(lastDecision)) {
                         commitToStake(lastBet!!)
                         gameRoom.nextMove(this.userSession)
+                    } else {
+                        rejectBet("Invalid raise: min raise-to is ${gameRoom.lastMaxBet + gameRoom.bigBlind}")
                     }
                 }
                 PokerDecision.FOLD -> {
@@ -84,6 +88,14 @@ class PokerPlayer(
                 }
             }
         }
+    }
+
+    // Невалидная ставка раньше просто гасила madeDecision без обратной связи и
+    // без nextMove — ход «застревал» на игроке, FE этого не понимал и стол
+    // выглядел сломанным. Теперь шлём BET_FAILURE: позиция остаётся за игроком,
+    // он может повторить с корректной суммой.
+    private fun rejectBet(message: String) {
+        gameRoom.sendBetFailure(userSession, FailureCode.INVALID_BET, message)
     }
 
     private fun commitToStake(amount: Double) {

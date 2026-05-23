@@ -117,4 +117,29 @@ class PokerMapTest {
     fun `getPlayerByPosition returns null for empty position`() {
         assertNull(map.getPlayerByPosition(5))
     }
+
+    @Test
+    fun `addPlayer reuses freed seat instead of colliding after a leave`() {
+        // Регрессия: position раньше присваивался как players.size, что после
+        // выхода игрока давало коллизию — новый садился на уже занятую позицию
+        // (на FE — поверх центрального «моего» места). Теперь берётся
+        // наименьшая свободная позиция.
+        val p0 = createPlayer(1L)
+        val p1 = createPlayer(2L)
+        map.addPlayer(p0)
+        map.addPlayer(p1)
+        assertEquals(0, p0.position)
+        assertEquals(1, p1.position)
+
+        // P0 (позиция 0) выходит → свободно место 0, P1 остаётся на позиции 1.
+        map.removePlayer(p0)
+
+        val p2 = createPlayer(3L)
+        map.addPlayer(p2)
+        assertEquals(0, p2.position, "новый игрок должен занять освободившееся место 0")
+        assertEquals(1, p1.position, "оставшийся игрок не двигается")
+        // Позиции уникальны — getPlayerByPosition больше не неоднозначен.
+        assertEquals(p2, map.getPlayerByPosition(0))
+        assertEquals(p1, map.getPlayerByPosition(1))
+    }
 }

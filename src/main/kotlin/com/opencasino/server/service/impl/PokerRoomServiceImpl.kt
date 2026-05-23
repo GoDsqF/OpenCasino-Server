@@ -143,8 +143,23 @@ class PokerRoomServiceImpl(
                 loadBalanceAndLaunch(ps, player, room)
             }
             is GameRoomJoinEvent -> {
+                // Комнаты может уже не быть: при refresh-е во время ожидания
+                // (pre-launch) onInactive снимает игрока из wait-queue и удаляет
+                // пустую PokerGameRoom из gameRoomMap. FE на reconnect-е всё
+                // равно шлёт JOIN со старым roomId. Раньше .get() на пустом
+                // Optional кидал NoSuchElementException и рвал WS-сессию —
+                // теперь отвечаем JOIN_FAILURE, FE уводит игрока в лобби.
+                val roomKey = runCatching { UUID.fromString(initialData.reconnectKey) }.getOrNull()
+                val room = roomKey?.let { gameRoomMap[it] }
+                if (room == null) {
+                    webSocketSessionService.sendJoinFailure(
+                        userSession,
+                        FailureCode.ROOM_NOT_FOUND,
+                        "Room ${initialData.reconnectKey} no longer exists",
+                    )
+                    return
+                }
                 webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))
-                val room = getRoomByKey(UUID.fromString(initialData.reconnectKey)).get() as PokerGameRoom
                 val queue = sessionQueue[room.key()]
                 if (queue != null) {
                     val gameTable = room.map

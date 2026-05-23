@@ -106,4 +106,61 @@ class PokerGameRoomActionFlowTest {
         )
         assertTrue(room.actorPosition() != null, "new round of betting begins on the flop")
     }
+
+    // Регрессия (user-report 2026-05-24): после ре-рейза комната «ломалась».
+    // Корень: круг торгов закрывался по сравнению currentPosition с
+    // (roundFirstActor-1), без учёта folded/all-in. Когда игрок прямо перед
+    // агрессором сфолдил (частый случай: рейзит тот, кто сидит сразу за
+    // выбывшим), currentPosition никогда не совпадал с этим маркером и круг
+    // не закрывался — оставшихся активных бесконечно просили чекать.
+    @Test
+    fun `3-max re-raise closes the round even when the player before the raiser folded`() {
+        val room = newRoom()
+        val s0 = newSession()
+        val s1 = newSession()
+        val s2 = newSession()
+        seatFresh(room, s0, 1L) // position 0 = SB/button
+        seatFresh(room, s1, 2L) // position 1 = BB
+        val p2 = seatFresh(room, s2, 3L) // position 2 = UTG, ходит первым префлоп
+        room.onRoomStarted()
+
+        val buyIn = pokerProps.buyIn.toDouble()
+        room.onBuyIn(s0, BetEvent(buyIn))
+        room.onBuyIn(s1, BetEvent(buyIn))
+        room.onBuyIn(s2, BetEvent(buyIn))
+        // initialTurn: lastMaxBet=BB=100; UTG(pos2) ходит первым префлоп.
+        assertEquals(2, room.actorPosition())
+
+        // UTG рейзит до 300 (агрессор #1) → roundFirstActor=2, action → SB(pos0).
+        room.onPlayerDecision(s2, PokerPlayerDecisionEvent(PokerDecision.RAISE.name, 300.0))
+        p2.update()
+        assertEquals(0, room.actorPosition(), "после рейза UTG ход у SB")
+
+        // SB фолдит → action на BB(pos1). Теперь игрок ПЕРЕД будущим агрессором
+        // (BB) — это SB, и он сфолдил.
+        room.onPlayerDecision(s0, PokerPlayerDecisionEvent(PokerDecision.FOLD.name, null))
+        room.map.getPlayerById(1L)!!.update()
+        assertEquals(1, room.actorPosition(), "после фолда SB ход у BB")
+
+        // BB ре-рейзит до 700 (агрессор #2) → roundFirstActor=1, currentLastPlayer
+        // по старой логике = pos0 = SB (folded). Action → UTG(pos2).
+        room.onPlayerDecision(s1, PokerPlayerDecisionEvent(PokerDecision.RAISE.name, 600.0))
+        room.map.getPlayerById(2L)!!.update()
+        assertEquals(2, room.actorPosition(), "ре-рейз BB вернул action на UTG")
+        assertEquals(700.0, room.lastMaxBet)
+        assertEquals(0, room.dealerHand.getCards().size, "всё ещё префлоп")
+
+        // UTG коллирует ре-рейз. Круг ДОЛЖЕН закрыться (action вернулся к
+        // агрессору BB, все ставки уравнены) → раздаётся флоп. До фикса стол
+        // замерзал: currentLastPlayer указывал на сфолдившего SB.
+        room.onPlayerDecision(s2, PokerPlayerDecisionEvent(PokerDecision.CALL.name, 400.0))
+        p2.update()
+
+        assertEquals(
+            3,
+            room.dealerHand.getCards().size,
+            "флоп должен быть раздан — круг обязан закрыться после колла UTG",
+        )
+        assertTrue(room.actorPosition() != null, "на флопе начинается новый круг торгов")
+    }
 }
