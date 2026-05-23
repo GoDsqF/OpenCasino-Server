@@ -535,6 +535,18 @@ open class PokerGameRoom(
             return
         }
 
+        // Все non-folded игроки уже all-in — действовать некому, action-круг
+        // не закроется через currentLastPlayer (последний all-in мог сдвинуть
+        // roundFirstActor через markRaiser, и currentLastPlayer теперь указывает
+        // на уже-олл-ин-нутого оппонента). Идём прямо в onDealerTurn, который
+        // дораздаст оставшиеся улицы и через рекурсию уйдёт в showdown.
+        // Раньше advanceToNextActivePosition в такой ситуации не находил
+        // активного игрока и молча выходил, оставляя стол замороженным
+        // (HU postflop both-all-in с full-raise второго → freeze на флопе/тёрне).
+        if (!hasActiveActor()) {
+            return onDealerTurn()
+        }
+
         val playersCount = map.getPlayers().size
         // Круг закончен, когда только что отыгравший — это последний в круге
         // (т.е. предыдущая позиция от roundFirstActor) и все ставки уравнены.

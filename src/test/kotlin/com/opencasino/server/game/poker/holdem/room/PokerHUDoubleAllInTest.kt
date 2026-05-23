@@ -176,4 +176,125 @@ class PokerHUDoubleAllInTest {
         val closeCount = captor.allValues.mapNotNull { (it as? Message)?.type }.count { it == GAME_ROOM_CLOSE }
         assertTrue(closeCount >= 1, "проигравшему должен уйти GAME_ROOM_CLOSE при bust-out")
     }
+
+    @Test
+    fun `HU postflop both ALL_IN with unequal stacks (full-raise) deals to river without freezing`() {
+        // Регрессия. Сценарий из user-report (2026-05-23): "та же ошибка, только
+        // теперь зависло на TURN". Корень: на постфлопе первый ALL_IN дёргает
+        // markRaiser → roundFirstActor сдвигается на него. Второй ALL_IN с бо́льшим
+        // стеком — full-raise (newBet >= prevMax+bigBlind) — снова двигает
+        // roundFirstActor. currentLastPlayer теперь указывает на уже-allin-нутого
+        // оппонента, currentPosition != currentLastPlayer, и nextMove идёт в
+        // advanceToNextActivePosition. Там не находит non-folded/non-allin
+        // игрока и молча выходит → стол замерзает на флопе/тёрне.
+        // Фикс: nextMove проверяет !hasActiveActor() и сразу идёт в onDealerTurn,
+        // который дораздаёт улицы и через рекурсию уходит в showdown.
+        val room = newRoom()
+        val sb = newSession()
+        val bb = newSession()
+        seatFresh(room, sb, 1L)
+        seatFresh(room, bb, 2L)
+        room.onRoomStarted()
+
+        // Неравные стеки: bb имеет больше → его post-flop ALL_IN будет full-raise
+        // над sb-шным. minBuyIn проверяется на onBuyIn, ставим оба ≥ minBuyIn,
+        // но bb-стек кратно больше.
+        val smallBuyIn = pokerProps.buyIn.toDouble()
+        val bigBuyIn = smallBuyIn * 3
+        room.onBuyIn(sb, BetEvent(smallBuyIn))
+        room.onBuyIn(bb, BetEvent(bigBuyIn))
+
+        // Преfлоп: оба чекают/коллируют до флопа без ALL_IN.
+        // SB (P0) acts first preflop в HU → он коллирует BB.
+        // SB должен докинуть до BB: currentBet(SB)=smallBlind, lastMaxBet=bigBlind,
+        // → CALL amount = bigBlind - smallBlind = bet/2.
+        room.onPlayerDecision(
+            sb,
+            PokerPlayerDecisionEvent(PokerDecision.CALL.name, room.bet / 2),
+        )
+        room.update()
+        // BB чекает, флоп раздаётся.
+        room.onPlayerDecision(bb, PokerPlayerDecisionEvent(PokerDecision.CHECK.name, null))
+        room.update()
+        assertEquals(3, room.dealerHand.getCards().size, "после preflop-end должны выйти 3 карты flop")
+
+        // Флоп. SB acts first (per resetCurrentPositionForNewRound в этой реализации).
+        // SB ALL_IN — короткий стек.
+        room.onPlayerDecision(sb, PokerPlayerDecisionEvent(PokerDecision.ALL_IN.name, null))
+        room.update()
+        assertEquals(1, room.actorPosition(), "после SB ALL_IN на флопе actor должен встать на BB")
+
+        // BB ALL_IN — full-raise (стек кратно больше). До фикса nextMove тут
+        // не находил active actor-а и оставлял стол замороженным на size=3.
+        room.onPlayerDecision(bb, PokerPlayerDecisionEvent(PokerDecision.ALL_IN.name, null))
+        room.update()
+
+        assertEquals(
+            5,
+            room.dealerHand.getCards().size,
+            "после double ALL_IN на флопе должны быть раздан turn+river → board=5",
+        )
+        assertNull(room.actorPosition(), "actor=null в SHOWDOWN")
+
+        val bcastCaptor = argumentCaptor<Any>()
+        verify(webSocketSessionService, atLeastOnce())
+            .sendBroadcast(any<Collection<PlayerSession>>(), bcastCaptor.capture())
+        val showdownBroadcasts =
+            bcastCaptor.allValues
+                .mapNotNull { it as? Message }
+                .count { it.type == SHOWDOWN_RESULT }
+        assertEquals(1, showdownBroadcasts, "ровно один SHOWDOWN_RESULT broadcast")
+    }
+
+    @Test
+    fun `HU turn both ALL_IN with unequal stacks deals to river without freezing`() {
+        // Точное соответствие user-report: зависло на TURN (board=4).
+        // Тот же root cause, что и flop-case выше; разница только в том, на
+        // какой улице оба all-in-ятся. Тест держим, чтобы регрессия не уехала
+        // под изменения post-flop seating order или иных правил круга.
+        val room = newRoom()
+        val sb = newSession()
+        val bb = newSession()
+        seatFresh(room, sb, 1L)
+        seatFresh(room, bb, 2L)
+        room.onRoomStarted()
+
+        val smallBuyIn = pokerProps.buyIn.toDouble()
+        val bigBuyIn = smallBuyIn * 3
+        room.onBuyIn(sb, BetEvent(smallBuyIn))
+        room.onBuyIn(bb, BetEvent(bigBuyIn))
+
+        // Preflop: call + check → flop.
+        // SB должен докинуть до BB: currentBet(SB)=smallBlind, lastMaxBet=bigBlind,
+        // → CALL amount = bigBlind - smallBlind = bet/2.
+        room.onPlayerDecision(
+            sb,
+            PokerPlayerDecisionEvent(PokerDecision.CALL.name, room.bet / 2),
+        )
+        room.update()
+        room.onPlayerDecision(bb, PokerPlayerDecisionEvent(PokerDecision.CHECK.name, null))
+        room.update()
+        assertEquals(3, room.dealerHand.getCards().size)
+
+        // Flop: оба чек → turn.
+        room.onPlayerDecision(sb, PokerPlayerDecisionEvent(PokerDecision.CHECK.name, null))
+        room.update()
+        room.onPlayerDecision(bb, PokerPlayerDecisionEvent(PokerDecision.CHECK.name, null))
+        room.update()
+        assertEquals(4, room.dealerHand.getCards().size, "после flop-end должна выйти 4-я карта (turn)")
+
+        // Turn: SB ALL_IN (короткий), BB ALL_IN (full-raise).
+        room.onPlayerDecision(sb, PokerPlayerDecisionEvent(PokerDecision.ALL_IN.name, null))
+        room.update()
+        assertEquals(1, room.actorPosition())
+        room.onPlayerDecision(bb, PokerPlayerDecisionEvent(PokerDecision.ALL_IN.name, null))
+        room.update()
+
+        assertEquals(
+            5,
+            room.dealerHand.getCards().size,
+            "после double ALL_IN на тёрне должен быть раздан river → board=5",
+        )
+        assertNull(room.actorPosition())
+    }
 }
