@@ -1,12 +1,15 @@
 package com.opencasino.server.service.impl
 
+import com.opencasino.server.config.ApplicationProperties
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
 import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.pack.menu.update.PokerRoomSummary
 import com.opencasino.server.service.PokerLobbyService
 import com.opencasino.server.service.RoomService
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
@@ -15,7 +18,14 @@ class MenuServiceImplTest {
     private val blackjackRoomService: RoomService = mock()
     private val pokerRoomService: RoomService = mock()
     private val pokerLobbyService: PokerLobbyService = mock()
-    private val service = MenuServiceImpl(blackjackRoomService, pokerRoomService, pokerLobbyService)
+    private val applicationProperties = ApplicationProperties()
+    private val service =
+        MenuServiceImpl(
+            blackjackRoomService,
+            pokerRoomService,
+            pokerLobbyService,
+            applicationProperties,
+        )
 
     @Test
     fun `snapshot lists both games`() {
@@ -69,6 +79,7 @@ class MenuServiceImplTest {
                 bigBlind = 100.0,
                 currentPlayers = 1,
                 maxPlayers = 6,
+                minPlayers = 2,
                 minBuyIn = 2000.0,
                 maxBuyIn = null,
                 phase = "WAITING",
@@ -77,5 +88,27 @@ class MenuServiceImplTest {
 
         val snap = service.getMenuSnapshot()
         assertEquals(listOf(summary), snap.pokerRooms)
+    }
+
+    @Test
+    fun `game metadata carries per-game default settings`() {
+        whenever(blackjackRoomService.getRooms()).thenReturn(emptyList())
+        whenever(pokerRoomService.getRooms()).thenReturn(emptyList())
+
+        val byName = service.getMenuSnapshot().games.associateBy { it.name }
+        val poker = byName["Poker"]!!
+        assertEquals(applicationProperties.pokerRoom.minBet, poker.minBet)
+        assertEquals(applicationProperties.pokerRoom.maxBet, poker.maxBet)
+        assertEquals(applicationProperties.pokerRoom.buyIn.toDouble(), poker.buyIn)
+        assertEquals(applicationProperties.pokerRoom.maxPlayers, poker.maxPlayers)
+        assertEquals(applicationProperties.pokerRoom.minPlayers, poker.minPlayers)
+
+        // Blackjack: single-player, ставка с баланса — нет maxBet/buyIn.
+        val bj = byName["Blackjack"]!!
+        assertEquals(applicationProperties.blackjackRoom.minBet, bj.minBet)
+        assertNull(bj.maxBet)
+        assertNull(bj.buyIn)
+        assertEquals(1, bj.maxPlayers)
+        assertEquals(1, bj.minPlayers)
     }
 }

@@ -182,10 +182,15 @@ class PacksTest {
         }
 
         @Test
-        fun `PokerGameSettingsPack stores roomId and loop rate`() {
-            val pack = PokerGameSettingsPack("poker-id-456", 150L)
+        fun `PokerGameSettingsPack stores roomId loop rate and room settings`() {
+            val pack = PokerGameSettingsPack("poker-id-456", 150L, "PotLimit", 50.0, 100.0, 2000.0, null)
             assertEquals("poker-id-456", pack.roomId)
             assertEquals(150L, pack.loopRate)
+            assertEquals("PotLimit", pack.betType)
+            assertEquals(50.0, pack.smallBlind)
+            assertEquals(100.0, pack.bigBlind)
+            assertEquals(2000.0, pack.minBuyIn)
+            assertNull(pack.maxBuyIn)
         }
 
         @Test

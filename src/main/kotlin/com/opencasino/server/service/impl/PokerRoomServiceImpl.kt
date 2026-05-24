@@ -14,7 +14,6 @@ import com.opencasino.server.game.poker.holdem.model.PokerPlayer
 import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
 import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.pack.menu.update.PokerRoomSummary
-import com.opencasino.server.network.pack.poker.shared.GameSettingsPack
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.PokerLobbyService
@@ -82,6 +81,7 @@ class PokerRoomServiceImpl(
                     bigBlind = room.bigBlind,
                     currentPlayers = current,
                     maxPlayers = cap,
+                    minPlayers = applicationProperties.pokerRoom.minPlayers,
                     minBuyIn = room.minBuyIn,
                     maxBuyIn = room.maxBuyIn,
                     phase = if (room.isGameStarted()) "IN_GAME" else "WAITING",
@@ -107,10 +107,7 @@ class PokerRoomServiceImpl(
             if (existing != null) {
                 webSocketSessionService.send(
                     userSession,
-                    Message(
-                        GAME_ROOM_JOIN_SUCCESS,
-                        GameSettingsPack(existing.gameRoomId.toString(), existing.roomProperties.loopRate),
-                    ),
+                    Message(GAME_ROOM_JOIN_SUCCESS, existing.gameSettingsPack()),
                 )
                 return
             }

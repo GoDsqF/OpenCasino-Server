@@ -36,6 +36,8 @@ data class PokerRoomProperties(
     val endDelay: Long = ROOM_END_DELAY,
     val maxPlayers: Int = MAX_POKER_PLAYERS,
     val minPlayers: Int = MIN_POKER_PLAYERS,
+    val minBet: Double = MIN_POKER_BET,
+    val maxBet: Double = MAX_POKER_BET,
     val buyIn: Int = POKER_BUY_IN,
     val deckStacks: Int = POKER_DECK_STACKS,
     val showdownRevealMs: Long = SHOWDOWN_REVEAL_MS,
