@@ -178,7 +178,7 @@ class BlackjackGameRoom(
         val playerUpdatePackList =
             map
                 .getPlayers()
-                .map { it.getUpdatePack() }
+                .map { it.getUpdatePack(isYou = it.id == player.id) }
 
         val dealerUpdatePack = DealerUpdatePack(dealerHand.toPublicView())
 

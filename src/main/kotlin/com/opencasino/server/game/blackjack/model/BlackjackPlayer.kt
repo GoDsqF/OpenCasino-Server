@@ -112,7 +112,13 @@ open class BlackjackPlayer(
 
     override fun info(): PlayerInfoPack = getInfoPack()
 
-    override fun getUpdatePack(): PlayerHandUpdatePack = PlayerHandUpdatePack(getPublicUpdatePack(), currentHand().deck.getCards())
+    // Контракт IUpdatePackProvider (no-arg). Реальная рассылка идёт через
+    // getUpdatePack(isYou) из collectUpdate, где известен адресат; здесь
+    // безопасный default для случаев без получателя.
+    override fun getUpdatePack(): PlayerHandUpdatePack = getUpdatePack(isYou = false)
+
+    fun getUpdatePack(isYou: Boolean): PlayerHandUpdatePack =
+        PlayerHandUpdatePack(getPublicUpdatePack(isYou), currentHand().deck.getCards())
 
     override fun getInfoPack(): PlayerInfoPack = PlayerInfoPack(id, balance)
 
@@ -149,7 +155,7 @@ open class BlackjackPlayer(
         return actions
     }
 
-    fun getPublicUpdatePack(): PublicPlayerUpdatePack = PublicPlayerUpdatePack(id, lastDecision)
+    fun getPublicUpdatePack(isYou: Boolean): PublicPlayerUpdatePack = PublicPlayerUpdatePack(id, lastDecision, isYou)
 
     fun resetForNewRound() {
         hands.clear()

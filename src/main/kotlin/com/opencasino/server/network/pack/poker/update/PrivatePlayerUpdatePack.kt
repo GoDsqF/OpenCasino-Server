@@ -15,4 +15,19 @@ data class PrivatePlayerUpdatePack(
     // buy-in. На успешном BET становится false. FE сводит rebuy-логику к одной
     // строке вместо эвристики `stack===0 && phase==='SHOWDOWN'`.
     val needsRebuy: Boolean,
+    // Derived betting-bounds — раньше FE считал их сам из lastMaxBet/currentBet/
+    // stack плюс хардкоженный bigBlind (Defaults.poker.minBet). При любом сдвиге
+    // правил (мульти-рейз cap, mixed-stake, PLO min-raise) клиентская эвристика
+    // молча врала. Источник истины — те же выражения, что валидируют BET в
+    // PokerPlayer.isValidBet, поэтому slider клиента не может предложить сумму,
+    // которую сервер отклонит.
+    //
+    // Семантика (совпадает с FE до этой правки):
+    //  callAmount — DELTA к коллу: сколько ДОБАВИТЬ к currentBet, чтобы сравняться
+    //               с lastMaxBet (== amount в BET{CALL}). 0, если коллировать нечего.
+    //  minRaise   — минимальный raise-TO (итоговый currentBet после рейза), == lastMaxBet + bigBlind.
+    //  maxRaise   — максимальный raise-TO (== all-in): stack + currentBet.
+    val callAmount: Double,
+    val minRaise: Double,
+    val maxRaise: Double,
 ) : PrivateUpdatePack
