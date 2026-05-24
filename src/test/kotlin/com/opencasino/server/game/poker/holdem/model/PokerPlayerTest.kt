@@ -193,6 +193,38 @@ class PokerPlayerTest {
         }
 
         @Test
+        fun `getPrivateUpdatePack derives betting bounds from room state`() {
+            // lastMaxBet=100, bigBlind=100, stack=1000, currentBet=0 (см. setUp)
+            player.currentBet = 0.0
+            val pack = player.getPrivateUpdatePack()
+            assertEquals(100.0, pack.callAmount, "delta до колла = lastMaxBet - currentBet")
+            assertEquals(200.0, pack.minRaise, "min raise-to = lastMaxBet + bigBlind")
+            assertEquals(1000.0, pack.maxRaise, "max raise-to = stack + currentBet (all-in)")
+        }
+
+        @Test
+        fun `getPrivateUpdatePack callAmount is zero when bet already matches`() {
+            player.currentBet = 100.0
+            val pack = player.getPrivateUpdatePack()
+            assertEquals(0.0, pack.callAmount)
+            assertEquals(1100.0, pack.maxRaise, "maxRaise учитывает уже поставленное")
+        }
+
+        @Test
+        fun `getPublicUpdatePack reflects isYou and acting`() {
+            player.position = 3
+            `when`(mockRoom.actorPosition()).thenReturn(3)
+            val mine = player.getPublicUpdatePack(isYou = true)
+            assertTrue(mine.isYou)
+            assertTrue(mine.acting, "позиция игрока == actorPosition")
+
+            `when`(mockRoom.actorPosition()).thenReturn(1)
+            val theirs = player.getPublicUpdatePack(isYou = false)
+            assertFalse(theirs.isYou)
+            assertFalse(theirs.acting, "ход не на этой позиции")
+        }
+
+        @Test
         fun `getUpdatePack includes real cards`() {
             player.playerDeck.addCard(Card(Rank.CA, Suit.SPADES))
             player.playerDeck.addCard(Card(Rank.CK, Suit.HEARTS))

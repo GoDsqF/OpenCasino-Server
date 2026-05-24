@@ -147,32 +147,43 @@ class PokerPlayer(
         return PokerHand.fromList(this.playerDeck.getCards()).getHighestRank()
     }
 
+    // Полные карты получает только сам игрок (см. PokerGameRoom.collectUpdate),
+    // поэтому здесь isYou = true.
     override fun getUpdatePack(): PlayerHandUpdatePack =
         PlayerHandUpdatePack(
-            getPublicUpdatePack(),
+            getPublicUpdatePack(isYou = true),
             playerDeck.getCards(),
         )
 
+    // Скрытые карты — для всех остальных получателей, значит isYou = false.
     fun getSecretUpdatePack(): PlayerHandUpdatePack {
         val deck = mutableListOf<Card?>()
         repeat(playerDeck.getCards().size) {
             deck += null
         }
-        return PlayerHandUpdatePack(getPublicUpdatePack(), deck)
+        return PlayerHandUpdatePack(getPublicUpdatePack(isYou = false), deck)
     }
 
     override fun getInfoPack(): PlayerInfoPack = PlayerInfoPack(id, balance)
 
-    override fun getPrivateUpdatePack(): PrivatePlayerUpdatePack =
-        PrivatePlayerUpdatePack(
+    override fun getPrivateUpdatePack(): PrivatePlayerUpdatePack {
+        val bet = currentBet ?: 0.0
+        return PrivatePlayerUpdatePack(
             id,
             this.position,
             stack,
-            currentBet ?: 0.0,
+            bet,
             lastDecision,
             availableActions(),
             needsRebuy = !boughtIn,
+            // Те же выражения, что в isValidBet (CALL: currentBet+amount==lastMaxBet;
+            // RAISE: currentBet+amount>=lastMaxBet+bigBlind), но в терминах,
+            // удобных клиенту: callAmount — delta, min/maxRaise — raise-to total.
+            callAmount = maxOf(0.0, gameRoom.lastMaxBet - bet),
+            minRaise = gameRoom.lastMaxBet + gameRoom.bigBlind,
+            maxRaise = stack + bet,
         )
+    }
 
     fun availableActions(): List<String> {
         if (folded || allin || stack <= 0.0) return emptyList()
@@ -191,7 +202,7 @@ class PokerPlayer(
         return actions
     }
 
-    fun getPublicUpdatePack(): PublicPlayerUpdatePack =
+    fun getPublicUpdatePack(isYou: Boolean): PublicPlayerUpdatePack =
         PublicPlayerUpdatePack(
             id,
             this.position,
@@ -202,5 +213,7 @@ class PokerPlayer(
             folded,
             allin,
             observer = !boughtIn,
+            isYou = isYou,
+            acting = this.position == gameRoom.actorPosition(),
         )
 }

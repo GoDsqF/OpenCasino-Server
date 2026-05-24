@@ -117,7 +117,7 @@ class PacksTest {
                     emptyList(),
                     0,
                 )
-            val publicUpdate = PublicPlayerUpdatePack(1L, BlackjackDecision.STAND)
+            val publicUpdate = PublicPlayerUpdatePack(1L, BlackjackDecision.STAND, isYou = true)
             val card = Card(Rank.CA, Suit.SPADES)
             val handUpdate = PlayerHandUpdatePack(publicUpdate, listOf(card))
             val dealerUpdate = DealerUpdatePack(listOf(card, null))
@@ -131,10 +131,11 @@ class PacksTest {
         }
 
         @Test
-        fun `PublicPlayerUpdatePack stores only id and lastDecision`() {
-            val pack = PublicPlayerUpdatePack(7L, BlackjackDecision.HIT)
+        fun `PublicPlayerUpdatePack stores id lastDecision and isYou`() {
+            val pack = PublicPlayerUpdatePack(7L, BlackjackDecision.HIT, isYou = true)
             assertEquals(7L, pack.id)
             assertEquals(BlackjackDecision.HIT, pack.lastDecision)
+            assertTrue(pack.isYou)
         }
     }
 
@@ -171,6 +172,9 @@ class PacksTest {
                     PokerDecision.RAISE,
                     listOf("FOLD", "ALL_IN", "CALL", "RAISE"),
                     needsRebuy = false,
+                    callAmount = 0.0,
+                    minRaise = 300.0,
+                    maxRaise = 1200.0,
                 )
             assertEquals(5L, pack.id)
             assertEquals(2, pack.position)
@@ -179,6 +183,9 @@ class PacksTest {
             assertEquals(PokerDecision.RAISE, pack.lastDecision)
             assertEquals(listOf("FOLD", "ALL_IN", "CALL", "RAISE"), pack.availableActions)
             assertFalse(pack.needsRebuy)
+            assertEquals(0.0, pack.callAmount)
+            assertEquals(300.0, pack.minRaise)
+            assertEquals(1200.0, pack.maxRaise)
         }
 
         @Test
@@ -244,7 +251,7 @@ class PacksTest {
 
         @Test
         fun `PlayerHandUpdatePack stores player and cards`() {
-            val publicUpdate = PublicPlayerUpdatePack(1L, BlackjackDecision.HIT)
+            val publicUpdate = PublicPlayerUpdatePack(1L, BlackjackDecision.HIT, isYou = false)
             val cards =
                 listOf(
                     Card(Rank.CA, Suit.SPADES),
@@ -258,7 +265,19 @@ class PacksTest {
         @Test
         fun `PlayerHandUpdatePack with hidden cards (nulls)`() {
             val publicUpdate =
-                PokerPublicPlayerUpdatePack(2L, 1, "p2", PokerDecision.CHECK, 0.0, 0.0, false, false, observer = false)
+                PokerPublicPlayerUpdatePack(
+                    2L,
+                    1,
+                    "p2",
+                    PokerDecision.CHECK,
+                    0.0,
+                    0.0,
+                    false,
+                    false,
+                    observer = false,
+                    isYou = false,
+                    acting = false,
+                )
             val cards: List<Card?> = listOf(null, null)
             val pack = PlayerHandUpdatePack(publicUpdate, cards)
             assertEquals(2, pack.cards.size)

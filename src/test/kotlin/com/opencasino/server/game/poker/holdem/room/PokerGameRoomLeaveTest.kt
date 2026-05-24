@@ -138,9 +138,9 @@ class PokerGameRoomLeaveTest {
         val funded = room.map.getPlayers().single { it.boughtIn }
 
         assertEquals(0.0, observer.stack, "у observer-а пустой стек")
-        assertTrue(observer.getPublicUpdatePack().observer, "public observer-флаг выставлен")
+        assertTrue(observer.getPublicUpdatePack(isYou = false).observer, "public observer-флаг выставлен")
         assertTrue(observer.getPrivateUpdatePack().needsRebuy, "private needsRebuy выставлен")
-        assertFalse(funded.getPublicUpdatePack().observer, "профинансированный — не observer")
+        assertFalse(funded.getPublicUpdatePack(isYou = false).observer, "профинансированный — не observer")
         assertFalse(funded.getPrivateUpdatePack().needsRebuy, "профинансированному rebuy не нужен")
     }
 
@@ -161,7 +161,7 @@ class PokerGameRoomLeaveTest {
         room.onBuyIn(observer.userSession, BetEvent(pokerProps.buyIn.toDouble()))
 
         assertTrue(observer.boughtIn, "re-buy профинансировал игрока")
-        assertFalse(observer.getPublicUpdatePack().observer, "после re-buy уже не observer")
+        assertFalse(observer.getPublicUpdatePack(isYou = false).observer, "после re-buy уже не observer")
         assertTrue(room.isGameStarted(), "оба профинансированы — новая раздача стартует")
 
         // grace истёк, но таймер был отменён re-buy-ем → auto-leave не срабатывает.
