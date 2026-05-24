@@ -73,9 +73,11 @@ open class PokerGameRoom(
     var pot: Double = 0.00
     var lastMaxBet: Double = 0.00
 
-    // explains itself too
-    val smallBlind: Double = bet / 2
-    val bigBlind: Double = bet
+    // Производные от bet (== big blind). Getter-ы, а не val-ы: bet проставляется
+    // в updateSettings ПОСЛЕ конструктора, поэтому зафиксированные на construction-time
+    // val-ы давали стейл-блайнды (50/100) для столов с кастомным bet.
+    val smallBlind: Double get() = bet / 2
+    val bigBlind: Double get() = bet
 
     // Позиция SB (== button в HU). Ротация на +1 происходит в resetTable()
     // в конце каждой раздачи. Внутри раздачи currentStartPlayer не меняется,
@@ -202,16 +204,24 @@ open class PokerGameRoom(
         return start
     }
 
+    fun gameSettingsPack(): GameSettingsPack =
+        GameSettingsPack(
+            roomId = gameRoomId.toString(),
+            loopRate = roomProperties.loopRate,
+            betType = betType.name,
+            smallBlind = smallBlind,
+            bigBlind = bigBlind,
+            minBuyIn = minBuyIn,
+            maxBuyIn = maxBuyIn,
+        )
+
     fun addLatePlayer(userSession: PlayerSession) {
         val player = userSession.player as PokerPlayer
         map.addPlayer(player)
         super.onRoomCreated(listOf(userSession))
         send(
             userSession,
-            Message(
-                GAME_ROOM_JOIN_SUCCESS,
-                GameSettingsPack(gameRoomId.toString(), roomProperties.loopRate),
-            ),
+            Message(GAME_ROOM_JOIN_SUCCESS, gameSettingsPack()),
         )
         log.trace("Late join player {} on room {}", player.id, key())
     }
@@ -229,13 +239,7 @@ open class PokerGameRoom(
         super.onRoomCreated(userSessions)
         // send settings to client(optional to use, loop rate used only on server)
         sendBroadcast(
-            Message(
-                GAME_ROOM_JOIN_SUCCESS,
-                GameSettingsPack(
-                    gameRoomId.toString(),
-                    roomProperties.loopRate,
-                ),
-            ),
+            Message(GAME_ROOM_JOIN_SUCCESS, gameSettingsPack()),
         )
 
         schedulePeriodically(

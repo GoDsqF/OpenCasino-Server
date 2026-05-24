@@ -1,5 +1,6 @@
 package com.opencasino.server.service.impl
 
+import com.opencasino.server.config.ApplicationProperties
 import com.opencasino.server.config.AvailableGames
 import com.opencasino.server.network.pack.menu.update.GameMetadata
 import com.opencasino.server.network.pack.menu.update.MenuUpdatePack
@@ -15,18 +16,14 @@ class MenuServiceImpl(
     @Qualifier("blackjackRoomServiceImpl") @Lazy private val blackjackRoomService: RoomService,
     @Qualifier("pokerRoomServiceImpl") @Lazy private val pokerRoomService: RoomService,
     @Lazy private val pokerLobbyService: PokerLobbyService,
+    private val applicationProperties: ApplicationProperties,
 ) : MenuService {
     override fun getMenuSnapshot(): MenuUpdatePack {
         val pokerRooms = pokerLobbyService.listJoinableRooms()
         val pokerWaitingPlayers = pokerRooms.sumOf { it.currentPlayers }
         val games =
             AvailableGames.entries.map { game ->
-                val service =
-                    when (game) {
-                        AvailableGames.Blackjack -> blackjackRoomService
-                        AvailableGames.Poker -> pokerRoomService
-                    }
-                val rooms = service.getRooms()
+                val rooms = serviceFor(game).getRooms()
                 // У Poker до launchRoom() игроки сидят в sessionQueue, поэтому
                 // currentPlayersCount() возвращает 0 для свежесозданной комнаты.
                 // Берём счётчик из listJoinableRooms() (учитывает очередь) для
@@ -43,11 +40,7 @@ class MenuServiceImpl(
                         }
                         else -> rooms.sumOf { it.currentPlayersCount() }
                     }
-                GameMetadata(
-                    name = game.name,
-                    activeRooms = rooms.size,
-                    activePlayers = activePlayers,
-                )
+                gameMetadata(game, rooms.size, activePlayers)
             }
         return MenuUpdatePack(
             games = games,
@@ -55,4 +48,46 @@ class MenuServiceImpl(
             pokerRooms = pokerRooms,
         )
     }
+
+    private fun serviceFor(game: AvailableGames): RoomService =
+        when (game) {
+            AvailableGames.Blackjack -> blackjackRoomService
+            AvailableGames.Poker -> pokerRoomService
+        }
+
+    // Дефолтные лимиты игры — единственный источник для клиентских Defaults.
+    // Blackjack: single-player, ставка с баланса — нет maxBet/buyIn.
+    private fun gameMetadata(
+        game: AvailableGames,
+        activeRooms: Int,
+        activePlayers: Int,
+    ): GameMetadata =
+        when (game) {
+            AvailableGames.Blackjack ->
+                applicationProperties.blackjackRoom.let { bj ->
+                    GameMetadata(
+                        name = game.name,
+                        activeRooms = activeRooms,
+                        activePlayers = activePlayers,
+                        minBet = bj.minBet,
+                        maxBet = null,
+                        buyIn = null,
+                        maxPlayers = bj.maxPlayers,
+                        minPlayers = 1,
+                    )
+                }
+            AvailableGames.Poker ->
+                applicationProperties.pokerRoom.let { poker ->
+                    GameMetadata(
+                        name = game.name,
+                        activeRooms = activeRooms,
+                        activePlayers = activePlayers,
+                        minBet = poker.minBet,
+                        maxBet = poker.maxBet,
+                        buyIn = poker.buyIn.toDouble(),
+                        maxPlayers = poker.maxPlayers,
+                        minPlayers = poker.minPlayers,
+                    )
+                }
+        }
 }
