@@ -27,3 +27,10 @@ const val POKER_DECK_STACKS = 8
 const val SHOWDOWN_REVEAL_MS = 3500L
 
 const val DISCONNECT_GRACE_MS = 60_000L
+
+// Сколько busted-игрок (stack<=0) остаётся за столом как observer после раздачи,
+// прежде чем комната сама его высадит (auto-LEAVE + GAME_ROOM_CLOSE). Окно на
+// принятие решения «re-buy или ухожу»: за это время BET возвращает игрока в
+// игру со следующего раунда. Короче DISCONNECT_GRACE_MS — observer присутствует
+// сознательно (видит стол), а не из-за сетевого разрыва.
+const val OBSERVER_GRACE_MS = 30_000L

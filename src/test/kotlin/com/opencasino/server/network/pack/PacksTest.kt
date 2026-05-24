@@ -170,6 +170,7 @@ class PacksTest {
                     200.0,
                     PokerDecision.RAISE,
                     listOf("FOLD", "ALL_IN", "CALL", "RAISE"),
+                    needsRebuy = false,
                 )
             assertEquals(5L, pack.id)
             assertEquals(2, pack.position)
@@ -177,6 +178,7 @@ class PacksTest {
             assertEquals(200.0, pack.currentBet)
             assertEquals(PokerDecision.RAISE, pack.lastDecision)
             assertEquals(listOf("FOLD", "ALL_IN", "CALL", "RAISE"), pack.availableActions)
+            assertFalse(pack.needsRebuy)
         }
 
         @Test
@@ -250,7 +252,8 @@ class PacksTest {
 
         @Test
         fun `PlayerHandUpdatePack with hidden cards (nulls)`() {
-            val publicUpdate = PokerPublicPlayerUpdatePack(2L, 1, "p2", PokerDecision.CHECK, 0.0, 0.0, false, false)
+            val publicUpdate =
+                PokerPublicPlayerUpdatePack(2L, 1, "p2", PokerDecision.CHECK, 0.0, 0.0, false, false, observer = false)
             val cards: List<Card?> = listOf(null, null)
             val pack = PlayerHandUpdatePack(publicUpdate, cards)
             assertEquals(2, pack.cards.size)

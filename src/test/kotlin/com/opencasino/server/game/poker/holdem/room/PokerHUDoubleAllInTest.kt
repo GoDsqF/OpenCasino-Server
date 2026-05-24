@@ -15,8 +15,10 @@ import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.PokerDecision
 import com.opencasino.server.user.BalanceLedgerService
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
@@ -142,7 +144,7 @@ class PokerHUDoubleAllInTest {
     }
 
     @Test
-    fun `busted player removed from room and gets GAME_ROOM_CLOSE, HU game pauses without opponent`() {
+    fun `busted player becomes observer (seated, unfunded) instead of being kicked, HU game pauses`() {
         val room = newRoom()
         val sb = newSession()
         val bb = newSession()
@@ -163,18 +165,24 @@ class PokerHUDoubleAllInTest {
         advance(pokerProps.showdownRevealMs + 1)
         room.update()
 
-        // У одного игрока stack=0 (проигравший) — он должен быть удалён.
-        // У другого остался ненулевой банк.
-        assertEquals(
-            1,
-            room.map.getPlayers().size,
-            "проигравший с stack=0 должен быть удалён в resetTable",
-        )
+        // Колода тасуется случайно — на редкой ничье оба сохраняют стек, bust-а
+        // нет. Тогда нечего проверять про observer — пропускаем дил, а не падаем.
+        val observers = room.map.getPlayers().filter { !it.boughtIn }
+        assumeTrue(observers.size == 1, "tie — no bust this deal, observer behaviour not exercised")
+
+        // Раньше busted-игрок мгновенно кикался (GAME_ROOM_CLOSE + removePlayer).
+        // Теперь он остаётся за столом как observer: оба места заняты, проигравший
+        // boughtIn=false и stack=0, GAME_ROOM_CLOSE на этом шаге НЕ шлётся —
+        // у него есть OBSERVER_GRACE_MS на re-buy.
+        assertEquals(2, room.map.getPlayers().size, "busted-игрок не кикается — переходит в observer")
+        val observer = observers.single()
+        assertEquals(0.0, observer.stack, "у observer-а пустой стек")
+        assertFalse(room.isGameStarted(), "HU без второго профинансированного игрока — игра на паузе")
 
         val captor = argumentCaptor<Any>()
         verify(webSocketSessionService, atLeastOnce()).send(any<PlayerSession>(), captor.capture())
         val closeCount = captor.allValues.mapNotNull { (it as? Message)?.type }.count { it == GAME_ROOM_CLOSE }
-        assertTrue(closeCount >= 1, "проигравшему должен уйти GAME_ROOM_CLOSE при bust-out")
+        assertEquals(0, closeCount, "busted-игроку GAME_ROOM_CLOSE сразу НЕ шлётся — он observer, а не кикнут")
     }
 
     @Test

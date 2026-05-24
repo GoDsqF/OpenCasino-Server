@@ -171,6 +171,7 @@ class PokerPlayer(
             currentBet ?: 0.0,
             lastDecision,
             availableActions(),
+            needsRebuy = !boughtIn,
         )
 
     fun availableActions(): List<String> {
@@ -200,5 +201,6 @@ class PokerPlayer(
             currentBet ?: 0.0,
             folded,
             allin,
+            observer = !boughtIn,
         )
 }

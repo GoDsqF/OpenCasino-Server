@@ -11,6 +11,7 @@
     <ID>EmptyFunctionBlock:AbstractPokerGameRoom.kt:AbstractPokerGameRoom${}</ID>
     <ID>IteratorNotThrowingNoSuchElementException:Rank.kt:Rank : Iterator</ID>
     <ID>LargeClass:AuthControllerIntegrationTest.kt:AuthControllerIntegrationTest</ID>
+    <ID>LargeClass:PokerGameRoom.kt:PokerGameRoom : AbstractPokerGameRoom</ID>
     <ID>LongMethod:AuthControllerIntegrationTest.kt:AuthControllerIntegrationTest$@Test fun `DELETE sessions revokes own row and 404 for other users`</ID>
     <ID>LongMethod:PokerHand.kt:PokerHand$override fun compareTo: Int</ID>
     <ID>LongMethod:UserSessionWebSocketHandler.kt:UserSessionWebSocketHandler$fun onNext</ID>

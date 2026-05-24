@@ -12,4 +12,9 @@ data class PublicPlayerUpdatePack(
     val currentBet: Double,
     val folded: Boolean,
     val allin: Boolean,
+    // Игрок сидит за столом, но не профинансирован (busted-observer или ещё не
+    // сделал buy-in): карт не получает, в раздаче не участвует, не блокирует
+    // старт. Раньше FE угадывал это эвристикой `stack===0 && phase==='SHOWDOWN'`,
+    // которая рассыпалась при любом сдвиге server-таймингов.
+    val observer: Boolean,
 ) : PublicUpdatePack

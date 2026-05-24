@@ -28,6 +28,7 @@ import com.opencasino.server.service.shared.PokerDecision
 import com.opencasino.server.service.shared.PokerPhase
 import com.opencasino.server.user.BalanceLedgerReason
 import com.opencasino.server.user.BalanceLedgerService
+import reactor.core.Disposable
 import reactor.core.scheduler.Scheduler
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -113,6 +114,11 @@ open class PokerGameRoom(
 
     // stores last update per player to prevent spam without cross-player aliasing
     private val lastUpdateBySession: MutableMap<String, Message> = HashMap()
+
+    // Per-observer auto-leave таймеры (см. startObserverGrace). Ключ — playerId.
+    // Отменяются на re-buy (onBuyIn) и на снятии seat (removeSeat). Доступ —
+    // под монитором this (тот же, что onBuyIn/doUpdate).
+    private val observerTimers: MutableMap<Long, Disposable> = HashMap()
 
     // game status control
     private val started = AtomicBoolean(false)
@@ -664,6 +670,8 @@ open class PokerGameRoom(
             player.balance -= buyIn
             player.stack = buyIn
             player.boughtIn = true
+            // Re-buy observer-а: отменяем auto-leave таймер — игрок остаётся.
+            observerTimers.remove(player.id)?.dispose()
             if (gameStarted.get()) {
                 // Late buy-in: seat is funded, but the player sits out the in-progress
                 // round. resetTable() unfolds them at round end so they play next hand.
@@ -691,17 +699,24 @@ open class PokerGameRoom(
     }
 
     private fun resetTable() {
-        // Drop players who have no stack left. На момент resetTable раздача
-        // уже закончилась (triggerShowdown сбросил pot и применил payouts),
-        // поэтому флаг `allin` тут — стейл от только что закончившегося раунда.
-        // Раньше фильтр пропускал allin-busted игрока («stack<=0 && !allin» был
-        // false), он оставался в комнате с 0 чипов, в следующем раунде
-        // auto-allin'ился через блайнд без реального вклада и блокировал
-        // нормальную раздачу. Теперь bust-out по факту stack<=0.
-        val broke = map.getPlayers().filter { it.stack <= 0.0 }.toList()
-        broke.forEach {
-            send(it.userSession, Message(GAME_ROOM_CLOSE))
-            map.removePlayer(it)
+        // Игроки, помеченные на выход в середине прошлой раздачи (LEAVE/grace-
+        // expiry в активном раунде, см. onDisconnect), снимаются здесь —
+        // в активном раунде удалять было нельзя из-за позиционной арифметики.
+        map
+            .getPlayers()
+            .filter { it.leaving }
+            .toList()
+            .forEach { removeSeat(it) }
+
+        // Busted-игроки (был профинансирован, стек кончился) НЕ кикаются —
+        // переводятся в observer: остаются за столом без денег, не получают
+        // карт (boughtIn=false → folded ниже), не блокируют раздачу, и им даётся
+        // OBSERVER_GRACE_MS на re-buy. Раньше здесь был мгновенный
+        // GAME_ROOM_CLOSE + removePlayer. На момент resetTable раздача уже
+        // закончилась, поэтому stale-флаг `allin` тут не важен — bust по stack<=0.
+        map.getPlayers().filter { it.boughtIn && it.stack <= 0.0 }.toList().forEach {
+            it.boughtIn = false
+            startObserverGrace(it)
         }
         // Окно showdown reveal закрыто к моменту resetTable — гасим маркер.
         showdownEndedAt = null
@@ -829,13 +844,57 @@ open class PokerGameRoom(
     override fun onDisconnect(userSession: PlayerSession): PlayerSession {
         val player = userSession.player as? PokerPlayer
         if (player != null) {
-            if (gameStarted.get() && !roundEnd.get() && !player.folded) {
-                player.folded = true
-                nextMove(userSession)
+            observerTimers.remove(player.id)?.dispose()
+            val midRound = gameStarted.get() && !roundEnd.get()
+            if (midRound) {
+                if (!player.folded) {
+                    player.folded = true
+                    nextMove(userSession)
+                }
+                cashOutOnDisconnect(userSession, player)
+                // Seat нельзя снять прямо сейчас — позиции это индексы по модулю
+                // размера стола, удаление в активном раунде их разрежает и ломает
+                // арифметику кругов. Помечаем; resetTable снимет на границе раздачи.
+                player.leaving = true
+            } else {
+                // Showdown / пауза — удаление безопасно (resetTable и так удаляет
+                // здесь). Раньше seat не снимался вовсе: busted-игрок, приславший
+                // LEAVE на SHOWDOWN, оставался «зомби-сидящим» в players[] до
+                // следующего resetTable (а в HU его и не было — игра вставала).
+                cashOutOnDisconnect(userSession, player)
+                removeSeat(player)
             }
-            cashOutOnDisconnect(userSession, player)
         }
         return super.onDisconnect(userSession)
+    }
+
+    private fun removeSeat(player: PokerPlayer) {
+        observerTimers.remove(player.id)?.dispose()
+        lastUpdateBySession.remove(player.userSession.id)
+        map.removePlayer(player)
+    }
+
+    // Busted-игрок переведён в observer (resetTable): даём окно на re-buy, после
+    // чего комната сама высаживает его тем же путём, что и явный LEAVE
+    // (webSocketSessionService.onPlayerLeave → onClose+onDisconnect+clearBinding),
+    // — единый код-путь, без дублирования GAME_ROOM_CLOSE/seat-removal. re-buy
+    // отменяет таймер в onBuyIn; повторный bust — перезапускает (dispose выше).
+    private fun startObserverGrace(player: PokerPlayer) {
+        observerTimers.remove(player.id)?.dispose()
+        observerTimers[player.id] =
+            scheduleCancellable({
+                val shouldLeave =
+                    synchronized(this) {
+                        val stillScheduled = observerTimers[player.id] != null
+                        if (stillScheduled && !player.boughtIn && map.getPlayerById(player.id) != null) {
+                            observerTimers.remove(player.id)
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                if (shouldLeave) webSocketSessionService.onPlayerLeave(player.userSession)
+            }, roomProperties.observerGraceMs)
     }
 
     private fun cashOutOnDisconnect(

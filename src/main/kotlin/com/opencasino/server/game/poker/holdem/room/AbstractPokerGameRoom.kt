@@ -52,6 +52,18 @@ abstract class AbstractPokerGameRoom protected constructor(
         delayMillis: Long,
     ) = roomFutureList.add(schedulerService.schedule(runnable, delayMillis, TimeUnit.MILLISECONDS))
 
+    // Как schedule(), но возвращает Disposable — для задач, которые нужно уметь
+    // отменять индивидуально (observer-grace таймер отменяется на re-buy/leave).
+    // Всё равно регистрируем в roomFutureList, чтобы close() прибрал хвосты.
+    protected fun scheduleCancellable(
+        runnable: Runnable,
+        delayMillis: Long,
+    ): Disposable {
+        val disposable = schedulerService.schedule(runnable, delayMillis, TimeUnit.MILLISECONDS)
+        roomFutureList.add(disposable)
+        return disposable
+    }
+
     override fun schedulePeriodically(
         runnable: Runnable,
         initDelay: Long,
