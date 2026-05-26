@@ -145,6 +145,14 @@ open class BlackjackPlayer(
         )
     }
 
+    // Игроку сейчас нужно сходить (есть доступные действия) — для турн-таймера и
+    // clientState=AWAITING_TURN в комнате.
+    fun canAct(): Boolean = availableActions().isNotEmpty()
+
+    // Игрок уже прислал решение, оно ждёт обработки на следующем тике — окно хода
+    // перевзводится, авто-stand по таймауту не нужен.
+    fun hasPendingDecision(): Boolean = madeDecision
+
     private fun availableActions(): List<String> {
         if (!isAlive || madeDecision) return emptyList()
         val hand = currentHand()

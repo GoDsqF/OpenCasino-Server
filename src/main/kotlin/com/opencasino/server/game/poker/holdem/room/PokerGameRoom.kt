@@ -23,6 +23,7 @@ import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
+import com.opencasino.server.service.shared.ClientState
 import com.opencasino.server.service.shared.FailureCode
 import com.opencasino.server.service.shared.PokerDecision
 import com.opencasino.server.service.shared.PokerPhase
@@ -136,6 +137,14 @@ open class PokerGameRoom(
     // Использовать System.currentTimeMillis(), а не nanoTime — на тиках важна
     // разница в миллисекундах, не монотонность.
     @Volatile private var showdownEndedAt: Long? = null
+
+    // Турн-таймер актора. actorTurnStartedAt — момент, когда текущий актор получил
+    // ход; turnDeadlineEpochMs = это + actionTimeoutMs. timedActorPosition —
+    // позиция, под которую взведён таймер: при её смене (ход перешёл) таймер
+    // перевзводится в checkTurnTimeout. Доступ — под монитором this (тот же, что
+    // doUpdate/nextMove). null/-1 = таймер не взведён (showdown/пауза/нет актора).
+    @Volatile private var actorTurnStartedAt: Long? = null
+    private var timedActorPosition: Int = -1
 
     var deck = CardDeck(roomProperties.deckStacks)
 
@@ -318,11 +327,58 @@ open class PokerGameRoom(
                 pot,
                 lastMaxBet,
                 bigBlind,
+                turnDeadlineEpochMs(),
+                clientStateFor(player),
             ),
         )
     }
 
+    // Дедлайн жив только пока есть актор (actorTurnStartedAt взводится в
+    // checkTurnTimeout и гасится на showdown/смене актора). Один на стол.
+    private fun turnDeadlineEpochMs(): Long? = actorTurnStartedAt?.let { it + roomProperties.actionTimeoutMs }
+
+    private fun clientStateFor(player: PokerPlayer): ClientState =
+        when {
+            roundEnd.get() -> ClientState.SHOWDOWN
+            !player.boughtIn -> ClientState.AWAITING_BUY_IN
+            !gameStarted.get() -> ClientState.AWAITING_START
+            player.position == actorPosition() && !player.folded && !player.allin -> ClientState.AWAITING_TURN
+            else -> ClientState.IN_ROUND
+        }
+
     fun actorPosition(): Int? = if (roundEnd.get()) null else currentPosition
+
+    // Перевзводит турн-таймер при смене актора и авто-ходит за просрочившего:
+    // check, если коллировать нечего (бесплатный ход — фолд бессмыслен), иначе
+    // fold. Зеркалит decision-путь PokerPlayer.update (folded=true → nextMove).
+    // Возвращает true, если авто-действие сработало (раздача сдвинута nextMove-ом).
+    private fun checkTurnTimeout(): Boolean {
+        val actor = actorPosition()
+        val actorPos = actor ?: -1
+        if (actorPos != timedActorPosition) {
+            timedActorPosition = actorPos
+            actorTurnStartedAt = if (actor == null) null else currentTimeMillis()
+            return false
+        }
+        val startedAt = actorTurnStartedAt ?: return false
+        if (currentTimeMillis() - startedAt < roomProperties.actionTimeoutMs) return false
+        val player = map.getPlayerByPosition(timedActorPosition) ?: return false
+        actorTurnStartedAt = null
+        timedActorPosition = -1
+        autoActOnTimeout(player)
+        return true
+    }
+
+    private fun autoActOnTimeout(player: PokerPlayer) {
+        val toCall = lastMaxBet - (player.currentBet ?: 0.0)
+        if (toCall <= 0.0) {
+            player.lastDecision = PokerDecision.CHECK
+        } else {
+            player.folded = true
+            player.lastDecision = PokerDecision.FOLD
+        }
+        nextMove(player.userSession)
+    }
 
     fun isGameStarted(): Boolean = gameStarted.get()
 
@@ -454,6 +510,10 @@ open class PokerGameRoom(
         pot = 0.0
         broadcastShowdown(distribution, canEvaluate && nonFolded.size > 1)
         roundEnd.set(true)
+        // Showdown: актора больше нет — гасим турн-таймер, чтобы turnDeadlineEpochMs
+        // не висел стейл-значением в reveal-окне (checkTurnTimeout тут уже не бежит).
+        actorTurnStartedAt = null
+        timedActorPosition = -1
         // Открываем reveal-окно: doUpdate видит roundEnd=true и пока
         // (now - showdownEndedAt) < showdownRevealMs — НЕ шлёт GAME_ROOM_STATUS
         // и НЕ делает resetTable. Только UPDATE-ы (с post-showdown стеками,
@@ -486,10 +546,14 @@ open class PokerGameRoom(
         distribution: PokerDistribution,
         revealHands: Boolean,
     ) {
+        val bestByPlayer: Map<Long, PokerHand?> =
+            map.getPlayers().associate { player ->
+                player.id to if (revealHands && !player.folded) evaluateBest(player) else null
+            }
         val entries =
             map.getPlayers().map { player ->
                 val payout = distribution.payouts[player.id] ?: 0.0
-                val best = if (revealHands && !player.folded) evaluateBest(player) else null
+                val best = bestByPlayer[player.id]
                 PokerShowdownEntry(
                     id = player.id,
                     payout = payout,
@@ -502,7 +566,15 @@ open class PokerGameRoom(
             distribution.pots.map {
                 PokerShowdownSidePot(it.amount, it.eligibleIds, it.winnerIds)
             }
-        sendBroadcast(Message(SHOWDOWN_RESULT, PokerShowdownPack(entries, pots)))
+        // Highlight-set = карты лучших комбинаций всех победителей (по всем сайд-
+        // потам), dedup. Пусто, если вскрытия не было (revealHands=false → best=null).
+        val winnerIds = distribution.pots.flatMapTo(mutableSetOf()) { it.winnerIds }
+        val boardHighlight =
+            winnerIds
+                .mapNotNull { bestByPlayer[it] }
+                .flatMap { it.cards }
+                .distinct()
+        sendBroadcast(Message(SHOWDOWN_RESULT, PokerShowdownPack(entries, pots, boardHighlight)))
     }
 
     override fun update() = synchronized(this) { doUpdate() }
@@ -514,6 +586,10 @@ open class PokerGameRoom(
     private fun doUpdate() {
         if (!gameStarted.get()) return
         if (!roundEnd.get()) {
+            // Турн-таймер взводится/проверяется до рассылки: если актор просрочил
+            // ход, авто-действие уже сдвинуло раздачу — пропускаем тик, следующий
+            // (через loopRate) разошлёт актуальный стейт.
+            if (checkTurnTimeout()) return
             for (currentPlayer in map.getPlayers()) {
                 val newUpdate = collectUpdate(currentPlayer)
                 val sessionId = currentPlayer.userSession.id

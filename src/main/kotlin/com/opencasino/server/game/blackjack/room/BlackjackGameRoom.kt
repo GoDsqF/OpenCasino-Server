@@ -19,6 +19,7 @@ import com.opencasino.server.network.shared.PlayerSession
 import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.impl.BlackjackRoomServiceImpl
 import com.opencasino.server.service.shared.BlackjackDecision
+import com.opencasino.server.service.shared.ClientState
 import com.opencasino.server.service.shared.FailureCode
 import com.opencasino.server.user.BalanceLedgerReason
 import com.opencasino.server.user.BalanceLedgerService
@@ -29,7 +30,7 @@ import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
-class BlackjackGameRoom(
+open class BlackjackGameRoom(
     val map: BlackjackMap,
     gameRoomId: UUID,
     roomService: BlackjackRoomServiceImpl,
@@ -46,6 +47,12 @@ class BlackjackGameRoom(
     private val gameStarted = AtomicBoolean(false)
 
     private var handConditions: List<BlackjackCondition>? = null
+
+    // Турн-таймер: момент, когда у игрока открылось окно хода. Перевзводится, когда
+    // он сам сходил (новое окно) и гасится между руками/раундами. По истечении
+    // actionTimeoutMs сервер сам делает STAND текущей руки. turnDeadlineEpochMs =
+    // это + actionTimeoutMs. null = ходить сейчас некому.
+    @Volatile private var actorTurnStartedAt: Long? = null
 
     private val combiner: Map<Rank, Int> =
         mapOf(
@@ -188,13 +195,50 @@ class BlackjackGameRoom(
                 updatePack,
                 playerUpdatePackList,
                 dealerUpdatePack,
+                turnDeadlineEpochMs(),
+                clientStateFor(player),
             ),
         )
+    }
+
+    internal open fun currentTimeMillis(): Long = System.currentTimeMillis()
+
+    private fun turnDeadlineEpochMs(): Long? = actorTurnStartedAt?.let { it + roomProperties.actionTimeoutMs }
+
+    private fun clientStateFor(player: BlackjackPlayer): ClientState =
+        when {
+            handConditions != null -> ClientState.SHOWDOWN
+            !gameStarted.get() -> ClientState.AWAITING_BUY_IN
+            player.canAct() -> ClientState.AWAITING_TURN
+            else -> ClientState.IN_ROUND
+        }
+
+    // Перевзводит окно хода и авто-STAND-ит текущую руку, если игрок просрочил.
+    // STAND идёт штатным decision-путём (updateState → обрабатывается в update()
+    // этого же тика), поэтому отдельной resolve-логики не дублируем.
+    private fun enforceTurnTimeout() {
+        val player = map.getPlayers().firstOrNull()
+        if (player == null || !player.canAct() || player.hasPendingDecision()) {
+            actorTurnStartedAt = null
+            return
+        }
+        val startedAt = actorTurnStartedAt
+        if (startedAt == null) {
+            actorTurnStartedAt = currentTimeMillis()
+            return
+        }
+        if (currentTimeMillis() - startedAt >= roomProperties.actionTimeoutMs) {
+            actorTurnStartedAt = null
+            player.updateState(BlackjackDecision.STAND)
+        }
     }
 
     override fun update() {
         if (!gameStarted.get()) return
         if (handConditions == null) {
+            // Авто-STAND по таймауту обрабатывается в collectUpdate→player.update()
+            // ниже тем же тиком (updateState просто ставит флаг).
+            enforceTurnTimeout()
             for (currentPlayer in map.getPlayers()) {
                 val newUpdate = collectUpdate(currentPlayer)
                 val sessionId = currentPlayer.userSession.id
@@ -366,6 +410,7 @@ class BlackjackGameRoom(
     private fun reset() {
         gameStarted.set(false)
         handConditions = null
+        actorTurnStartedAt = null
         map.getPlayers().forEach { it.resetForNewRound() }
         dealerHand = CardDeck()
         if (deck.getCards().size < roomProperties.reshuffleThreshold) {

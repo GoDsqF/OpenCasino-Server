@@ -20,4 +20,9 @@ data class PokerShowdownSidePot(
 data class PokerShowdownPack(
     val entries: List<PokerShowdownEntry>,
     val pots: List<PokerShowdownSidePot>,
+    // Объединённый highlight-set по всем победителям (карты их лучших комбинаций,
+    // dedup). Раньше FE сам мёрджил handCards по entries и руками дедапил для
+    // split-pot — сервер и так знает финальный набор, отдаём готовым. Пусто, если
+    // вскрытия не было (один не-сфолдивший игрок забрал банк без шоудауна).
+    val boardHighlight: List<Card>,
 ) : Pack

@@ -27,6 +27,7 @@ data class BlackjackRoomProperties(
     val minBet: Double = MIN_BLACKJACK_BET,
     val deckStacks: Int = BLACKJACK_DECK_STACKS,
     val reshuffleThreshold: Int = BLACKJACK_RESHUFFLE_THRESHOLD,
+    val actionTimeoutMs: Long = ACTION_TIMEOUT_MS,
 )
 
 data class PokerRoomProperties(
@@ -42,6 +43,7 @@ data class PokerRoomProperties(
     val deckStacks: Int = POKER_DECK_STACKS,
     val showdownRevealMs: Long = SHOWDOWN_REVEAL_MS,
     val observerGraceMs: Long = OBSERVER_GRACE_MS,
+    val actionTimeoutMs: Long = ACTION_TIMEOUT_MS,
 )
 
 data class DatabaseProperties(
