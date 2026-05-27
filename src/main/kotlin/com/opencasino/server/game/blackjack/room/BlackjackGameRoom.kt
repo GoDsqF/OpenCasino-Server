@@ -46,6 +46,12 @@ open class BlackjackGameRoom(
     private val started = AtomicBoolean(false)
     private val gameStarted = AtomicBoolean(false)
 
+    // Фаза добора дилера: после того как все руки игрока закрыты, дилер берёт
+    // по одной карте за тик (loopRate), а не мгновенно одним пакетом — это даёт
+    // FE покарточную deal-in анимацию (как при HIT-е игрока). Сбрасывается, когда
+    // дилер достиг >= 17 и зафиксирован handConditions.
+    @Volatile private var dealerDrawing = false
+
     private var handConditions: List<BlackjackCondition>? = null
 
     // Турн-таймер: момент, когда у игрока открылось окно хода. Перевзводится, когда
@@ -235,20 +241,7 @@ open class BlackjackGameRoom(
 
     override fun update() {
         if (!gameStarted.get()) return
-        if (handConditions == null) {
-            // Авто-STAND по таймауту обрабатывается в collectUpdate→player.update()
-            // ниже тем же тиком (updateState просто ставит флаг).
-            enforceTurnTimeout()
-            for (currentPlayer in map.getPlayers()) {
-                val newUpdate = collectUpdate(currentPlayer)
-                val sessionId = currentPlayer.userSession.id
-                val previous = lastUpdateBySession[sessionId]
-                if (previous == null || previous.data != newUpdate.data) {
-                    send(currentPlayer.userSession, newUpdate)
-                    lastUpdateBySession[sessionId] = newUpdate
-                }
-            }
-        } else {
+        if (handConditions != null) {
             dealerHand.openCards()
             settleRound()
             val conditions = handConditions!!.map { it.name }
@@ -266,6 +259,41 @@ open class BlackjackGameRoom(
                 )
             }
             reset()
+            return
+        }
+        if (dealerDrawing) {
+            stepDealerDraw()
+        } else {
+            // Авто-STAND по таймауту обрабатывается в collectUpdate→player.update()
+            // ниже тем же тиком (updateState просто ставит флаг).
+            enforceTurnTimeout()
+        }
+        broadcastUpdates()
+    }
+
+    private fun broadcastUpdates() {
+        for (currentPlayer in map.getPlayers()) {
+            val newUpdate = collectUpdate(currentPlayer)
+            val sessionId = currentPlayer.userSession.id
+            val previous = lastUpdateBySession[sessionId]
+            if (previous == null || previous.data != newUpdate.data) {
+                send(currentPlayer.userSession, newUpdate)
+                lastUpdateBySession[sessionId] = newUpdate
+            }
+        }
+    }
+
+    // Один шаг добора дилера за тик: берём ровно одну карту, пока < 17. Когда
+    // достигли 17+ — фиксируем исход; терминальная ветка update() уже следующим
+    // тиком разошлёт UPDATE(SHOWDOWN) + GAME_ROOM_STATUS. broadcastUpdates() в
+    // том же тике отправит добранную карту, так что FE её анимирует.
+    private fun stepDealerDraw() {
+        if (calculateScore(dealerHand) < 17) {
+            deck.dealCard(dealerHand)
+        }
+        if (calculateScore(dealerHand) >= 17) {
+            dealerDrawing = false
+            handConditions = resolveConditions()
         }
     }
 
@@ -319,7 +347,7 @@ open class BlackjackGameRoom(
 
     fun onHandResolved(player: BlackjackPlayer) {
         if (player.advanceToNextHand()) return
-        playDealerAndResolve(player)
+        beginDealerPlay()
     }
 
     fun onSplitCompleted(player: BlackjackPlayer) {
@@ -327,32 +355,45 @@ open class BlackjackGameRoom(
             if (calculateScore(hand.deck) == 21) hand.resolved = true
         }
         if (player.hands.all { it.resolved }) {
-            playDealerAndResolve(player)
+            beginDealerPlay()
         } else {
             player.advanceToNextHand()
         }
     }
 
-    private fun playDealerAndResolve(player: BlackjackPlayer) {
+    // Переход в фазу добора: раскрываем hole-карту (FE играет flip) и гасим окно
+    // хода. Сам добор идёт по карте за тик в stepDealerDraw(); исход (handConditions)
+    // фиксируется там же, когда дилер достиг 17+.
+    private fun beginDealerPlay() {
         dealerHand.openCards()
-        var dealerSum = calculateScore(dealerHand)
-        while (dealerSum < 17) {
-            deck.dealCard(dealerHand)
-            dealerSum = calculateScore(dealerHand)
-        }
+        actorTurnStartedAt = null
+        dealerDrawing = true
+    }
 
-        val results =
-            player.hands.map { hand ->
-                val playerSum = calculateScore(hand.deck)
-                when {
-                    playerSum > 21 -> BlackjackCondition.DealerWin
-                    dealerSum > 21 -> BlackjackCondition.PlayerWin
-                    dealerSum < playerSum -> BlackjackCondition.PlayerWin
-                    dealerSum > playerSum -> BlackjackCondition.DealerWin
-                    else -> BlackjackCondition.Draw
-                }
+    private fun resolveConditions(): List<BlackjackCondition> {
+        val player = map.getPlayers().first()
+        val dealerSum = calculateScore(dealerHand)
+        return player.hands.map { hand ->
+            val playerSum = calculateScore(hand.deck)
+            when {
+                playerSum > 21 -> BlackjackCondition.DealerWin
+                dealerSum > 21 -> BlackjackCondition.PlayerWin
+                dealerSum < playerSum -> BlackjackCondition.PlayerWin
+                dealerSum > playerSum -> BlackjackCondition.DealerWin
+                else -> BlackjackCondition.Draw
             }
-        handConditions = results
+        }
+    }
+
+    // Синхронный добор + резолв для дисконнекта: тиков больше не будет (комната
+    // закрывается), исход надо посчитать здесь и сейчас, без покадровой раздачи.
+    private fun playDealerToCompletionSync() {
+        dealerHand.openCards()
+        while (calculateScore(dealerHand) < 17) {
+            deck.dealCard(dealerHand)
+        }
+        dealerDrawing = false
+        handConditions = resolveConditions()
     }
 
     private fun calculateScore(hand: CardDeck): Int {
@@ -411,6 +452,7 @@ open class BlackjackGameRoom(
         gameStarted.set(false)
         handConditions = null
         actorTurnStartedAt = null
+        dealerDrawing = false
         map.getPlayers().forEach { it.resetForNewRound() }
         dealerHand = CardDeck()
         if (deck.getCards().size < roomProperties.reshuffleThreshold) {
@@ -448,7 +490,7 @@ open class BlackjackGameRoom(
             val player = userSession.player as? BlackjackPlayer
             if (player != null && player.hands.isNotEmpty()) {
                 player.hands.forEach { it.resolved = true }
-                playDealerAndResolve(player)
+                playDealerToCompletionSync()
                 settleRound()
             }
         }

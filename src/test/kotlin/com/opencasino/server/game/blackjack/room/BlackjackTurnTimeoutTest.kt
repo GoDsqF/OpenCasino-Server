@@ -119,13 +119,20 @@ class BlackjackTurnTimeoutTest {
         assumeTrue(player.canAct(), "natural blackjack on deal — already resolved")
 
         room.onPlayerDecision(session, BlackjackPlayerDecisionEvent(BlackjackDecision.STAND.name))
-        room.update() // обрабатывает STAND → handConditions выставлены
-        room.update() // else-ветка: UPDATE с clientState=SHOWDOWN, затем reset
+        // STAND переводит в фазу добора дилера: он берёт по карте за тик, поэтому
+        // SHOWDOWN наступает не сразу, а когда дилер достиг 17+. Прокручиваем тики
+        // (с запасом — добор до 17 от двух карт укладывается в единицы тиков).
+        var state: ClientState? = null
+        for (i in 0 until 20) {
+            room.update()
+            state = updatesFor(session).last().clientState
+            if (state == ClientState.SHOWDOWN) break
+        }
 
         assertEquals(
             ClientState.SHOWDOWN,
-            updatesFor(session).last().clientState,
-            "после расчёта руки получатель видит SHOWDOWN",
+            state,
+            "после добора дилера получатель видит SHOWDOWN",
         )
     }
 }

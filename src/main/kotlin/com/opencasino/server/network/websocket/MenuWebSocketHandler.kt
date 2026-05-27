@@ -1,6 +1,6 @@
 package com.opencasino.server.network.websocket
 
-import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.opencasino.server.service.MenuService
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.socket.WebSocketHandler
@@ -13,7 +13,9 @@ import java.time.Duration
 class MenuWebSocketHandler(
     private val menuService: MenuService,
 ) : WebSocketHandler {
-    private val gson = Gson()
+    // serializeNulls: см. MainWebSocketHandler — снапшот лобби несёт nullable
+    // PokerRoomSummary.maxBuyIn; без явного null клиент видит undefined.
+    private val gson = GsonBuilder().serializeNulls().create()
 
     override fun handle(session: WebSocketSession): Mono<Void> {
         val snapshots =

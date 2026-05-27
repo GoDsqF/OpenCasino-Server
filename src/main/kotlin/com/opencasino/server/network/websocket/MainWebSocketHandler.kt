@@ -1,6 +1,6 @@
 package com.opencasino.server.network.websocket
 
-import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.opencasino.server.config.ApplicationProperties
 import com.opencasino.server.config.HEARTBEAT_SCHEDULER
 import com.opencasino.server.config.PING
@@ -30,7 +30,12 @@ class MainWebSocketHandler(
     private val webSocketSessionService: WebSocketSessionService,
     private val applicationProperties: ApplicationProperties,
 ) : WebSocketHandler {
-    private val objectMapper = Gson()
+    // serializeNulls: контракт (opencasino-docs api/types.ts) объявляет nullable-поля
+    // паков как `T | null`. Дефолтный Gson выкидывает null-ключи из JSON, и клиент
+    // получает undefined вместо null — строгие `field === null` проверки на FE
+    // принимают отсутствующий ключ за non-null и падают на дереференсе. Явные null
+    // приводят провод в соответствие с задекларированным контрактом.
+    private val objectMapper = GsonBuilder().serializeNulls().create()
     private lateinit var blackjackRoomService: RoomService
     private lateinit var pokerRoomService: RoomService
     private lateinit var heartbeatScheduler: Scheduler
