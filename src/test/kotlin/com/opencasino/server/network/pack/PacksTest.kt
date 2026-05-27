@@ -18,6 +18,7 @@ import com.opencasino.server.network.pack.shared.ExceptionPack
 import com.opencasino.server.network.pack.shared.GameMessagePack
 import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
 import com.opencasino.server.service.shared.BlackjackDecision
+import com.opencasino.server.service.shared.ClientState
 import com.opencasino.server.service.shared.PokerDecision
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
@@ -122,12 +123,20 @@ class PacksTest {
             val handUpdate = PlayerHandUpdatePack(publicUpdate, listOf(card))
             val dealerUpdate = DealerUpdatePack(listOf(card, null))
 
-            val pack = GameUpdatePack(privateUpdate, listOf(handUpdate), dealerUpdate)
+            val pack =
+                GameUpdatePack(
+                    privateUpdate,
+                    listOf(handUpdate),
+                    dealerUpdate,
+                    turnDeadlineEpochMs = null,
+                    clientState = ClientState.AWAITING_TURN,
+                )
 
             assertEquals(privateUpdate, pack.player)
             assertEquals(1, pack.players.size)
             assertEquals(2, pack.dealer.cards.size)
             assertNull(pack.dealer.cards[1])
+            assertEquals(ClientState.AWAITING_TURN, pack.clientState)
         }
 
         @Test
