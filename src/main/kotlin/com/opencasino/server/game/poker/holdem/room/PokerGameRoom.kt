@@ -618,6 +618,21 @@ open class PokerGameRoom(
             if (!revealStillOpen) {
                 showdownEndedAt = null
                 resetTable()
+                // resetTable переводит busted-игроков в observer (boughtIn=false →
+                // needsRebuy=true) и при <2 профинансированных ставит игру на паузу
+                // (gameStarted=false). UPDATE выше ушёл ДО resetTable, т.е. с
+                // needsRebuy=false, а следующий тик doUpdate выйдет на gameStarted-
+                // гарде — busted-игрок в хедз-апе так и не увидел бы re-buy подсказку
+                // до перезахода. Досылаем финальный post-reset UPDATE, когда игра
+                // встала на паузу; при active>=2 раздача продолжается и стейт
+                // доставит обычный тик.
+                if (!gameStarted.get()) {
+                    for (currentPlayer in map.getPlayers()) {
+                        val update = collectUpdate(currentPlayer)
+                        send(currentPlayer.userSession, update)
+                        lastUpdateBySession[currentPlayer.userSession.id] = update
+                    }
+                }
             }
         }
     }
