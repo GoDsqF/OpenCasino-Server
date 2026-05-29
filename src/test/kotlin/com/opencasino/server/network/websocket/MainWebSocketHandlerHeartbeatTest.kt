@@ -97,13 +97,19 @@ class MainWebSocketHandlerHeartbeatTest {
         whenever(sessionService.onActive(any())).thenReturn(Flux.never())
 
         val handler = newHandler(sessionService = sessionService, scheduler = scheduler)
-        val inbound = reactor.core.publisher.Sinks.many().unicast().onBackpressureBuffer<WebSocketMessage>()
+        val inbound =
+            reactor.core.publisher.Sinks
+                .many()
+                .unicast()
+                .onBackpressureBuffer<WebSocketMessage>()
         val session = stubSession()
         whenever(session.receive()).thenReturn(inbound.asFlux())
 
         handler.handle(session).subscribe()
 
-        val factory = org.springframework.core.io.buffer.DefaultDataBufferFactory()
+        val factory =
+            org.springframework.core.io.buffer
+                .DefaultDataBufferFactory()
         val badFrame =
             WebSocketMessage(
                 WebSocketMessage.Type.TEXT,

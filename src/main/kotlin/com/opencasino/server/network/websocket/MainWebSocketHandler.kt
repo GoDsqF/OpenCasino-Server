@@ -88,8 +88,7 @@ class MainWebSocketHandler(
                             log.warn("dropping inbound frame on session {}", webSocketSession.id, e)
                             Mono.empty()
                         }
-                }
-                .onErrorResume(TimeoutException::class.java) {
+                }.onErrorResume(TimeoutException::class.java) {
                     log.debug("pong-timeout on session {}", webSocketSession.id)
                     webSocketSession
                         .close(
