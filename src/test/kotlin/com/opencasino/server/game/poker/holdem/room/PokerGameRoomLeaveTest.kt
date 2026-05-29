@@ -124,6 +124,51 @@ class PokerGameRoomLeaveTest {
     }
 
     @Test
+    fun `onGraceStart does not fold the acting player but grace-expiry onDisconnect does`() {
+        val room = newRoom()
+        val sb = newSession()
+        val bb = newSession()
+        seatFresh(room, sb, 1L)
+        seatFresh(room, bb, 2L)
+        room.onRoomStarted()
+        val buyIn = pokerProps.buyIn.toDouble()
+        room.onBuyIn(sb, BetEvent(buyIn))
+        room.onBuyIn(bb, BetEvent(buyIn))
+
+        val actorPos = room.actorPosition()
+        assertNotNull(actorPos, "префлоп: есть актор")
+        val actor = room.map.getPlayers().single { it.position == actorPos }
+        assertFalse(actor.folded)
+
+        // Refresh на своём ходу: старт грейса помечает дисконнект, но НЕ фолдит —
+        // игрок успеет ребаунднуться в окне disconnectGraceMs.
+        room.onGraceStart(actor.userSession)
+        assertTrue(actor.disconnected, "грейс помечает дисконнект")
+        assertFalse(actor.folded, "refresh на своём ходу больше не фолдит сразу")
+
+        // Не вернулся за окно грейса → сервис заходит в onDisconnect, который и
+        // делает auto-fold + двигает игру дальше.
+        room.onDisconnect(actor.userSession)
+        assertTrue(actor.folded, "по истечении грейса игрок фолдится в onDisconnect")
+    }
+
+    @Test
+    fun `seated room is not torn down by a fixed lifetime timer`() {
+        val room = newRoom()
+        val sb = newSession()
+        val bb = newSession()
+        seatFresh(room, sb, 1L)
+        seatFresh(room, bb, 2L)
+        // onRoomCreated раньше планировал onGameEnd через endDelay+startDelay.
+        room.onRoomCreated(emptyList())
+
+        scheduler.advanceTimeBy(Duration.ofMillis(pokerProps.endDelay + pokerProps.startDelay + 5_000))
+
+        verify(roomService, never()).onGameEnd(room)
+        assertEquals(2, room.map.getPlayers().size, "игроки на месте — комната жива")
+    }
+
+    @Test
     fun `busted player transitions to observer with observer and needsRebuy flags set`() {
         val room = newRoom()
         val sb = newSession()

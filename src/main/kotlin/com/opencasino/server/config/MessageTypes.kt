@@ -17,7 +17,6 @@ const val GAME_ROOM_JOIN_FAILURE = 44
 const val BET = 77
 const val BET_FAILURE = 88
 
-const val GAME_START = 13
 const val GAME_ROOM_STATUS = 14
 
 const val GAME_ROOM_START = 20

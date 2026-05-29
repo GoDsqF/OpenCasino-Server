@@ -143,10 +143,10 @@ open class BlackjackGameRoom(
             roomProperties.loopRate,
         )
 
-        schedule(
-            { roomService.onGameEnd(this) },
-            roomProperties.endDelay + roomProperties.startDelay,
-        )
+        // Раньше здесь стоял безусловный снос комнаты через endDelay+startDelay
+        // (≈5 мин от создания) — стол закрывался даже при активной игре. Комната
+        // теперь живёт, пока в ней есть сессии: пустую закрывает onGameEnd из
+        // AbstractBlackjackGameRoom.onDisconnect (sessions.isEmpty()).
 
         log.trace("Room {} has been created", key())
     }
@@ -170,19 +170,9 @@ open class BlackjackGameRoom(
 
     override fun onGameStarted() {
         log.info("Room {}. Game has been started", key())
-        sendBroadcast(
-            Message(
-                GAME_START,
-                RoomPack(
-                    ZonedDateTime
-                        .now(ZoneId.of("Europe/Moscow"))
-                        .plus(roomProperties.endDelay, ChronoUnit.MILLIS)
-                        .toInstant()
-                        .toEpochMilli(),
-                    gameRoomId.toString(),
-                ),
-            ),
-        )
+        // GAME_START раньше нёс время конца раздачи (now + endDelay) под старый
+        // фиксированный лимит жизни комнаты. Лимит убран (комната живёт, пока есть
+        // игроки), время конца стало фиктивным — broadcast снят.
     }
 
     private fun collectUpdate(player: BlackjackPlayer): Message {

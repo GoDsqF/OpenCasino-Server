@@ -257,10 +257,10 @@ open class PokerGameRoom(
             roomProperties.loopRate,
         )
 
-        schedule(
-            { roomService.onGameEnd(this) },
-            roomProperties.endDelay + roomProperties.startDelay,
-        )
+        // Раньше здесь стоял безусловный snос комнаты через endDelay+startDelay
+        // (≈5 мин от создания) — стол закрывался даже при активной игре. Комната
+        // теперь живёт, пока в ней есть сессии: пустую закрывает onGameEnd из
+        // AbstractPokerGameRoom.onDisconnect (sessions.isEmpty()).
 
         log.trace("Room {} has been created", key())
     }
@@ -285,19 +285,9 @@ open class PokerGameRoom(
 
     override fun onGameStarted() {
         log.info("Room {}. Game has been started", key())
-        sendBroadcast(
-            Message(
-                GAME_START,
-                RoomPack(
-                    ZonedDateTime
-                        .now(ZoneId.of("Europe/Moscow"))
-                        .plus(roomProperties.endDelay, ChronoUnit.MILLIS)
-                        .toInstant()
-                        .toEpochMilli(),
-                    gameRoomId.toString(),
-                ),
-            ),
-        )
+        // GAME_START раньше нёс время конца раздачи (now + endDelay) под старый
+        // фиксированный лимит жизни комнаты. Лимит убран (комната живёт, пока есть
+        // игроки), время конца стало фиктивным — broadcast снят.
     }
 
     private fun collectUpdate(player: PokerPlayer): Message {
@@ -894,21 +884,14 @@ open class PokerGameRoom(
     override fun onGraceStart(userSession: PlayerSession) {
         val player = userSession.player as? PokerPlayer ?: return
         player.disconnected = true
-        // Грейс — это окно, в которое клиент может ребаундить (refresh страницы
-        // занимает <1с при disconnectGraceMs ≈ 15с). Раньше мы здесь сразу
-        // фолдили игрока, из-за чего любой refresh = форсированный фолд →
-        // оппонент забирал банк → resetTable стартовал новую раздачу. С точки
-        // зрения юзера «раунд сбросился». Теперь фолдим только если СЕЙЧАС
-        // его ход — иначе остальные за столом висели бы в ожидании action-а.
-        // Если refresh не на его ходу, raund продолжается без участия игрока,
-        // он реконнектится и доигрывает (либо доходит до showdown без него,
-        // потому что мы не аукционируем за него ставки).
-        val isPlayersTurn = gameStarted.get() && !roundEnd.get()
-        val canFold = isPlayersTurn && !player.folded && player.position == currentPosition
-        if (canFold) {
-            player.folded = true
-            nextMove(userSession)
-        }
+        // НЕ фолдим на старте грейса — даже если сейчас ход игрока. Грейс это окно
+        // на ребаунд (refresh страницы ~1с); фолд-на-своём-ходу превращал любой
+        // refresh в форсированный фолд → оппонент забирал банк. Теперь ход просто
+        // ждёт: если игрок вернётся в пределах disconnectGraceMs (onReattach
+        // снимет disconnected) — доигрывает свой ход; если не вернётся —
+        // grace-expiry идёт в onDisconnect, который и сделает auto-fold + nextMove.
+        // Стол при этом висит максимум disconnectGraceMs (60s), а не до
+        // ACTION_TIMEOUT — turn-deadline лишь страхует совсем брошенный ход.
     }
 
     override fun onReattach(
