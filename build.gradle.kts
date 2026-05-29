@@ -14,7 +14,7 @@ plugins {
 }
 
 group = "com.openCasino"
-version = "1.3.0"
+version = "1.3.0-debug"
 
 java {
     toolchain {
