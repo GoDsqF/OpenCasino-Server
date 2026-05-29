@@ -74,8 +74,21 @@ class MainWebSocketHandler(
         val receive =
             guarded
                 .filter { it.type == WebSocketMessage.Type.TEXT }
-                .map(this::toMessage)
-                .doOnNext(sessionHandler::onNext)
+                // Парсинг и onNext изолированы per-frame: исключение на одном
+                // входящем (битый JSON, бросок в onNext) логируется и дропает
+                // только этот фрейм, а не рвёт весь сокет. Иначе единичный кривой
+                // фрейм валил Flux.merge → doOnTerminate(onInactive) → 60s grace
+                // → стол «сам закрывался». TimeoutException сюда не попадает: он
+                // приходит сверху от guarded и ловится внешним onErrorResume ниже.
+                .concatMap { frame ->
+                    Mono
+                        .fromCallable { toMessage(frame) }
+                        .doOnNext(sessionHandler::onNext)
+                        .onErrorResume { e ->
+                            log.warn("dropping inbound frame on session {}", webSocketSession.id, e)
+                            Mono.empty()
+                        }
+                }
                 .onErrorResume(TimeoutException::class.java) {
                     log.debug("pong-timeout on session {}", webSocketSession.id)
                     webSocketSession

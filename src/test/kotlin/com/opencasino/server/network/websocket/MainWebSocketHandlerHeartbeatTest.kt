@@ -91,6 +91,40 @@ class MainWebSocketHandlerHeartbeatTest {
     }
 
     @Test
+    fun `malformed inbound frame is dropped without tearing down the socket`() {
+        val scheduler = VirtualTimeScheduler.create()
+        val sessionService: WebSocketSessionService = mock()
+        whenever(sessionService.onActive(any())).thenReturn(Flux.never())
+
+        val handler = newHandler(sessionService = sessionService, scheduler = scheduler)
+        val inbound = reactor.core.publisher.Sinks.many().unicast().onBackpressureBuffer<WebSocketMessage>()
+        val session = stubSession()
+        whenever(session.receive()).thenReturn(inbound.asFlux())
+
+        handler.handle(session).subscribe()
+
+        val factory = org.springframework.core.io.buffer.DefaultDataBufferFactory()
+        val badFrame =
+            WebSocketMessage(
+                WebSocketMessage.Type.TEXT,
+                factory.wrap("{ this is not valid json".toByteArray()),
+            )
+        inbound.tryEmitNext(badFrame)
+
+        // Кривой фрейм дропнут, сокет жив: до конца liveness-окна close не вызван
+        // и сессия не ушла в inactive.
+        scheduler.advanceTimeBy(Duration.ofSeconds(39))
+        verify(session, org.mockito.kotlin.never()).close(any<CloseStatus>())
+        verify(sessionService, org.mockito.kotlin.never()).onInactive(any())
+
+        // Машинерия heartbeat цела: после паузы без входящих pong-timeout срабатывает.
+        scheduler.advanceTimeBy(Duration.ofSeconds(2))
+        val captor = ArgumentCaptor.forClass(CloseStatus::class.java)
+        verify(session).close(captor.capture())
+        assertEquals("pong-timeout", captor.value.reason)
+    }
+
+    @Test
     fun `handle does not close when heartbeat is disabled`() {
         val scheduler = VirtualTimeScheduler.create()
         val sessionService: WebSocketSessionService = mock()
