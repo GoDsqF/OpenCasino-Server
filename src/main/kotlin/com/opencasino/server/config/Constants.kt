@@ -46,3 +46,9 @@ const val OBSERVER_GRACE_MS = 30_000L
 // высоким, чтобы он бил только по брошенным столам и не менял темп живой игры.
 // Ужесточать — отдельной правкой, когда на FE появится turn-countdown UX.
 const val ACTION_TIMEOUT_MS = 10L * 60 * 1000 // 10 минут
+
+// RNG / provably-fair house edge per game. `e=0.03` → RTP 97% (см. CRASH.md §1.3).
+const val CRASH_HOUSE_EDGE = 0.03
+
+// Капа на crashPoint: обвал гарантирован не позже неё, одинаково для всех игроков.
+const val CRASH_MAX_PAYOUT = 1000.0

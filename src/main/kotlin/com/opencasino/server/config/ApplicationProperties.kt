@@ -1,5 +1,6 @@
 package com.opencasino.server.config
 
+import com.opencasino.server.rng.RngProfile
 import org.springframework.boot.context.properties.ConfigurationProperties
 import java.time.Duration
 
@@ -46,6 +47,10 @@ data class PokerRoomProperties(
     val actionTimeoutMs: Long = ACTION_TIMEOUT_MS,
 )
 
+data class RngProperties(
+    val crash: RngProfile = RngProfile(houseEdge = CRASH_HOUSE_EDGE, maxPayout = CRASH_MAX_PAYOUT),
+)
+
 data class DatabaseProperties(
     var host: String,
     var port: Int,
@@ -60,4 +65,5 @@ data class ApplicationProperties(
     val pokerRoom: PokerRoomProperties = PokerRoomProperties(),
     val game: GameProperties = GameProperties(),
     val heartbeat: HeartbeatProperties = HeartbeatProperties(),
+    val rng: RngProperties = RngProperties(),
 )
