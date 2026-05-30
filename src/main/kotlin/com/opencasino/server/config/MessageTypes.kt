@@ -33,4 +33,7 @@ const val SHOWDOWN_RESULT = 102
 const val PING = 103
 const val PONG = 104
 
+const val CRASH_CASHOUT = 105
+const val CRASH_ROUND_RESULT = 106
+
 const val PLAYER_DECISION = 200

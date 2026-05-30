@@ -52,3 +52,28 @@ const val CRASH_HOUSE_EDGE = 0.03
 
 // Капа на crashPoint: обвал гарантирован не позже неё, одинаково для всех игроков.
 const val CRASH_MAX_PAYOUT = 1000.0
+
+// База экспоненты кривой множителя: m(t) = growthRate^(elapsedMs/1000). 1.07/с даёт
+// ≈×2 за ~10s. Сервер штампует roundStartEpochMs + growthRate, клиент рисует ту же
+// кривую локально (см. CRASH.md §0, §5.1) — число с провода не доверяется.
+const val CRASH_GROWTH_RATE = 1.07
+
+// Окно приёма ставок (фаза BETTING) перед стартом кривой. crashPoint уже
+// зафиксирован (commit), но не раскрыт.
+const val CRASH_BETTING_WINDOW_MS = 5_000L
+
+// Пауза после обвала: история последних crashPoint'ов, затем новый раунд.
+const val CRASH_COOLDOWN_MS = 4_000L
+
+// Кап tick-anchoring honest cash-out (CRASH.md §5.3): компенсируем только сетевую
+// задержку до этого порога. Кадр старше — fallback на m(t_receive).
+const val CRASH_CASHOUT_LAG_COMP_CAP_MS = 400L
+
+// Сколько последних crashPoint'ов держим в истории для рассылки клиентам.
+const val CRASH_HISTORY_SIZE = 20
+
+// Мест за столом в multi-режиме (single всегда 1, см. CRASH.md §2).
+const val MAX_CRASH_PLAYERS = 50
+
+const val CRASH_MIN_BET = 20.00
+const val CRASH_MAX_BET = 10_000.00

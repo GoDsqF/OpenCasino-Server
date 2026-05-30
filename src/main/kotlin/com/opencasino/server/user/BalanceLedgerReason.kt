@@ -5,5 +5,7 @@ enum class BalanceLedgerReason {
     POKER_BUY_IN,
     POKER_ROUND,
     POKER_CASH_OUT,
+    CRASH_BET,
+    CRASH_PAYOUT,
     ADJUSTMENT,
 }
