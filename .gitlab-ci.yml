@@ -34,13 +34,37 @@ stages:
   - sync
   - deploy
 
+# App-affecting paths. A pipeline only starts when at least one of these
+# changed; commits that touch only docs (README.md, LICENSE, CRASH.md, *.md …)
+# skip the pipeline entirely. NOTE: this is an allowlist — `changes` is an OR
+# match, so a commit mixing code AND docs still runs the full pipeline (correct),
+# and a brand-new top-level file that affects the build must be added here or it
+# will be treated as docs-only. Keep in sync with the build inputs.
+.app_changes: &app_changes
+  - "src/**/*"
+  - "gradle/**/*"
+  - "config/**/*"          # ktlint/detekt baselines + detekt.yml drive the lint job
+  - "build.gradle.kts"
+  - "settings.gradle.kts"
+  - "gradle.properties"
+  - "gradlew"
+  - "gradlew.bat"
+  - "Dockerfile"
+  - ".dockerignore"
+  - ".gitlab-ci.yml"
+
 # Run pipelines only for merge requests (from any branch) and for the default
-# branch itself. Plain pushes to feature branches without an open MR are
-# skipped, and so are tag pipelines.
+# branch itself, AND only when app-affecting files changed (see .app_changes).
+# Plain pushes to feature branches without an open MR are skipped, and so are
+# tag pipelines.
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        paths: *app_changes
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+      changes:
+        paths: *app_changes
 
 variables:
   # Gradle: no daemon (one-shot runner), worker count tuned for shared runners.
