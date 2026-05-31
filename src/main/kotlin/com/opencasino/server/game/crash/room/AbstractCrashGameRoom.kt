@@ -72,7 +72,7 @@ abstract class AbstractCrashGameRoom protected constructor(
         private const val HUNDREDTHS = 100.0
     }
 
-    protected abstract val maxPlayers: Int
+    abstract val maxPlayers: Int
     protected abstract val mode: String
 
     private val engine = CrashEngine(roomProperties.growthRate)
@@ -89,6 +89,12 @@ abstract class AbstractCrashGameRoom protected constructor(
     // Round-level state. Доступ — под монитором this (тот же, что update/onBet/onCashout).
     private var roundId: UUID? = null
     private var crashPoint: Double = 1.0
+
+    // Multi выводит crashPoint на закрытии окна BETTING (из ставок), поэтому в начале
+    // RUNNING он может быть ещё не готов. Гейтит обвал/расчёт, пока derive не резолвнётся
+    // (окно — миллисекунды). Single ставит его сразу в commit.
+    @Volatile
+    private var crashPointReady: Boolean = false
     private var serverSeedHash: String = ""
     private var clientSeed: String = ""
     private var roundStartEpochMs: Long = 0
@@ -116,6 +122,14 @@ abstract class AbstractCrashGameRoom protected constructor(
         sendBroadcast(Message(GAME_ROOM_JOIN_SUCCESS, settingsPack()))
         schedulePeriodically(this, roomProperties.initDelay, roomProperties.loopRate)
         log.trace("Crash room {} created", key())
+    }
+
+    // Подсадка игрока в уже живую multi-комнату (тик-луп запущен первым игроком).
+    // Single сюда не ходит — там комната-на-игрока. Следующий UPDATE-тик ресинкает
+    // новичка на текущую фазу/кривую (CRASH.md §7), settings шлём сразу.
+    fun addLatePlayer(userSession: PlayerSession) {
+        synchronized(this) { sessions[userSession.id] = userSession }
+        send(userSession, Message(GAME_ROOM_JOIN_SUCCESS, settingsPack()))
     }
 
     protected fun settingsPack(): CrashSettingsPack =
@@ -201,7 +215,7 @@ abstract class AbstractCrashGameRoom protected constructor(
         event: CrashCashoutEvent,
     ) {
         synchronized(this) {
-            if (phase != CrashPhase.RUNNING) return
+            if (phase != CrashPhase.RUNNING || !crashPointReady) return
             val player = userSession.player as? CrashPlayer ?: return
             if (!player.boughtIn || player.cashedOutAt != null) return
             val now = currentTimeMillis()
@@ -276,6 +290,13 @@ abstract class AbstractCrashGameRoom protected constructor(
 
     private fun runningTick(now: Long) {
         val multiplier = engine.multiplierAt(now - roundStartEpochMs)
+        // Исход ещё выводится (multi: derive после закрытия окна BETTING) — кривая
+        // идёт для resync, но обвал/расчёт недоступны до готового crashPoint. Окно —
+        // миллисекунды (HMAC синхронен, ждём только async-insert аудита).
+        if (!crashPointReady) {
+            broadcastTick(now, multiplier)
+            return
+        }
         // Авто-cash-out: выводим при m(t) >= target, но только если target <= crashPoint
         // (иначе обвал раньше — игрок проигрывает). Расчёт по серверным часам, без
         // сетевой гонки (§5.2). Settle ровно на target, а не на overshoot тика.
@@ -300,21 +321,37 @@ abstract class AbstractCrashGameRoom protected constructor(
         multiplier: Double,
     ): Boolean = player.boughtIn && player.cashedOutAt == null && target <= crashPoint && multiplier >= target
 
-    private fun openBetting(now: Long) {
+    // Открытие окна BETTING. Single (commit-at-open): clientSeed = серверная соль,
+    // crashPoint выводится сразу. Multi (commit-at-run-start, см.
+    // [outcomeDerivedAtRunStart]): только резервируем seed и публикуем хэш — clientSeed
+    // зависит от ставок раунда и считается в [startRunning] (CRASH.md §11).
+    protected fun openBetting(now: Long) {
         resetRound()
         phase = CrashPhase.BETTING
         bettingDeadlineEpochMs = now + roomProperties.bettingWindowMs
-        val seed = nextClientSeed()
-        clientSeed = seed
-        randomnessService
-            .commit(GAME_TYPE, seed, provider)
-            .subscribe { commit ->
-                synchronized(this) {
-                    roundId = commit.roundId
-                    crashPoint = commit.outcome
-                    serverSeedHash = commit.serverSeedHash
+        if (outcomeDerivedAtRunStart()) {
+            randomnessService
+                .reserve()
+                .subscribe { reservation ->
+                    synchronized(this) {
+                        roundId = reservation.roundId
+                        serverSeedHash = reservation.serverSeedHash
+                    }
                 }
-            }
+        } else {
+            val seed = buildClientSeed()
+            clientSeed = seed
+            randomnessService
+                .commit(GAME_TYPE, seed, provider)
+                .subscribe { commit ->
+                    synchronized(this) {
+                        roundId = commit.roundId
+                        crashPoint = commit.outcome
+                        serverSeedHash = commit.serverSeedHash
+                        crashPointReady = true
+                    }
+                }
+        }
     }
 
     private fun startRunning(now: Long) {
@@ -322,6 +359,19 @@ abstract class AbstractCrashGameRoom protected constructor(
         roundStartEpochMs = now
         tickSeq.set(0)
         recentTicks.clear()
+        if (!outcomeDerivedAtRunStart()) return
+        val seed = buildClientSeed()
+        clientSeed = seed
+        val rid = roundId ?: return
+        randomnessService
+            .derive(rid, GAME_TYPE, seed, provider)
+            .subscribe { commit ->
+                synchronized(this) {
+                    crashPoint = commit.outcome
+                    serverSeedHash = commit.serverSeedHash
+                    crashPointReady = true
+                }
+            }
     }
 
     private fun crash(now: Long) {
@@ -375,6 +425,7 @@ abstract class AbstractCrashGameRoom protected constructor(
     private fun resetRound() {
         roundId = null
         crashPoint = 1.0
+        crashPointReady = false
         serverSeedHash = ""
         clientSeed = ""
         roundStartEpochMs = 0
@@ -401,10 +452,16 @@ abstract class AbstractCrashGameRoom protected constructor(
     // multi переопределяет, чтобы сразу открыть новое окно BETTING.
     protected open fun onCooldownComplete(now: Long) {}
 
-    // multi (R4) переопределит сорсинг clientSeed (хэш id первых ставок и т.п.,
-    // CRASH.md §11). Сейчас серверная соль: исход всё равно фиксирован позицией
-    // в хэш-цепочке, clientSeed коммитится в provably_fair_round.
-    protected open fun nextClientSeed(): String = UUID.randomUUID().toString()
+    // Когда выводится исход раунда. false (single) — в commit на открытии окна BETTING,
+    // clientSeed = серверная соль. true (multi) — в derive на закрытии окна, clientSeed
+    // зависит от ставок (CRASH.md §11): сервер уже опубликовал serverSeedHash и не может
+    // подобрать seed под известные ставки.
+    protected open fun outcomeDerivedAtRunStart(): Boolean = false
+
+    // clientSeed раунда. Single — серверная соль (UUID): исход всё равно фиксирован
+    // позицией в хэш-цепочке. Multi переопределяет хэшем ставок раунда; вызывается
+    // на закрытии окна BETTING, когда ставки собраны.
+    protected open fun buildClientSeed(): String = UUID.randomUUID().toString()
 
     // Обёртка для тестов: VirtualTimeScheduler не двигает System-часы (см. poker
     // PokerHUDoubleAllInTest). Тесты переопределяют, чтобы детерминированно
@@ -489,7 +546,7 @@ abstract class AbstractCrashGameRoom protected constructor(
 
     private fun round2(value: Double): Double = Math.round(value * HUNDREDTHS) / HUNDREDTHS
 
-    private fun players(): List<CrashPlayer> = sessions.values.mapNotNull { it.player as? CrashPlayer }
+    protected fun players(): List<CrashPlayer> = sessions.values.mapNotNull { it.player as? CrashPlayer }
 
     // --- GameRoom boilerplate ----------------------------------------------
 

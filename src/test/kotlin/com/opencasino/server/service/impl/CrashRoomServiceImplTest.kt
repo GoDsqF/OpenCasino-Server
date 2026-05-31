@@ -22,7 +22,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import org.springframework.test.util.ReflectionTestUtils
 import org.springframework.web.reactive.socket.HandshakeInfo
 import reactor.core.publisher.Mono
 import reactor.test.scheduler.VirtualTimeScheduler
@@ -56,8 +55,8 @@ class CrashRoomServiceImplTest {
                 VirtualTimeScheduler.create(),
                 randomnessService,
                 ledgerService,
+                userRepository,
             )
-        ReflectionTestUtils.setField(service, "userRepository", userRepository)
         service.setGameManager(ws)
     }
 
@@ -130,6 +129,23 @@ class CrashRoomServiceImplTest {
 
         assertEquals(2, service.getRooms().size)
         assertTrue(a.roomKey != b.roomKey)
+    }
+
+    @Test
+    fun `multi joins share one room up to capacity`() {
+        whenever(userRepository.findById(any())).thenAnswer { inv ->
+            val id = inv.getArgument<UUID>(0)
+            Mono.just(User(id = id, email = "p@x.io", balance = 10.0, displayName = "p"))
+        }
+        val a = session()
+        val b = session()
+
+        service.addPlayerToWait(a, GameRoomJoinEvent(reconnectKey = null, playerUUID = "a", mode = "MULTI"))
+        service.addPlayerToWait(b, GameRoomJoinEvent(reconnectKey = null, playerUUID = "b", mode = "MULTI"))
+
+        assertEquals(1, service.getRooms().size)
+        assertEquals(a.roomKey, b.roomKey)
+        assertEquals(2, service.getRooms().first().currentPlayersCount())
     }
 
     @Test

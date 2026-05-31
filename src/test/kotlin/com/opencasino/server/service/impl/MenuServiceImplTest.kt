@@ -113,12 +113,12 @@ class MenuServiceImplTest {
         assertEquals(1, bj.maxPlayers)
         assertEquals(1, bj.minPlayers)
 
-        // Crash R3: single-режим, одно место, без buyIn.
+        // Crash R4: single+multi сосуществуют, maxPlayers рекламируем по multi-вместимости.
         val crash = byName["Crash"]!!
         assertEquals(applicationProperties.crashRoom.minBet, crash.minBet)
         assertEquals(applicationProperties.crashRoom.maxBet, crash.maxBet)
         assertNull(crash.buyIn)
-        assertEquals(1, crash.maxPlayers)
+        assertEquals(applicationProperties.crashRoom.maxPlayers, crash.maxPlayers)
         assertEquals(1, crash.minPlayers)
     }
 }

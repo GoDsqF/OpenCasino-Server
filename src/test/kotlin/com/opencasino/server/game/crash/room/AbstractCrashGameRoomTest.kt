@@ -77,7 +77,7 @@ class AbstractCrashGameRoomTest {
 
         override fun currentTimeMillis(): Long = clock
 
-        override fun nextClientSeed(): String = "test-client-seed"
+        override fun buildClientSeed(): String = "test-client-seed"
 
         fun exposedPhase(): CrashPhase = phase
     }

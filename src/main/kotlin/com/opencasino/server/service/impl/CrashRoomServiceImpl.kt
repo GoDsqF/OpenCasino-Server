@@ -7,6 +7,7 @@ import com.opencasino.server.event.GameRoomJoinEvent
 import com.opencasino.server.game.crash.factory.CrashPlayerFactory
 import com.opencasino.server.game.crash.model.CrashPlayer
 import com.opencasino.server.game.crash.room.AbstractCrashGameRoom
+import com.opencasino.server.game.crash.room.MultiCrashGameRoom
 import com.opencasino.server.game.crash.room.SingleCrashGameRoom
 import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.shared.Message
@@ -28,10 +29,10 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Подбор/создание Crash-комнат. R3 — только single-режим: комната-на-игрока (CRASH.md
- * §2, §10), зеркало [BlackjackRoomServiceImpl] c `MAX=1`. Очереди нет — каждый join
- * сразу создаёт [SingleCrashGameRoom]. Multi-режим (общая комната на N игроков) —
- * отдельный сервис/ветка в R4.
+ * Подбор/создание Crash-комнат (CRASH.md §2, §10). Режим выбирается полем
+ * `GameRoomJoinEvent.mode`: SINGLE — комната-на-игрока (зеркало [BlackjackRoomServiceImpl]
+ * c `MAX=1`), создаётся синхронно на каждый join; MULTI — общий стол на N игроков,
+ * join подсаживает в первый незаполненный [MultiCrashGameRoom] или создаёт новый.
  */
 @Service
 class CrashRoomServiceImpl(
@@ -40,14 +41,14 @@ class CrashRoomServiceImpl(
     private val schedulerService: Scheduler,
     private val randomnessService: RandomnessService,
     private val ledgerService: BalanceLedgerService,
+    private val userRepository: UserRepository,
 ) : RoomService {
-    @Autowired
-    private lateinit var userRepository: UserRepository
     private lateinit var webSocketSessionService: WebSocketSessionService
 
     companion object {
         val log: Logger = LogManager.getLogger(this::class.java)
         private const val GUEST_NAME = "guest"
+        private const val MODE_MULTI = "MULTI"
     }
 
     private val gameRoomMap: MutableMap<UUID, AbstractCrashGameRoom> = mutableMapOf()
@@ -74,15 +75,63 @@ class CrashRoomServiceImpl(
         initialData: AbstractEvent,
     ) {
         webSocketSessionService.send(userSession, Message(GAME_ROOM_JOIN_WAIT))
-
-        val room = createRoom()
         val joinEvent = initialData as GameRoomJoinEvent
+        if (joinEvent.mode.equals(MODE_MULTI, ignoreCase = true)) {
+            joinMultiRoom(userSession, joinEvent)
+        } else {
+            joinSingleRoom(userSession, joinEvent)
+        }
+    }
+
+    // Single (R3): комната-на-игрока, создаётся синхронно на join.
+    private fun joinSingleRoom(
+        userSession: PlayerSession,
+        joinEvent: GameRoomJoinEvent,
+    ) {
+        val room = createSingleRoom()
+        val player = seatPlayer(userSession, joinEvent, room)
+        loadProfile(player) { launchRoom(room, listOf(userSession)) }
+    }
+
+    // Multi (R4): общий стол. Подсаживаемся в первый незаполненный MultiCrashGameRoom,
+    // иначе создаём новый. Первый игрок запускает тик-луп (launchRoom), последующие —
+    // addLatePlayer в уже живую комнату.
+    private fun joinMultiRoom(
+        userSession: PlayerSession,
+        joinEvent: GameRoomJoinEvent,
+    ) {
+        val existing =
+            gameRoomMap.values.firstOrNull { room ->
+                room is MultiCrashGameRoom && room.currentPlayersCount() < room.maxPlayers
+            }
+        val room = existing ?: createMultiRoom()
+        val player = seatPlayer(userSession, joinEvent, room)
+        loadProfile(player) {
+            if (existing == null) {
+                launchRoom(room, listOf(userSession))
+            } else {
+                room.addLatePlayer(userSession)
+            }
+        }
+    }
+
+    private fun seatPlayer(
+        userSession: PlayerSession,
+        joinEvent: GameRoomJoinEvent,
+        room: AbstractCrashGameRoom,
+    ): CrashPlayer {
         val player = playerFactory.create(playerIdSource.incrementAndGet(), joinEvent, room, userSession) as CrashPlayer
         userSession.roomKey = room.key()
         userSession.player = player
         userSession.serviceId = "Crash"
+        return player
+    }
 
-        val userId = userSession.userId
+    private fun loadProfile(
+        player: CrashPlayer,
+        onReady: () -> Unit,
+    ) {
+        val userId = player.userSession.userId
         val profile =
             if (userId == null) {
                 Mono.just(0.00 to GUEST_NAME)
@@ -96,7 +145,7 @@ class CrashRoomServiceImpl(
             .doOnNext { (balance, name) ->
                 player.balance = balance
                 player.displayName = name
-            }.doOnSuccess { launchRoom(room, listOf(userSession)) }
+            }.doOnSuccess { onReady() }
             .subscribe()
     }
 
@@ -104,9 +153,25 @@ class CrashRoomServiceImpl(
     // (WebSocketSessionService дёргает его на disconnect/leave) — для Crash это no-op.
     override fun removePlayerFromWaitQueue(session: PlayerSession) = Unit
 
-    private fun createRoom(): SingleCrashGameRoom {
+    private fun createSingleRoom(): SingleCrashGameRoom {
         val room =
             SingleCrashGameRoom(
+                UUID.randomUUID(),
+                schedulerService,
+                this,
+                webSocketSessionService,
+                randomnessService,
+                applicationProperties.crashRoom,
+                applicationProperties.rng.crash,
+                ledgerService,
+            )
+        gameRoomMap[room.key()] = room
+        return room
+    }
+
+    private fun createMultiRoom(): MultiCrashGameRoom {
+        val room =
+            MultiCrashGameRoom(
                 UUID.randomUUID(),
                 schedulerService,
                 this,

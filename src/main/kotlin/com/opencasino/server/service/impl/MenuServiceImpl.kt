@@ -91,8 +91,9 @@ class MenuServiceImpl(
                         minPlayers = poker.minPlayers,
                     )
                 }
-            // R3 — single-режим: одна комната на игрока. maxPlayers фиксирован 1
-            // (crashRoom.maxPlayers=50 относится к multi/R4, не к single-лимиту).
+            // Crash: single (комната-на-игрока) и multi (общий стол на N) сосуществуют.
+            // maxPlayers рекламируем по multi-вместимости (single-лимит = 1 — частный
+            // случай); FE выбирает режим полем GameRoomJoinEvent.mode.
             AvailableGames.Crash ->
                 applicationProperties.crashRoom.let { crash ->
                     GameMetadata(
@@ -102,7 +103,7 @@ class MenuServiceImpl(
                         minBet = crash.minBet,
                         maxBet = crash.maxBet,
                         buyIn = null,
-                        maxPlayers = 1,
+                        maxPlayers = crash.maxPlayers,
                         minPlayers = 1,
                     )
                 }

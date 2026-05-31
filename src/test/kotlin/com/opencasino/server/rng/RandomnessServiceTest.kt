@@ -57,4 +57,37 @@ class RandomnessServiceTest {
     fun `reveal of unknown round returns empty`() {
         assertNull(service.reveal(UUID.randomUUID()).block())
     }
+
+    @Test
+    fun `reserve publishes hash without persisting and derive completes the round`() {
+        whenever(repository.insert(any())).thenAnswer { Mono.just(it.arguments[0] as ProvablyFairRound) }
+
+        val reservation = service.reserve().block()!!
+        // reserve не пишет аудит — clientSeed/outcome ещё не известны.
+        verify(repository, org.mockito.kotlin.never()).insert(any())
+
+        val commit = service.derive(reservation.roundId, "CRASH", "bets-hash", provider).block()!!
+
+        assertEquals(reservation.roundId, commit.roundId)
+        assertEquals(reservation.serverSeedHash, commit.serverSeedHash)
+        val captor = argumentCaptor<ProvablyFairRound>()
+        verify(repository).insert(captor.capture())
+        assertEquals("bets-hash", captor.firstValue.clientSeed)
+        assertEquals(commit.outcome.toString(), captor.firstValue.outcome)
+        assertTrue(commit.outcome >= 1.0)
+    }
+
+    @Test
+    fun `reserve then derive produces a verifiable bet-derived outcome`() {
+        whenever(repository.insert(any())).thenAnswer { Mono.just(it.arguments[0] as ProvablyFairRound) }
+        whenever(repository.markRevealed(any(), any())).thenReturn(Mono.just(1L))
+
+        val reservation = service.reserve().block()!!
+        val commit = service.derive(reservation.roundId, "CRASH", "bets-hash", provider).block()!!
+        val serverSeedHex = service.reveal(commit.roundId).block()!!
+
+        assertTrue(
+            service.verify(serverSeedHex, commit.serverSeedHash, "bets-hash", commit.roundId, commit.outcome, provider),
+        )
+    }
 }
