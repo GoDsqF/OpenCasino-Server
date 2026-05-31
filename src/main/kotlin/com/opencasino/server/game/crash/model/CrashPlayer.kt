@@ -1,6 +1,7 @@
 package com.opencasino.server.game.crash.model
 
 import com.opencasino.server.game.model.AbstractEntity
+import com.opencasino.server.game.model.Player
 import com.opencasino.server.network.shared.PlayerSession
 
 /**
@@ -13,7 +14,8 @@ import com.opencasino.server.network.shared.PlayerSession
 class CrashPlayer(
     id: Long,
     var userSession: PlayerSession,
-) : AbstractEntity<Long>(id) {
+) : AbstractEntity<Long>(id),
+    Player<Long> {
     var balance: Double = 0.0
     var displayName: String = ""
 

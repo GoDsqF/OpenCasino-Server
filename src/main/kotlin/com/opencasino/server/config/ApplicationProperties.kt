@@ -17,8 +17,7 @@ data class HeartbeatProperties(
 enum class AvailableGames {
     Blackjack,
     Poker,
-    // Crash добавляется в R3 (вместе с CrashRoomServiceImpl, dispatch-веткой и
-    // menu-метаданными) — пустой enum-кейс без RoomService ломает MenuServiceImpl.
+    Crash,
 }
 
 data class BlackjackRoomProperties(

@@ -38,6 +38,7 @@ class MainWebSocketHandler(
     private val objectMapper = GsonBuilder().serializeNulls().create()
     private lateinit var blackjackRoomService: RoomService
     private lateinit var pokerRoomService: RoomService
+    private lateinit var crashRoomService: RoomService
     private lateinit var heartbeatScheduler: Scheduler
 
     companion object {
@@ -60,6 +61,7 @@ class MainWebSocketHandler(
                 webSocketSessionService,
                 blackjackRoomService,
                 pokerRoomService,
+                crashRoomService,
             )
 
         val heartbeat = applicationProperties.heartbeat
@@ -156,6 +158,14 @@ class MainWebSocketHandler(
         @Lazy roomService: RoomService,
     ) {
         this.pokerRoomService = roomService
+    }
+
+    @Autowired
+    @Qualifier("crashRoomServiceImpl")
+    fun setCrashRoomManagementService(
+        @Lazy roomService: RoomService,
+    ) {
+        this.crashRoomService = roomService
     }
 
     @Autowired

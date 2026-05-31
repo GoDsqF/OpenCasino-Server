@@ -5,9 +5,11 @@ import com.opencasino.server.config.*
 import com.opencasino.server.event.BetEvent
 import com.opencasino.server.event.BlackjackPlayerDecisionEvent
 import com.opencasino.server.event.GameRoomJoinEvent
+import com.opencasino.server.event.crash.CrashCashoutEvent
 import com.opencasino.server.event.poker.GameRoomCreateEvent
 import com.opencasino.server.event.poker.PokerPlayerDecisionEvent
 import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
+import com.opencasino.server.game.crash.room.AbstractCrashGameRoom
 import com.opencasino.server.game.poker.holdem.room.PokerGameRoom
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
@@ -21,6 +23,7 @@ class UserSessionWebSocketHandler(
     private val webSocketSessionService: WebSocketSessionService,
     private val blackjackRoomService: RoomService,
     private val pokerRoomService: RoomService,
+    private val crashRoomService: RoomService,
 ) {
     private val objectMapper = Gson()
 
@@ -124,6 +127,42 @@ class UserSessionWebSocketHandler(
                             (room as PokerGameRoom).onBuyIn(
                                 userSession,
                                 objectMapper.fromJson(messageData.toString(), BetEvent::class.java),
+                            )
+                        }
+                    }
+                }
+            }
+
+            AvailableGames.Crash.name -> {
+                when (message.type) {
+                    GAME_ROOM_JOIN -> {
+                        log.debug("Join attempt from {} to Crash", userSession.handshakeInfo.remoteAddress)
+                        crashRoomService.addPlayerToWait(
+                            userSession,
+                            objectMapper.fromJson(messageData.toString(), GameRoomJoinEvent::class.java),
+                        )
+                    }
+
+                    INFO -> {
+                        crashRoomService.getRoomByKey(userSession.roomKey).ifPresent { room ->
+                            (room as AbstractCrashGameRoom).onPlayerInfoRequest(userSession)
+                        }
+                    }
+
+                    BET -> {
+                        crashRoomService.getRoomByKey(userSession.roomKey).ifPresent { room ->
+                            (room as AbstractCrashGameRoom).onBet(
+                                userSession,
+                                objectMapper.fromJson(messageData.toString(), BetEvent::class.java),
+                            )
+                        }
+                    }
+
+                    CRASH_CASHOUT -> {
+                        crashRoomService.getRoomByKey(userSession.roomKey).ifPresent { room ->
+                            (room as AbstractCrashGameRoom).onCashout(
+                                userSession,
+                                objectMapper.fromJson(messageData.toString(), CrashCashoutEvent::class.java),
                             )
                         }
                     }
