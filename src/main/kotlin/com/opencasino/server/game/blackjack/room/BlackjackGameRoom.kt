@@ -14,8 +14,11 @@ import com.opencasino.server.network.pack.blackjack.shared.GameSettingsPack
 import com.opencasino.server.network.pack.blackjack.shared.RoomPack
 import com.opencasino.server.network.pack.blackjack.update.GameUpdatePack
 import com.opencasino.server.network.pack.shared.DealerUpdatePack
+import com.opencasino.server.network.pack.shared.ShuffleRevealPack
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
+import com.opencasino.server.rng.RandomnessService
+import com.opencasino.server.rng.ShuffleOutcomeProvider
 import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.impl.BlackjackRoomServiceImpl
 import com.opencasino.server.service.shared.BlackjackDecision
@@ -39,6 +42,7 @@ open class BlackjackGameRoom(
     val gameProperties: GameProperties,
     val roomProperties: BlackjackRoomProperties,
     private val ledgerService: BalanceLedgerService,
+    private val randomnessService: RandomnessService,
 ) : AbstractBlackjackGameRoom(gameRoomId, schedulerService, roomService, webSocketSessionService) {
     private val testing = AtomicBoolean(false)
 
@@ -77,13 +81,86 @@ open class BlackjackGameRoom(
             Rank.CA to 11,
         )
 
-    var deck = CardDeck(roomProperties.deckStacks)
+    // Шуз строится неперетасованным; provably-fair перестановку накладывает
+    // reshuffleShoe() из committed seed (R5). В отличие от Poker, шуз тасуется не
+    // каждую раздачу, а только при выходе из игры (< reshuffleThreshold), поэтому
+    // commit — на шуз, reveal — при его retirement в reset() (раскрывать в середине
+    // шуза нельзя: игрок вычислит будущие карты).
+    var deck = CardDeck(roomProperties.deckStacks, shuffle = false)
 
     var dealerHand = CardDeck()
 
+    @Volatile private var shoeReady = false
+
+    // Раздача отложена до готовности шуза (initialDeal выставляет флаг при
+    // !shoeReady; reshuffleShoe callback дораздаёт при готовности).
+    @Volatile private var pendingStart = false
+
+    private var shoeRoundId: UUID = UUID.randomUUID()
+    private var shoeServerSeedHash: String = ""
+    private var shoeClientSeed: String = ""
+
     private var currentRoundId: UUID = UUID.randomUUID()
 
+    init {
+        reshuffleShoe()
+    }
+
+    // Строит свежий неперетасованный шуз и накладывает provably-fair перестановку
+    // из committed seed. clientSeed — серверная соль (shuffle честен по построению,
+    // ShuffleOutcomeProvider.houseEdge=null). shoeReady взводится в callback'е;
+    // если раздача уже ждёт (pendingStart) — дораздаём.
+    private fun reshuffleShoe() {
+        deck = CardDeck(roomProperties.deckStacks, shuffle = false)
+        shoeReady = false
+        val clientSeed = UUID.randomUUID().toString()
+        randomnessService
+            .commit(BLACKJACK_SHUFFLE_GAME_TYPE, clientSeed, ShuffleOutcomeProvider(deck.size()))
+            .subscribe { commit ->
+                synchronized(this) {
+                    deck.applyShuffle(commit.outcome)
+                    shoeRoundId = commit.roundId
+                    shoeServerSeedHash = commit.serverSeedHash
+                    shoeClientSeed = commit.clientSeed
+                    shoeReady = true
+                    if (pendingStart) {
+                        pendingStart = false
+                        initialDeal()
+                    }
+                }
+            }
+    }
+
+    // Раскрывает serverSeed выходящего из игры шуза: клиент проверяет, что весь
+    // порядок карт выводится из committed seed (provably-fair, R5). Снимок
+    // id/hash/clientSeed по значению — поля перезапишет reshuffleShoe.
+    private fun revealShoe() {
+        val roundId = shoeRoundId
+        val hash = shoeServerSeedHash
+        val clientSeed = shoeClientSeed
+        randomnessService
+            .reveal(roundId)
+            .subscribe { revealed ->
+                sendBroadcast(
+                    Message(
+                        PROVABLY_FAIR_REVEAL,
+                        ShuffleRevealPack(
+                            roundId = roundId.toString(),
+                            gameType = BLACKJACK_SHUFFLE_GAME_TYPE,
+                            serverSeedHash = hash,
+                            revealedServerSeed = revealed,
+                            clientSeed = clientSeed,
+                        ),
+                    ),
+                )
+            }
+    }
+
     private fun initialDeal() {
+        if (!shoeReady) {
+            pendingStart = true
+            return
+        }
         currentRoundId = UUID.randomUUID()
         val players = map.getPlayers()
         for (player in players) {
@@ -418,7 +495,9 @@ open class BlackjackGameRoom(
         userSession: PlayerSession,
         event: BetEvent,
     ) {
-        if (gameStarted.get()) return
+        // pendingStart: ставка принята, но раздача ждёт перетасовки шуза — второй
+        // BET в этом окне не должен повторно списать баланс.
+        if (gameStarted.get() || pendingStart) return
         val player = userSession.player as BlackjackPlayer
         val bet = event.bet
         if (bet <= 0.0) {
@@ -446,7 +525,8 @@ open class BlackjackGameRoom(
         map.getPlayers().forEach { it.resetForNewRound() }
         dealerHand = CardDeck()
         if (deck.getCards().size < roomProperties.reshuffleThreshold) {
-            deck = CardDeck(roomProperties.deckStacks)
+            revealShoe()
+            reshuffleShoe()
         }
         onGameStarted()
     }

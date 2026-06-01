@@ -17,12 +17,14 @@ import org.mockito.kotlin.whenever
 class MenuServiceImplTest {
     private val blackjackRoomService: RoomService = mock()
     private val pokerRoomService: RoomService = mock()
+    private val crashRoomService: RoomService = mock()
     private val pokerLobbyService: PokerLobbyService = mock()
     private val applicationProperties = ApplicationProperties()
     private val service =
         MenuServiceImpl(
             blackjackRoomService,
             pokerRoomService,
+            crashRoomService,
             pokerLobbyService,
             applicationProperties,
         )
@@ -33,7 +35,7 @@ class MenuServiceImplTest {
         whenever(pokerRoomService.getRooms()).thenReturn(emptyList())
 
         val snap = service.getMenuSnapshot()
-        assertEquals(setOf("Blackjack", "Poker"), snap.games.map { it.name }.toSet())
+        assertEquals(setOf("Blackjack", "Poker", "Crash"), snap.games.map { it.name }.toSet())
     }
 
     @Test
@@ -110,5 +112,13 @@ class MenuServiceImplTest {
         assertNull(bj.buyIn)
         assertEquals(1, bj.maxPlayers)
         assertEquals(1, bj.minPlayers)
+
+        // Crash R4: single+multi сосуществуют, maxPlayers рекламируем по multi-вместимости.
+        val crash = byName["Crash"]!!
+        assertEquals(applicationProperties.crashRoom.minBet, crash.minBet)
+        assertEquals(applicationProperties.crashRoom.maxBet, crash.maxBet)
+        assertNull(crash.buyIn)
+        assertEquals(applicationProperties.crashRoom.maxPlayers, crash.maxPlayers)
+        assertEquals(1, crash.minPlayers)
     }
 }

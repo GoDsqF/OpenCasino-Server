@@ -41,6 +41,7 @@ class MainWebSocketHandlerHeartbeatTest {
         return MainWebSocketHandler(sessionService, props).also {
             it.setGameRoomManagementServices(mock<RoomService>())
             it.setPokerRoomManagementService(mock<RoomService>())
+            it.setCrashRoomManagementService(mock<RoomService>())
             it.overrideHeartbeatSchedulerForTests(scheduler)
         }
     }

@@ -46,6 +46,7 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
     private val pendingDisconnects: MutableMap<UUID, PendingDisconnect> = ConcurrentHashMap()
     private lateinit var blackjackRoomService: RoomService
     private lateinit var pokerRoomService: RoomService
+    private lateinit var crashRoomService: RoomService
     private lateinit var schedulerService: Scheduler
 
     var disconnectGraceMs: Long = DISCONNECT_GRACE_MS
@@ -311,6 +312,7 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
         when (service) {
             "Blackjack" -> blackjackRoomService.getRoomByKey(roomKey).orElse(null)
             "Poker" -> pokerRoomService.getRoomByKey(roomKey).orElse(null)
+            "Crash" -> crashRoomService.getRoomByKey(roomKey).orElse(null)
             else -> null
         }
 
@@ -318,6 +320,7 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
         when (service) {
             "Blackjack" -> blackjackRoomService
             "Poker" -> pokerRoomService
+            "Crash" -> crashRoomService
             else -> null
         }
 
@@ -335,6 +338,14 @@ class WebSocketSessionServiceImpl : WebSocketSessionService {
         @Lazy roomService: RoomService,
     ) {
         this.pokerRoomService = roomService
+    }
+
+    @Autowired
+    @Qualifier("crashRoomServiceImpl")
+    fun setCrashGameRoomManagementService(
+        @Lazy roomService: RoomService,
+    ) {
+        this.crashRoomService = roomService
     }
 
     @Autowired

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service
 class MenuServiceImpl(
     @Qualifier("blackjackRoomServiceImpl") @Lazy private val blackjackRoomService: RoomService,
     @Qualifier("pokerRoomServiceImpl") @Lazy private val pokerRoomService: RoomService,
+    @Qualifier("crashRoomServiceImpl") @Lazy private val crashRoomService: RoomService,
     @Lazy private val pokerLobbyService: PokerLobbyService,
     private val applicationProperties: ApplicationProperties,
 ) : MenuService {
@@ -53,6 +54,7 @@ class MenuServiceImpl(
         when (game) {
             AvailableGames.Blackjack -> blackjackRoomService
             AvailableGames.Poker -> pokerRoomService
+            AvailableGames.Crash -> crashRoomService
         }
 
     // Дефолтные лимиты игры — единственный источник для клиентских Defaults.
@@ -87,6 +89,22 @@ class MenuServiceImpl(
                         buyIn = poker.buyIn.toDouble(),
                         maxPlayers = poker.maxPlayers,
                         minPlayers = poker.minPlayers,
+                    )
+                }
+            // Crash: single (комната-на-игрока) и multi (общий стол на N) сосуществуют.
+            // maxPlayers рекламируем по multi-вместимости (single-лимит = 1 — частный
+            // случай); FE выбирает режим полем GameRoomJoinEvent.mode.
+            AvailableGames.Crash ->
+                applicationProperties.crashRoom.let { crash ->
+                    GameMetadata(
+                        name = game.name,
+                        activeRooms = activeRooms,
+                        activePlayers = activePlayers,
+                        minBet = crash.minBet,
+                        maxBet = crash.maxBet,
+                        buyIn = null,
+                        maxPlayers = crash.maxPlayers,
+                        minPlayers = 1,
                     )
                 }
         }

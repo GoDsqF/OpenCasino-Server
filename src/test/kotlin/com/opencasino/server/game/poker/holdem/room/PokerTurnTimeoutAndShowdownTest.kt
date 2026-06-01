@@ -11,6 +11,8 @@ import com.opencasino.server.network.pack.poker.showdown.PokerShowdownPack
 import com.opencasino.server.network.pack.poker.update.GameUpdatePack
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
+import com.opencasino.server.rng.RandomnessService
+import com.opencasino.server.rng.ShuffleOutcomeProvider
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.ClientState
@@ -24,9 +26,12 @@ import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.atLeastOnce
+import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.springframework.web.reactive.socket.HandshakeInfo
+import reactor.core.publisher.Mono
 import reactor.test.scheduler.VirtualTimeScheduler
 import java.security.Principal
 import java.util.UUID
@@ -35,6 +40,16 @@ class PokerTurnTimeoutAndShowdownTest {
     private val handshake: HandshakeInfo = mock()
     private val webSocketSessionService: WebSocketSessionService = mock()
     private val ledgerService: BalanceLedgerService = mock()
+    private val randomnessService: RandomnessService =
+        mock {
+            on { commit(any(), any(), any<ShuffleOutcomeProvider>()) } doAnswer { inv ->
+                val provider = inv.getArgument<ShuffleOutcomeProvider>(2)
+                Mono.just(
+                    RandomnessService.RoundCommit(UUID.randomUUID(), "hash", "salt", provider.fromHmac(ByteArray(32))),
+                )
+            }
+            on { reveal(any()) } doReturn Mono.just("revealedseedhex")
+        }
     private val roomService: RoomService = mock()
     private val appProps = ApplicationProperties()
     private val pokerProps = appProps.pokerRoom
@@ -51,6 +66,7 @@ class PokerTurnTimeoutAndShowdownTest {
             appProps.game,
             pokerProps,
             ledgerService,
+            randomnessService,
         ) {
             override fun currentTimeMillis(): Long = fakeNow
         }

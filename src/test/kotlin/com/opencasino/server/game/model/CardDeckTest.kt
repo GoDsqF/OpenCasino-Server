@@ -190,4 +190,59 @@ class CardDeckTest {
         assertEquals(3, view.size)
         assertTrue(view.all { it != null })
     }
+
+    @Test
+    fun `shuffle=false keeps construction order across rebuilds`() {
+        val a = CardDeck(1, shuffle = false).getCards()
+        val b = CardDeck(1, shuffle = false).getCards()
+        assertEquals(a, b, "unshuffled decks must be identical (deterministic build order)")
+    }
+
+    @Test
+    fun `size reflects card count`() {
+        assertEquals(0, CardDeck().size())
+        assertEquals(52, CardDeck(1, shuffle = false).size())
+        assertEquals(52 * 8, CardDeck(8, shuffle = false).size())
+    }
+
+    @Test
+    fun `applyShuffle reorders cards by permutation`() {
+        val deck = CardDeck(1, shuffle = false)
+        val original = deck.getCards().toList()
+        val reversed = (deck.size() - 1 downTo 0).toList()
+
+        deck.applyShuffle(reversed)
+
+        assertEquals(original.reversed(), deck.getCards())
+    }
+
+    @Test
+    fun `applyShuffle is deterministic for a fixed permutation`() {
+        val permutation = (0 until 52).shuffled(java.util.Random(42))
+        val a = CardDeck(1, shuffle = false).apply { applyShuffle(permutation) }
+        val b = CardDeck(1, shuffle = false).apply { applyShuffle(permutation) }
+        assertEquals(a.getCards(), b.getCards())
+    }
+
+    @Test
+    fun `applyShuffle carries visibilities with their cards`() {
+        val deck = CardDeck()
+        deck.addCard(Card(Rank.CA, Suit.SPADES), visibility = true)
+        deck.addCard(Card(Rank.CK, Suit.HEARTS), visibility = false)
+
+        deck.applyShuffle(listOf(1, 0))
+
+        assertEquals(Rank.CK, deck.getCards()[0].rank)
+        assertFalse(deck.isVisible(0))
+        assertEquals(Rank.CA, deck.getCards()[1].rank)
+        assertTrue(deck.isVisible(1))
+    }
+
+    @Test
+    fun `applyShuffle rejects a permutation of the wrong size`() {
+        val deck = CardDeck(1, shuffle = false)
+        assertThrows(IllegalArgumentException::class.java) {
+            deck.applyShuffle(listOf(0, 1, 2))
+        }
+    }
 }
