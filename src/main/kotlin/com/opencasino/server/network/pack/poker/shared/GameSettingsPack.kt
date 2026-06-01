@@ -5,6 +5,7 @@ import com.opencasino.server.network.pack.InitPack
 data class GameSettingsPack(
     val roomId: String,
     val loopRate: Long,
+    /** Имя enum-а `PokerBetType` — `"FixedLimit" | "PotLimit" | "NoLimit"`. */
     val betType: String,
     val smallBlind: Double,
     val bigBlind: Double,

@@ -176,3 +176,261 @@ tasks.register("generateMessageTypesTs") {
         logger.lifecycle("Wrote ${sorted.size} message codes to ${outputFile.relativeTo(projectRoot)}")
     }
 }
+
+// §2.3: payload data-class codegen.
+//
+// Sibling to generateMessageTypesTs above, but for the `*Pack` / `*Event` payload
+// data classes (network/pack/**, event/**). These used to be hand-synced with
+// opencasino-docs/api/types.ts and drifted (e.g. MenuUpdatePack.games/pokerRooms
+// added on the server but missing in types.ts for a long time).
+//
+// Which classes are wire-relevant — and what their TS interface is named — is an
+// explicit allow-list in config/codegen/ts-export-manifest.txt, NOT a directory
+// scan: network/pack/** has duplicate simple names across packages and dead
+// legacy classes, and types.ts renames the wire types (Blackjack*/Poker*).
+//
+// The generator is intentionally a header parser (regex over the primary ctor),
+// not a full Kotlin frontend: the payload classes are flat (only List/Collection/
+// Set, nullable, and references to other types/enums). Per-field narrowing that
+// TS wants but Kotlin widens (String -> union) is carried by a trailing
+// `// ts: <TsType>` hint on the property; field/class KDoc and `@Deprecated` are
+// carried through too, so Kotlin is the single source of truth.
+tasks.register("generatePackInterfacesTs") {
+    group = "codegen"
+    description = "Regenerate the payload-interface TS block from the *Pack/*Event data classes."
+    val manifestFile =
+        layout.projectDirectory
+            .file("config/codegen/ts-export-manifest.txt")
+            .asFile
+    val srcRoot =
+        layout.projectDirectory
+            .dir("src/main/kotlin")
+            .asFile
+    val outputFile =
+        layout.buildDirectory
+            .file("generated/api/packInterfaces.generated.ts")
+            .get()
+            .asFile
+    val projectRoot = rootDir
+    inputs.file(manifestFile)
+    inputs.dir(srcRoot)
+    outputs.file(outputFile)
+    doLast {
+        // --- parse manifest -------------------------------------------------
+        val interfaces = mutableListOf<Pair<String, String>>()
+        val typeMap = mutableMapOf<String, String>()
+        var section = ""
+        manifestFile.readLines().forEach { raw ->
+            val line = raw.substringBefore('#').trim()
+            if (line.isEmpty()) return@forEach
+            if (line.startsWith("[") && line.endsWith("]")) {
+                section = line.trim('[', ']')
+                return@forEach
+            }
+            val eq = line.indexOf('=')
+            check(eq > 0) { "Malformed manifest line (expected `key = value`): $raw" }
+            val key = line.substring(0, eq).trim()
+            val value = line.substring(eq + 1).trim()
+            when (section) {
+                "interfaces" -> interfaces += key to value
+                "typemap" -> typeMap[key] = value
+                else -> error("Manifest entry outside a [section]: $raw")
+            }
+        }
+        check(interfaces.isNotEmpty()) { "No [interfaces] entries in $manifestFile" }
+
+        // --- TS type mapping ------------------------------------------------
+        val primitives =
+            mapOf(
+                "String" to "string",
+                "Int" to "number",
+                "Long" to "number",
+                "Short" to "number",
+                "Byte" to "number",
+                "Float" to "number",
+                "Double" to "number",
+                "Boolean" to "boolean",
+                "Any" to "unknown",
+            )
+
+        fun mapType(input: String): String {
+            var t = input.trim()
+            var nullable = false
+            if (t.endsWith("?")) {
+                nullable = true
+                t = t.dropLast(1).trim()
+            }
+            val list = Regex("""^(?:List|Collection|Set|MutableList|MutableSet)<(.+)>$""").matchEntire(t)
+            val base =
+                if (list != null) {
+                    val inner = mapType(list.groupValues[1])
+                    if (inner.contains(" ")) "($inner)[]" else "$inner[]"
+                } else {
+                    primitives[t] ?: typeMap[t] ?: t
+                }
+            // `unknown` already subsumes null/undefined — no `| null` noise.
+            return if (nullable && base != "unknown") "$base | null" else base
+        }
+
+        // --- parse one data class's primary-constructor properties ----------
+        fun docComment(
+            lines: List<String>,
+            indent: String,
+        ): List<String> {
+            if (lines.isEmpty()) return emptyList()
+            val clean = lines.map { it.trim() }.filter { it.isNotEmpty() }
+            if (clean.isEmpty()) return emptyList()
+            if (clean.size == 1) return listOf("$indent/** ${clean[0]} */")
+            return buildList {
+                add("$indent/**")
+                clean.forEach { add("$indent * $it") }
+                add("$indent */")
+            }
+        }
+
+        // Strip Kotlin comment markers from an accumulated leading-comment block.
+        fun stripDoc(rawDoc: List<String>): List<String> =
+            rawDoc.flatMap { line ->
+                line
+                    .trim()
+                    .removePrefix("/**")
+                    .removePrefix("/*")
+                    .removeSuffix("*/")
+                    .let { if (it.trimStart().startsWith("*")) it.trimStart().removePrefix("*") else it }
+                    .removePrefix("//")
+                    .trim()
+                    .let { if (it.isEmpty()) emptyList() else listOf(it) }
+            }
+
+        data class TsField(
+            val name: String,
+            val type: String,
+            val optional: Boolean,
+            val doc: List<String>,
+        )
+
+        fun parseClass(
+            text: String,
+            simple: String,
+            fqcn: String,
+        ): Pair<List<String>, List<TsField>> {
+            val header =
+                Regex("""(?m)^[^\n]*\bclass\s+$simple\b[^(\n]*\(""").find(text)
+                    ?: error("class $simple not found for $fqcn")
+            // Capture leading KDoc/comment block directly above the class header.
+            val before = text.substring(0, header.range.first).trimEnd('\n')
+            val classDoc = mutableListOf<String>()
+            if (before.endsWith("*/")) {
+                val open = before.lastIndexOf("/**").let { if (it < 0) before.lastIndexOf("/*") else it }
+                if (open >= 0) classDoc += before.substring(open).lines()
+            }
+            // Balance parens of the primary constructor.
+            val open = text.indexOf('(', header.range.last - 1)
+            var depth = 0
+            var i = open
+            while (i < text.length) {
+                when (text[i]) {
+                    '(' -> depth++
+                    ')' -> {
+                        depth--
+                        if (depth == 0) break
+                    }
+                }
+                i++
+            }
+            val body = text.substring(open + 1, i)
+
+            val fields = mutableListOf<TsField>()
+            val pendingDoc = mutableListOf<String>()
+            var pendingDeprecated: String? = null
+            var inKdoc = false
+            body.lines().forEach { rawLine ->
+                val line = rawLine.trim()
+                if (line.isEmpty()) return@forEach
+                if (inKdoc) {
+                    pendingDoc += line
+                    if (line.contains("*/")) inKdoc = false
+                    return@forEach
+                }
+                if (line.startsWith("/**") || line.startsWith("/*")) {
+                    pendingDoc += line
+                    if (!line.contains("*/")) inKdoc = true
+                    return@forEach
+                }
+                if (line.startsWith("//")) {
+                    pendingDoc += line
+                    return@forEach
+                }
+                if (line.startsWith("@Deprecated")) {
+                    pendingDeprecated =
+                        Regex(""""(.*?)"""").find(line)?.groupValues?.get(1) ?: "deprecated"
+                    return@forEach
+                }
+                if (line.startsWith("val ") || line.startsWith("var ")) {
+                    var work = line
+                    val override =
+                        Regex("""//\s*ts:\s*(.+)$""")
+                            .find(work)
+                            ?.groupValues
+                            ?.get(1)
+                            ?.trim()
+                    work =
+                        work
+                            .substringBefore("//")
+                            .trim()
+                            .trimEnd(',')
+                            .trim()
+                    val m =
+                        Regex("""^(?:val|var)\s+(\w+)\s*:\s*(.+)$""").matchEntire(work)
+                            ?: error("Cannot parse property in $fqcn: $line")
+                    val name = m.groupValues[1]
+                    var rest = m.groupValues[2].trim()
+                    val hasDefault = rest.contains("=")
+                    val ktType = (if (hasDefault) rest.substringBefore("=") else rest).trim()
+                    val tsType = override ?: mapType(ktType)
+                    val doc = stripDoc(pendingDoc).toMutableList()
+                    pendingDeprecated?.let { doc.add(0, "@deprecated $it") }
+                    fields += TsField(name, tsType, hasDefault, doc)
+                    pendingDoc.clear()
+                    pendingDeprecated = null
+                    return@forEach
+                }
+                // anything else (e.g. supertype tail `) : Pack`) — ignore
+            }
+            return stripDoc(classDoc) to fields
+        }
+
+        // --- resolve each manifest entry to a source file -------------------
+        val out = StringBuilder()
+        out.appendLine("// AUTO-GENERATED by `./gradlew generatePackInterfacesTs`.")
+        out.appendLine("// Source: Kotlin payload data classes, see config/codegen/ts-export-manifest.txt")
+        out.appendLine("// DO NOT EDIT BY HAND — your changes will be overwritten by CI on next push.")
+        var emitted = 0
+        interfaces.forEach { (fqcn, tsName) ->
+            val pkg = fqcn.substringBeforeLast('.')
+            val simple = fqcn.substringAfterLast('.')
+            val dir = File(srcRoot, pkg.replace('.', '/'))
+            check(dir.isDirectory) { "Package dir not found for $fqcn: $dir" }
+            val file =
+                dir
+                    .listFiles { f -> f.extension == "kt" }
+                    ?.firstOrNull { Regex("""(?m)^[^\n]*\bclass\s+$simple\b""").containsMatchIn(it.readText()) }
+                    ?: error("No .kt in $dir declares class $simple ($fqcn)")
+            val (classDoc, fields) = parseClass(file.readText(), simple, fqcn)
+            check(fields.isNotEmpty()) { "Class $fqcn has no constructor properties to emit" }
+            out.appendLine()
+            docComment(classDoc, "").forEach { out.appendLine(it) }
+            out.appendLine("export interface $tsName {")
+            fields.forEach { f ->
+                docComment(f.doc, "  ").forEach { out.appendLine(it) }
+                out.appendLine("  ${f.name}${if (f.optional) "?" else ""}: ${f.type};")
+            }
+            out.appendLine("}")
+            emitted++
+        }
+        check(emitted == interfaces.size) { "Emitted $emitted of ${interfaces.size} interfaces" }
+        outputFile.parentFile.mkdirs()
+        outputFile.writeText(out.toString())
+        logger.lifecycle("Wrote $emitted payload interfaces to ${outputFile.relativeTo(projectRoot)}")
+    }
+}

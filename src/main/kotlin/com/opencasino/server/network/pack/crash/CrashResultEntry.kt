@@ -8,7 +8,7 @@ package com.opencasino.server.network.pack.crash
 data class CrashResultEntry(
     val id: Long,
     val displayName: String,
-    val outcome: String,
+    val outcome: String, // ts: CrashOutcome
     val stake: Double,
     val cashedOutAt: Double?,
     val payout: Double,

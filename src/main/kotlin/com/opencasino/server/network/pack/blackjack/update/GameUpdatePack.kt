@@ -6,7 +6,7 @@ import com.opencasino.server.network.pack.update.PlayerHandUpdatePack
 import com.opencasino.server.service.shared.ClientState
 
 data class GameUpdatePack(
-    val player: PrivatePlayerUpdatePack,
+    val player: PrivatePlayerUpdatePack, // ts: BlackjackPrivatePlayerUpdatePack
     val players: Collection<PlayerHandUpdatePack>,
     val dealer: DealerUpdatePack,
     // Authoritative дедлайн хода (epoch ms): по истечении сервер сам делает STAND
