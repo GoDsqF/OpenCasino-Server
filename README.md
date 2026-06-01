@@ -28,6 +28,8 @@ OpenCasino Server — это реактивный игровой сервер, �
 - **Многопользовательские игры в реальном времени** через WebSocket
 - **Blackjack** — классическая карточная игра против дилера, с поддержкой DOUBLE / SPLIT и мульти-руками в рамках одного раунда
 - **Texas Hold'em Poker** — многопользовательский покер (2–6 игроков), Fixed/Pot/No Limit, полноценный SHOWDOWN с распределением side-pot-ов
+- **Crash** *(в работе, `feature/crash-rng`)* — provably-fair multiplier-игра: окно ставок → растущая кривая `m(t)` → обвал; режимы SINGLE (комната-на-игрока) и MULTI (общий стол с непрерывной каденцией). Сервер — единственный источник истины о множителе; cash-out якорится на `lastTickSeq` (abuse-resistant).
+- **RNG / provably-fair** (`com.opencasino.server.rng`) — commit→derive→reveal на хэш-цепочке (`ProvablyFairChain`), исход через inverse-CDF в целочисленной арифметике (`CrashOutcomeProvider`, RTP = 1 − houseEdge); аудит раундов в `provably_fair_round`. Любой клиент проверяет `SHA256(revealedServerSeed) == serverSeedHash` и вывод исхода из `HMAC`.
 - **Балансовая модель `balance_ledger`** — append-only журнал движений (`BLACKJACK_ROUND`, `POKER_BUY_IN`, `POKER_CASH_OUT`) + актуальный `users.balance` как denormalised cache. Отключение игрока посреди раунда → auto-stand/fold; покерный стек возвращается на баланс через `POKER_CASH_OUT`.
 - **Аутентификация** — Spring Security WebFlux + RS256 JWT (`oauth2ResourceServer().jwt()`), локальная регистрация по `email + password + displayName`, BCrypt-хеши. Идентичность игроков и пользователей живёт в одной таблице `users` (Phase 5 фолданул легаси `players` в `users`). WebSocket handshake требует JWT в `Authorization` / `?token=` / `Sec-WebSocket-Protocol: bearer, <jwt>`.
 - **Refresh-токены с ротацией и revocation** (Phase 7) — `POST /auth/refresh`, `POST /auth/logout`, replay-detection.
@@ -44,8 +46,9 @@ OpenCasino Server — это реактивный игровой сервер, �
 1. Security Layer — Spring Security WebFlux + `oauth2ResourceServer().jwt()`, RS256 JWT issued by `JwtIssuer`, WebSocket handshake auth через `WebSocketBearerTokenAuthenticationConverter`, ротация refresh-токенов в `RefreshTokenService`
 2. WebSocket Layer — `MainWebSocketHandler` (`/ws`, аутентифицированный), `UserSessionWebSocketHandler` (диспетчер по `serviceId`+`type`), `MenuWebSocketHandler` (`/ws/menu`, anonymous metadata), `WebSocketSessionService`
 3. Service Layer — `BlackjackRoomService`, `PokerRoomService`, `AuthService`, `MenuService`, `BalanceLedgerService`
-4. Game Logic Layer — `BlackjackGameRoom` / `PokerGameRoom`, `BlackjackPlayer` / `PokerPlayer`, `CardDeck`, `PokerHand` (showdown + side-pot)
-5. Data Layer — `UserRepository`, `RefreshTokenRepository`, `BalanceLedgerRepository`, R2DBC, PostgreSQL, Liquibase migrations
+4. Game Logic Layer — `BlackjackGameRoom` / `PokerGameRoom` / `AbstractCrashGameRoom` (FSM), `BlackjackPlayer` / `PokerPlayer`, `CardDeck`, `PokerHand` (showdown + side-pot)
+5. RNG Layer — `RandomnessService` (commit/derive/reveal/verify), `ProvablyFairChain`, `OutcomeProvider<T>` (`CrashOutcomeProvider` / `ShuffleOutcomeProvider`), `RngProfile`
+6. Data Layer — `UserRepository`, `RefreshTokenRepository`, `BalanceLedgerRepository`, `provably_fair_round`, R2DBC, PostgreSQL, Liquibase migrations
 
 ### Ключевые паттерны:
 - Factory Pattern — создание игроков (BlackjackPlayerFactory, PokerPlayerFactory)
@@ -555,10 +558,10 @@ ws://localhost:8080/ws/menu   # anonymous metadata-канал (permitAll)
 | 11 | GAME_ROOM_JOIN_WAIT | S→C | Игрок в очереди ожидания |
 | 12 | GAME_ROOM_JOIN_SUCCESS | S→C | Успешное присоединение + настройки |
 | 44 | GAME_ROOM_JOIN_FAILURE | S→C | Ошибка присоединения |
-|13 | GAME_START | S→C | Игра началась |
 | 14 | GAME_ROOM_STATUS | S→C | Статус комнаты (результат раунда) |
 | 20 | GAME_ROOM_START | S→C | Комната запущена |
 | 21 | GAME_ROOM_CLOSE | S→C | Комната закрыта |
+| 22 | GAME_ROOM_LEAVE | C→S | Явный выход из-за стола (отличается от disconnect-grace) |
 
 #### Игровой процесс
 
@@ -569,7 +572,19 @@ ws://localhost:8080/ws/menu   # anonymous metadata-канал (permitAll)
 | 100 | UPDATE | S→C | Снапшот стола (`BlackjackGameUpdatePack` / `PokerGameUpdatePack`) |
 | 101 | INFO | C↔S | Запрос/ответ информации об игроке |
 | 102 | SHOWDOWN_RESULT | S→C | **Poker.** `PokerShowdownPack` — per-player payout, side-pot breakdown, revealed hole-карты |
+| 103 | PING | S→C | WS heartbeat (см. §heartbeat); клиент обязан ответить PONG |
+| 104 | PONG | C→S | Ответ на PING |
 | 200 | PLAYER_DECISION | C→S | Решение игрока (Hit/Stand/Double/Split/Check/Call/Raise/Fold/All-in) |
+
+#### Crash / provably-fair
+
+| Код | Константа | Направление | Описание |
+|---|---|---|---|
+| 105 | CRASH_CASHOUT | C→S | **Crash.** Ручной cash-out (`CrashCashoutEvent`, несёт только `lastTickSeq`) |
+| 106 | CRASH_ROUND_RESULT | S→C | **Crash.** Reveal раунда (`CrashRoundResultPack` — crashPoint + revealed server-seed для верификации) |
+| 107 | PROVABLY_FAIR_REVEAL | S→C | Reveal перетасовки колоды (`ShuffleRevealPack`, BJ/Poker) |
+
+> Crash переиспользует `GAME_ROOM_JOIN` (с `mode: SINGLE\|MULTI`), `BET` (ставка + опциональный `autoCashoutTarget`), `GAME_ROOM_JOIN_SUCCESS` (`CrashSettingsPack`) и `UPDATE` (`CrashGameUpdatePack`).
 
 > Полный каталог сообщений, payload-ы, TS-схемы и sequence-диаграммы потоков лежат в отдельном репозитории документации: <https://gitlab.godsq.ru/oss/opencasino-docs>. Этот раздел — короткая сводка для контрибьюторов сервера; источник правды для фронтенда — `opencasino-docs/api/`.
 
@@ -589,8 +604,14 @@ ws://localhost:8080/ws/menu   # anonymous metadata-канал (permitAll)
 | Player↔User merge (legacy `players` → `users`) | готово (Phase 5) |
 | Multi-provider OAuth | Google — готово (Phase 6); Yandex / GitHub отложены |
 | Refresh tokens + ротация + revocation + replay-detection | готово (Phase 7) |
-| CORS / rate-limit / `refresh_tokens.user_agent+ip` / audit log | запланировано (Phase 8) |
-| Reconnect / resume посреди раунда | запланировано (MR-6) |
-| Heartbeat ping/pong, protocol cleanup, sessions API, CI codegen | запланировано (MR-7…MR-10) |
+| CORS / rate-limit / `refresh_tokens.user_agent+ip` / audit log | готово (Phase 8) |
+| Reconnect-grace посреди раунда (60s, auto-stand/fold + cash-out) | готово (MR-6) |
+| Heartbeat ping/pong, protocol cleanup, sessions API, CI codegen | готово (MR-7…MR-10) |
+| FE-driven протокол (derived state на сервере, Phases A–D) | готово (`!33`–`!36`) |
+| RNG / provably-fair core (commit→derive→reveal, inverse-CDF) | готово (`com.opencasino.server.rng`) |
+| **Crash** (provably-fair multiplier; SINGLE / MULTI режимы) | в работе (`feature/crash-rng`) |
+| Codegen `*Pack`/`*Event` → TS interfaces (CLAUDE.md §2.3) | готово (этот цикл) |
+| Reconnect state-restore (replay снимков), sit-out/sit-in | backlog (Phase F) |
+| Multi-player Blackjack | backlog (сейчас `MAX_BLACKJACK_PLAYERS = 1`) |
 
 Подробности по фазам auth-работ — в `CLAUDE.md` (локальный, не в git). Задачи трекаются в GitLab `oss/opencasino-server` (issues #2–#9). Документация API/протокола (включая полные payload-ы, sequence-flows и TS-схемы) живёт в отдельном репозитории <https://gitlab.godsq.ru/oss/opencasino-docs>.

@@ -3,7 +3,8 @@ package com.opencasino.server.event.poker
 import com.opencasino.server.event.AbstractEvent
 
 data class GameSettingsUpdateEvent(
-    val betType: String?,
+    val betType: String?, // ts: PokerBetType | null
+    // Big blind / базовая ставка раунда.
     val bet: Double,
     val minLimit: Double?,
     val maxLimit: Double?,

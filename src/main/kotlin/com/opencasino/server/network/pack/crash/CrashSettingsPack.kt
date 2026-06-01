@@ -9,7 +9,7 @@ import com.opencasino.server.network.pack.InitPack
  */
 data class CrashSettingsPack(
     val roomId: String,
-    val mode: String,
+    val mode: String, // ts: CrashMode
     val loopRate: Long,
     val minBet: Double,
     val maxBet: Double,

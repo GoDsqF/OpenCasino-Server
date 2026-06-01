@@ -5,6 +5,8 @@ import com.opencasino.server.network.pack.PublicUpdatePack
 import com.opencasino.server.network.pack.UpdatePack
 
 class PlayerHandUpdatePack(
-    val player: PublicUpdatePack,
+    /** Публичные данные игрока (без balance / privacy-sensitive полей). */
+    val player: PublicUpdatePack, // ts: BlackjackPublicPlayerUpdatePack | PokerPublicPlayerUpdatePack
+    // null = карта рубашкой (закрытая).
     val cards: List<Card?>,
 ) : UpdatePack

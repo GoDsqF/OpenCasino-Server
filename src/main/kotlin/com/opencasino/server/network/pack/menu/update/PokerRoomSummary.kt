@@ -1,7 +1,9 @@
 package com.opencasino.server.network.pack.menu.update
 
 data class PokerRoomSummary(
+    /** UUID комнаты — используется как `reconnectKey` в join-event-е. */
     val roomId: String,
+    /** Имя enum-а `PokerBetType` — `"FixedLimit" | "PotLimit" | "NoLimit"`. */
     val betType: String,
     @Deprecated("Дубликат bigBlind (на сервере bigBlind == bet). Используйте bigBlind; поле будет удалено.")
     val bet: Double,
@@ -15,5 +17,6 @@ data class PokerRoomSummary(
     val minBuyIn: Double,
     /** Верхний потолок buy-in; null = без потолка, ограничен только балансом игрока. */
     val maxBuyIn: Double?,
-    val phase: String,
+    /** `"WAITING"` (ждёт игроков, раздача не стартовала) или `"IN_GAME"` (раздача идёт). */
+    val phase: String, // ts: 'WAITING' | 'IN_GAME'
 )

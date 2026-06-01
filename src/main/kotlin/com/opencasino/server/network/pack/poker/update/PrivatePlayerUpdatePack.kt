@@ -9,7 +9,7 @@ data class PrivatePlayerUpdatePack(
     val stack: Double,
     val currentBet: Double,
     val lastDecision: PokerDecision,
-    val availableActions: List<String>,
+    val availableActions: List<String>, // ts: PokerDecisionName[]
     // «Купи стек или сядешь observer-ом / уйдёшь». true, пока игрок сидит, но не
     // профинансирован (== observer): busted после раздачи либо ещё не сделал
     // buy-in. На успешном BET становится false. FE сводит rebuy-логику к одной

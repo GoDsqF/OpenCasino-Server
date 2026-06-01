@@ -1,0 +1,79 @@
+# TS-export manifest for `generatePackInterfacesTs` (CLAUDE.md §2.3).
+#
+# Source of truth for which Kotlin payload data classes are part of the WS wire
+# contract and how their TypeScript counterparts are named in
+# opencasino-docs/api/types.ts. An explicit allow-list — NOT a directory scan —
+# because network/pack/** holds duplicate simple names across packages
+# (GameUpdatePack / RoomPack / GameSettingsPack / DealerUpdatePack /
+# PlayerHandUpdatePack live in 2-3 packages) plus dead legacy classes
+# (deprecated*, abstract Blackjack*PlayerHandUpdatePack). types.ts also renames
+# the wire types (poker/update.GameUpdatePack -> PokerGameUpdatePack).
+#
+# Format: two sections.
+#   [interfaces]  FQCN = TsInterfaceName   (order here = emit order)
+#   [typemap]     KotlinTypeName = TsType  (how referenced enum/domain types map)
+# Lines starting with '#' and blank lines are ignored.
+
+[interfaces]
+# --- Client -> server events ---
+com.opencasino.server.event.GameRoomJoinEvent = GameRoomJoinEvent
+com.opencasino.server.event.poker.GameSettingsUpdateEvent = GameSettingsUpdateEvent
+com.opencasino.server.event.poker.GameRoomCreateEvent = GameRoomCreateEvent
+com.opencasino.server.event.BetEvent = BetEvent
+com.opencasino.server.event.BlackjackPlayerDecisionEvent = BlackjackPlayerDecisionEvent
+com.opencasino.server.event.poker.PokerPlayerDecisionEvent = PokerPlayerDecisionEvent
+com.opencasino.server.event.crash.CrashCashoutEvent = CrashCashoutEvent
+
+# --- Server -> client: shared ---
+com.opencasino.server.network.pack.shared.GameMessagePack = GameMessagePack
+com.opencasino.server.network.pack.shared.FailurePack = FailurePack
+com.opencasino.server.network.pack.shared.DealerUpdatePack = DealerUpdatePack
+com.opencasino.server.network.pack.shared.ShuffleRevealPack = ShuffleRevealPack
+
+# --- Server -> client: settings / room ---
+com.opencasino.server.network.pack.blackjack.shared.GameSettingsPack = BlackjackGameSettingsPack
+com.opencasino.server.network.pack.poker.shared.GameSettingsPack = PokerGameSettingsPack
+com.opencasino.server.network.pack.poker.shared.RoomPack = RoomPack
+
+# --- Server -> client: blackjack ---
+com.opencasino.server.network.pack.blackjack.shared.BlackjackConditionPack = BlackjackConditionPack
+com.opencasino.server.network.pack.blackjack.update.BlackjackHandView = BlackjackHandView
+com.opencasino.server.network.pack.blackjack.update.PrivatePlayerUpdatePack = BlackjackPrivatePlayerUpdatePack
+com.opencasino.server.network.pack.blackjack.update.PublicPlayerUpdatePack = BlackjackPublicPlayerUpdatePack
+com.opencasino.server.network.pack.blackjack.update.GameUpdatePack = BlackjackGameUpdatePack
+
+# --- Server -> client: poker ---
+com.opencasino.server.network.pack.poker.update.PrivatePlayerUpdatePack = PokerPrivatePlayerUpdatePack
+com.opencasino.server.network.pack.poker.update.PublicPlayerUpdatePack = PokerPublicPlayerUpdatePack
+com.opencasino.server.network.pack.poker.update.GameUpdatePack = PokerGameUpdatePack
+com.opencasino.server.network.pack.poker.showdown.PokerShowdownEntry = PokerShowdownEntry
+com.opencasino.server.network.pack.poker.showdown.PokerShowdownSidePot = PokerShowdownSidePot
+com.opencasino.server.network.pack.poker.showdown.PokerShowdownPack = PokerShowdownPack
+
+# --- Server -> client: player hand / info ---
+com.opencasino.server.network.pack.update.PlayerHandUpdatePack = PlayerHandUpdatePack
+com.opencasino.server.network.pack.poker.info.PlayerInfoPack = PlayerInfo
+com.opencasino.server.network.pack.blackjack.info.BlackjackInfoPack = BlackjackInfoPack
+com.opencasino.server.network.pack.poker.info.InfoPack = PokerInfoPack
+
+# --- Server -> client: menu / lobby ---
+com.opencasino.server.network.pack.menu.update.GameMetadata = GameMetadata
+com.opencasino.server.network.pack.menu.update.PokerRoomSummary = PokerRoomSummary
+com.opencasino.server.network.pack.menu.update.MenuUpdatePack = MenuUpdatePack
+
+# --- Server -> client: crash ---
+com.opencasino.server.network.pack.crash.CrashSettingsPack = CrashSettingsPack
+com.opencasino.server.network.pack.crash.CrashPlayerView = CrashPlayerView
+com.opencasino.server.network.pack.crash.CrashGameUpdatePack = CrashGameUpdatePack
+com.opencasino.server.network.pack.crash.CrashResultEntry = CrashResultEntry
+com.opencasino.server.network.pack.crash.CrashRoundResultPack = CrashRoundResultPack
+
+[typemap]
+Card = Card
+BlackjackDecision = BlackjackDecisionName
+PokerDecision = PokerDecisionName
+PokerPhase = PokerPhase
+ClientState = ClientState
+CrashPhase = CrashPhase
+PlayerInfoPack = PlayerInfo
+BlackjackPlayerInfoPack = PlayerInfo

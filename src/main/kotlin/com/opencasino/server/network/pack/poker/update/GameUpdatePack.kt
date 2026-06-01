@@ -7,7 +7,7 @@ import com.opencasino.server.service.shared.ClientState
 import com.opencasino.server.service.shared.PokerPhase
 
 data class GameUpdatePack(
-    val player: PrivatePlayerUpdatePack,
+    val player: PrivatePlayerUpdatePack, // ts: PokerPrivatePlayerUpdatePack
     val players: Collection<PlayerHandUpdatePack>,
     val dealer: DealerUpdatePack,
     val phase: PokerPhase,
