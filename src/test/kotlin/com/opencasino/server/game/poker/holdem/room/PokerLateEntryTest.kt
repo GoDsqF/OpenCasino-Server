@@ -7,17 +7,22 @@ import com.opencasino.server.game.poker.holdem.map.PokerMap
 import com.opencasino.server.game.poker.holdem.model.PokerPlayer
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
+import com.opencasino.server.rng.RandomnessService
+import com.opencasino.server.rng.ShuffleOutcomeProvider
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.user.BalanceLedgerService
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.springframework.web.reactive.socket.HandshakeInfo
+import reactor.core.publisher.Mono
 import reactor.test.scheduler.VirtualTimeScheduler
 import java.security.Principal
 import java.util.UUID
@@ -26,6 +31,16 @@ class PokerLateEntryTest {
     private val handshake: HandshakeInfo = mock()
     private val webSocketSessionService: WebSocketSessionService = mock()
     private val ledgerService: BalanceLedgerService = mock()
+    private val randomnessService: RandomnessService =
+        mock {
+            on { commit(any(), any(), any<ShuffleOutcomeProvider>()) } doAnswer { inv ->
+                val provider = inv.getArgument<ShuffleOutcomeProvider>(2)
+                Mono.just(
+                    RandomnessService.RoundCommit(UUID.randomUUID(), "hash", "salt", provider.fromHmac(ByteArray(32))),
+                )
+            }
+            on { reveal(any()) } doReturn Mono.just("revealedseedhex")
+        }
     private val roomService: RoomService = mock()
     private val appProps = ApplicationProperties()
     private val pokerProps: PokerRoomProperties = appProps.pokerRoom
@@ -41,6 +56,7 @@ class PokerLateEntryTest {
             gameProps,
             pokerProps,
             ledgerService,
+            randomnessService,
         )
 
     private fun newSession(userId: UUID? = UUID.randomUUID()): PlayerSession {

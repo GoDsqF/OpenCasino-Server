@@ -11,6 +11,7 @@ import com.opencasino.server.game.blackjack.room.BlackjackGameRoom
 import com.opencasino.server.game.room.GameRoom
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
+import com.opencasino.server.rng.RandomnessService
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.WaitingPlayerSession
@@ -32,6 +33,7 @@ class BlackjackRoomServiceImpl(
     private val applicationProperties: ApplicationProperties,
     private val schedulerService: Scheduler,
     private val ledgerService: BalanceLedgerService,
+    private val randomnessService: RandomnessService,
 ) : RoomService {
     @Autowired
     private lateinit var userRepository: UserRepository
@@ -112,6 +114,7 @@ class BlackjackRoomServiceImpl(
                 applicationProperties.game,
                 applicationProperties.blackjackRoom,
                 ledgerService,
+                randomnessService,
             )
         gameRoomMap[room.key()] = room
         return room

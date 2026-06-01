@@ -23,7 +23,7 @@
     </file>
     <file name="src/main/kotlin/com/opencasino/server/game/poker/holdem/room/PokerGameRoom.kt">
         <error line="3" column="1" source="standard:no-wildcard-imports" />
-        <error line="37" column="1" source="standard:no-wildcard-imports" />
+        <error line="40" column="1" source="standard:no-wildcard-imports" />
     </file>
     <file name="src/main/kotlin/com/opencasino/server/game/room/GameRoom.kt">
         <error line="6" column="1" source="standard:no-wildcard-imports" />
@@ -52,7 +52,7 @@
         <error line="10" column="1" source="standard:no-wildcard-imports" />
     </file>
     <file name="src/main/kotlin/com/opencasino/server/service/impl/BlackjackRoomServiceImpl.kt">
-        <error line="27" column="1" source="standard:no-wildcard-imports" />
+        <error line="28" column="1" source="standard:no-wildcard-imports" />
     </file>
     <file name="src/main/kotlin/com/opencasino/server/service/impl/PokerRoomServiceImpl.kt">
         <error line="32" column="1" source="standard:no-wildcard-imports" />
@@ -90,7 +90,7 @@
         <error line="7" column="1" source="standard:no-wildcard-imports" />
     </file>
     <file name="src/test/kotlin/com/opencasino/server/game/blackjack/room/BlackjackGameRoomReattachTest.kt">
-        <error line="12" column="1" source="standard:no-wildcard-imports" />
+        <error line="14" column="1" source="standard:no-wildcard-imports" />
     </file>
     <file name="src/test/kotlin/com/opencasino/server/game/model/AbstractEntityTest.kt">
         <error line="3" column="1" source="standard:no-wildcard-imports" />
@@ -137,10 +137,10 @@
         <error line="3" column="1" source="standard:no-wildcard-imports" />
     </file>
     <file name="src/test/kotlin/com/opencasino/server/game/poker/holdem/room/PokerGameRoomReattachTest.kt">
-        <error line="11" column="1" source="standard:no-wildcard-imports" />
+        <error line="13" column="1" source="standard:no-wildcard-imports" />
     </file>
     <file name="src/test/kotlin/com/opencasino/server/game/poker/holdem/room/PokerLateEntryTest.kt">
-        <error line="13" column="1" source="standard:no-wildcard-imports" />
+        <error line="15" column="1" source="standard:no-wildcard-imports" />
     </file>
     <file name="src/test/kotlin/com/opencasino/server/math/UtilsTest.kt">
         <error line="3" column="1" source="standard:no-wildcard-imports" />

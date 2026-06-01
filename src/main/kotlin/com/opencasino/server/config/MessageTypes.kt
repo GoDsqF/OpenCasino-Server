@@ -36,4 +36,6 @@ const val PONG = 104
 const val CRASH_CASHOUT = 105
 const val CRASH_ROUND_RESULT = 106
 
+const val PROVABLY_FAIR_REVEAL = 107
+
 const val PLAYER_DECISION = 200

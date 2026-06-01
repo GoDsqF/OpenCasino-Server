@@ -19,8 +19,11 @@ import com.opencasino.server.network.pack.poker.showdown.PokerShowdownPack
 import com.opencasino.server.network.pack.poker.showdown.PokerShowdownSidePot
 import com.opencasino.server.network.pack.poker.update.GameUpdatePack
 import com.opencasino.server.network.pack.shared.DealerUpdatePack
+import com.opencasino.server.network.pack.shared.ShuffleRevealPack
 import com.opencasino.server.network.shared.Message
 import com.opencasino.server.network.shared.PlayerSession
+import com.opencasino.server.rng.RandomnessService
+import com.opencasino.server.rng.ShuffleOutcomeProvider
 import com.opencasino.server.service.RoomService
 import com.opencasino.server.service.WebSocketSessionService
 import com.opencasino.server.service.shared.ClientState
@@ -46,6 +49,7 @@ open class PokerGameRoom(
     val gameProperties: GameProperties,
     val roomProperties: PokerRoomProperties,
     private val ledgerService: BalanceLedgerService? = null,
+    private val randomnessService: RandomnessService,
 ) : AbstractPokerGameRoom(gameRoomId, schedulerService, roomService, webSocketSessionService) {
     // can i delete this later?
     var minLimit: Double? = null
@@ -146,9 +150,52 @@ open class PokerGameRoom(
     @Volatile private var actorTurnStartedAt: Long? = null
     private var timedActorPosition: Int = -1
 
-    var deck = CardDeck(roomProperties.deckStacks)
+    // Колода строится неперетасованной; provably-fair перестановку накладывает
+    // reshuffleDeck() из committed seed (R5). deckReady=false, пока derive не
+    // резолвнётся — раздача гейтится на нём (как crash outcomeReady). Колода
+    // тасуется заново каждую раздачу (resetTable) — reveal на showdown.
+    var deck = CardDeck(roomProperties.deckStacks, shuffle = false)
 
     var dealerHand = CardDeck()
+
+    @Volatile private var deckReady = false
+
+    // Раздача отложена до готовности колоды: initialTurn выставляет флаг, когда
+    // deckReady ещё false; drainPendingStart дораздаёт при готовности.
+    @Volatile private var pendingStart = false
+
+    private var shuffleRoundId: UUID = UUID.randomUUID()
+    private var shuffleServerSeedHash: String = ""
+    private var shuffleClientSeed: String = ""
+
+    init {
+        reshuffleDeck()
+    }
+
+    // Строит свежую неперетасованную колоду и накладывает provably-fair
+    // перестановку из committed seed. clientSeed — серверная соль (shuffle честен
+    // по построению, см. ShuffleOutcomeProvider.houseEdge=null). deckReady
+    // взводится в callback'е; если раздача уже ждёт (pendingStart) — дораздаём.
+    private fun reshuffleDeck() {
+        deck = CardDeck(roomProperties.deckStacks, shuffle = false)
+        deckReady = false
+        val clientSeed = UUID.randomUUID().toString()
+        randomnessService
+            .commit(POKER_SHUFFLE_GAME_TYPE, clientSeed, ShuffleOutcomeProvider(deck.size()))
+            .subscribe { commit ->
+                synchronized(this) {
+                    deck.applyShuffle(commit.outcome)
+                    shuffleRoundId = commit.roundId
+                    shuffleServerSeedHash = commit.serverSeedHash
+                    shuffleClientSeed = commit.clientSeed
+                    deckReady = true
+                    if (pendingStart) {
+                        pendingStart = false
+                        initialTurn()
+                    }
+                }
+            }
+    }
 
     private fun initialDeal() {
         val players = map.getPlayers()
@@ -186,6 +233,12 @@ open class PokerGameRoom(
     }
 
     private fun initialTurn() {
+        // Колода ещё тасуется (provably-fair derive не резолвнулся) — откладываем
+        // раздачу; reshuffleDeck callback дораздаст при готовности.
+        if (!deckReady) {
+            pendingStart = true
+            return
+        }
         takeBlinds()
         initialDeal()
         // Preflop action: первым ходит игрок слева от BB.
@@ -499,6 +552,7 @@ open class PokerGameRoom(
         applyPayouts(distribution)
         pot = 0.0
         broadcastShowdown(distribution, canEvaluate && nonFolded.size > 1)
+        revealShuffle()
         roundEnd.set(true)
         // Showdown: актора больше нет — гасим турн-таймер, чтобы turnDeadlineEpochMs
         // не висел стейл-значением в reveal-окне (checkTurnTimeout тут уже не бежит).
@@ -509,6 +563,31 @@ open class PokerGameRoom(
         // и НЕ делает resetTable. Только UPDATE-ы (с post-showdown стеками,
         // phase=SHOWDOWN). По истечении окна — нормальный cleanup.
         showdownEndedAt = currentTimeMillis()
+    }
+
+    // Раскрывает serverSeed раздачи: клиент проверяет, что наблюдаемый порядок
+    // карт выводится из committed seed (provably-fair, R5). Снимок id/hash/clientSeed
+    // берём по значению — поля перезапишутся reshuffleDeck в resetTable.
+    private fun revealShuffle() {
+        val roundId = shuffleRoundId
+        val hash = shuffleServerSeedHash
+        val clientSeed = shuffleClientSeed
+        randomnessService
+            .reveal(roundId)
+            .subscribe { revealed ->
+                sendBroadcast(
+                    Message(
+                        PROVABLY_FAIR_REVEAL,
+                        ShuffleRevealPack(
+                            roundId = roundId.toString(),
+                            gameType = POKER_SHUFFLE_GAME_TYPE,
+                            serverSeedHash = hash,
+                            revealedServerSeed = revealed,
+                            clientSeed = clientSeed,
+                        ),
+                    ),
+                )
+            }
     }
 
     // Эксплицитная обёртка, чтобы её можно было замокать в тестах
@@ -575,6 +654,9 @@ open class PokerGameRoom(
     // раунда — здесь же, так что serialization дешёвая.
     private fun doUpdate() {
         if (!gameStarted.get()) return
+        // Раздача отложена (колода тасуется) — не рассылаем UPDATE с несданными
+        // картами; reshuffleDeck callback дораздаст и следующий тик отрисует стол.
+        if (pendingStart) return
         if (!roundEnd.get()) {
             // Турн-таймер взводится/проверяется до рассылки: если актор просрочил
             // ход, авто-действие уже сдвинуло раздачу — пропускаем тик, следующий
@@ -809,7 +891,7 @@ open class PokerGameRoom(
         // Clear table cards
         dealerHand.clear()
         map.getPlayers().forEach { it.playerDeck.clear() }
-        deck = CardDeck(roomProperties.deckStacks)
+        reshuffleDeck()
 
         // Reset round-level state. pot обнуляется именно здесь (а не в
         // triggerShowdown), чтобы во время reveal-окна FE видел собранный банк

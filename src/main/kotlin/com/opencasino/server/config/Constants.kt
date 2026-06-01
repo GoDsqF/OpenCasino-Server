@@ -17,7 +17,10 @@ const val MIN_POKER_PLAYERS = 2
 const val MIN_POKER_BET = 50.00
 const val MAX_POKER_BET = 100.00
 const val POKER_BUY_IN = 2000
-const val POKER_DECK_STACKS = 8
+
+// Техасский холдем играется одной 52-картной колодой, тасуемой заново каждую
+// раздачу. MAX_POKER_PLAYERS=6 требует ≤20 карт — одной колоды достаточно.
+const val POKER_DECK_STACKS = 1
 
 // Сколько комната держит post-showdown состояние перед resetTable: даёт FE время
 // проиграть staggered reveal оппонента, подсветку combo и chip-fly. Меньше — у FE
@@ -46,6 +49,10 @@ const val OBSERVER_GRACE_MS = 30_000L
 // высоким, чтобы он бил только по брошенным столам и не менял темп живой игры.
 // Ужесточать — отдельной правкой, когда на FE появится turn-countdown UX.
 const val ACTION_TIMEOUT_MS = 10L * 60 * 1000 // 10 минут
+
+// game_type аудит-строки для provably_fair_round при перетасовке карт (R5).
+const val POKER_SHUFFLE_GAME_TYPE = "POKER_SHUFFLE"
+const val BLACKJACK_SHUFFLE_GAME_TYPE = "BLACKJACK_SHUFFLE"
 
 // RNG / provably-fair house edge per game. `e=0.03` → RTP 97% (см. CRASH.md §1.3).
 const val CRASH_HOUSE_EDGE = 0.03
