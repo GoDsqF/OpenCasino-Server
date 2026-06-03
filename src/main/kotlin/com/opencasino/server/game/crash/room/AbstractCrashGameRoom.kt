@@ -78,6 +78,7 @@ abstract class AbstractCrashGameRoom protected constructor(
     private val engine = CrashEngine(roomProperties.growthRate)
     private val provider = CrashOutcomeProvider(rngProfile)
     private val maxPayout: Double = rngProfile.maxPayout
+    private val houseEdge: Double = rngProfile.houseEdge
 
     private val roomFutureList: MutableList<Disposable> = ArrayList()
     private val sessions: MutableMap<String, PlayerSession> = LinkedHashMap()
@@ -143,6 +144,7 @@ abstract class AbstractCrashGameRoom protected constructor(
             cooldownMs = roomProperties.cooldownMs,
             growthRate = roomProperties.growthRate,
             maxPayout = maxPayout,
+            houseEdge = houseEdge,
         )
 
     // Crash раунды управляются FSM-тиком (см. doUpdate), отдельных room/game-start
