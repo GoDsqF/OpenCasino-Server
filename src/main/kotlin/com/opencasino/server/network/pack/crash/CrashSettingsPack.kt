@@ -17,4 +17,5 @@ data class CrashSettingsPack(
     val cooldownMs: Long,
     val growthRate: Double,
     val maxPayout: Double,
+    val houseEdge: Double, // ts: number
 ) : InitPack
